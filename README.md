@@ -37,8 +37,6 @@ Core layers:
 - **Evaluation and observability:** hard validation, soft quality diagnostics, evidence attribution, node latency, retry traces, and SQLite-backed run inspection.
 - **Human-in-the-loop ingestion:** source manifest, rule-based extraction, draft review, approved promotion, and index rebuild.
 
-See [Architecture](docs/architecture.md), [RAG and HITL](docs/rag-and-hitl.md), and [Evaluation and Benchmarks](docs/evaluation-and-benchmarks.md).
-
 ## Verified Internal Benchmark Signals
 
 On a fixed 12-request benchmark across Beijing, Shanghai, Hangzhou, and Guangzhou:

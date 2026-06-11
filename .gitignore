@@ -35,9 +35,6 @@ backend/benchmarks/results/*
 AGENTS.md
 project-overview.md
 docs/*
-!docs/architecture.md
-!docs/rag-and-hitl.md
-!docs/evaluation-and-benchmarks.md
 
 # Editors and operating systems
 .idea/
