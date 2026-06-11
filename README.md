@@ -37,20 +37,37 @@ Core layers:
 - **Evaluation and observability:** hard validation, soft quality diagnostics, evidence attribution, node latency, retry traces, and SQLite-backed run inspection.
 - **Human-in-the-loop ingestion:** source manifest, rule-based extraction, draft review, approved promotion, and index rebuild.
 
+## Verification And Failure Testing
+
+The reliability layer separates deterministic validation from model generation:
+
+- Pydantic rejects malformed or inconsistent requests before LangGraph, external services, or the LLM are invoked.
+- Request validation covers blank required fields, strict ISO dates, reversed ranges, date/travel-day mismatches, oversized free text, noisy whitespace, duplicate preferences, and bounded prompt-injection-style input.
+- Service resilience tests cover transient AMap timeouts, exhausted retry budgets, and provider error responses.
+- Graph tests cover malformed planner JSON, targeted grounding retries, retry exhaustion, fallback behavior, authoritative weather, checkpoint state, and current-request alignment.
+
+The backend suite currently contains **50 deterministic unit and API-boundary tests**. CI runs these tests without real external API keys or paid model calls.
+
 ## Verified Internal Benchmark Signals
 
 On a fixed 12-request benchmark across Beijing, Shanghai, Hangzhou, and Guangzhou:
 
-| Metric | Chroma RAG result |
-| --- | ---: |
-| Retrieval recall@4 | 91.67% |
-| Retrieval hit rate | 100% |
-| Hard validation pass rate | 100% |
-| Evidence attribution coverage | 100% |
-| Recovery rate for initially failed runs | 100% |
-| Fallback rate | 0% |
+| Metric | Result | Denominator / interpretation |
+| --- | ---: | --- |
+| Retrieval recall@4 | 91.67% | Average expected-document recall across 12 labeled requests |
+| Retrieval hit rate | 100% | 12/12 requests retrieved at least one expected document |
+| Hard validation pass rate | 100% | 12/12 final itineraries passed deterministic hard checks |
+| Evidence attribution coverage | 100% | Generated attraction/hotel recommendations mapped to retrieved evidence |
+| Recovery rate for initially failed runs | 100% | 3/3 initially failed generations passed after controlled retries |
+| Fallback rate | 0% | 0/12 requests exhausted the retry budget |
 
 These are internal benchmark results, not production traffic metrics. The dataset and a sanitized summary are included for reproducibility.
+
+## Observability Preview
+
+The local dashboard exposes aggregate reliability metrics, failure categories, retry paths, node latency, quality diagnostics, and recommendation-level evidence links.
+
+![Evaluation observability dashboard](assets/observability-dashboard.jpg)
 
 ## Quick Start
 

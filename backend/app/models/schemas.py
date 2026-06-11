@@ -1,24 +1,97 @@
 """Public API and itinerary data models."""
 
+from datetime import datetime
+import re
 from typing import List, Optional, Union
-from pydantic import BaseModel, Field, field_validator
-from datetime import date
+
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 # Request models
 
 class TripRequest(BaseModel):
     """Structured trip-planning request."""
-    city: str = Field(..., description="目的地城市", example="北京")
+    city: str = Field(..., min_length=1, max_length=100, description="目的地城市", example="北京")
     start_date: str = Field(..., description="开始日期 YYYY-MM-DD", example="2025-06-01")
     end_date: str = Field(..., description="结束日期 YYYY-MM-DD", example="2025-06-03")
     travel_days: int = Field(..., description="旅行天数", ge=1, le=30, example=3)
-    transportation: str = Field(..., description="交通方式", example="公共交通")
-    accommodation: str = Field(..., description="住宿偏好", example="经济型酒店")
-    preferences: List[str] = Field(default=[], description="旅行偏好标签", example=["历史文化", "美食"])
-    free_text_input: Optional[str] = Field(default="", description="额外要求", example="希望多安排一些博物馆")
-    profile_id: Optional[str] = Field(default=None, description="匿名设备偏好记忆ID")
-    conversation_id: Optional[str] = Field(default=None, description="旅行规划会话ID")
+    transportation: str = Field(
+        ..., min_length=1, max_length=100, description="交通方式", example="公共交通"
+    )
+    accommodation: str = Field(
+        ..., min_length=1, max_length=100, description="住宿偏好", example="经济型酒店"
+    )
+    preferences: List[str] = Field(
+        default_factory=list,
+        max_length=10,
+        description="旅行偏好标签",
+        example=["历史文化", "美食"],
+    )
+    free_text_input: Optional[str] = Field(
+        default="", max_length=1000, description="额外要求", example="希望多安排一些博物馆"
+    )
+    profile_id: Optional[str] = Field(default=None, max_length=128, description="匿名设备偏好记忆ID")
+    conversation_id: Optional[str] = Field(default=None, max_length=128, description="旅行规划会话ID")
+
+    @field_validator("city", "transportation", "accommodation", mode="before")
+    @classmethod
+    def normalize_required_text(cls, value):
+        """Trim required text fields and reject blank values."""
+        if not isinstance(value, str):
+            return value
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("must not be blank")
+        return normalized
+
+    @field_validator("free_text_input", "profile_id", "conversation_id", mode="before")
+    @classmethod
+    def normalize_optional_text(cls, value):
+        """Trim optional text while preserving omitted values."""
+        if value is None:
+            return value
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("preferences", mode="before")
+    @classmethod
+    def normalize_preferences(cls, value):
+        """Trim, deduplicate, and validate preference labels."""
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            return value
+        normalized: List[str] = []
+        for item in value:
+            if not isinstance(item, str):
+                raise ValueError("preference labels must be strings")
+            label = item.strip()
+            if not label:
+                raise ValueError("preference labels must not be blank")
+            if len(label) > 50:
+                raise ValueError("preference labels must be at most 50 characters")
+            if label not in normalized:
+                normalized.append(label)
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_date_range(self):
+        """Require exact ISO dates and inclusive range consistency."""
+        date_pattern = re.compile(r"\d{4}-\d{2}-\d{2}")
+        if not date_pattern.fullmatch(self.start_date) or not date_pattern.fullmatch(self.end_date):
+            raise ValueError("start_date and end_date must use YYYY-MM-DD format")
+        try:
+            start = datetime.strptime(self.start_date, "%Y-%m-%d").date()
+            end = datetime.strptime(self.end_date, "%Y-%m-%d").date()
+        except ValueError as exc:
+            raise ValueError("start_date and end_date must use YYYY-MM-DD format") from exc
+        if end < start:
+            raise ValueError("end_date must be on or after start_date")
+        inclusive_days = (end - start).days + 1
+        if inclusive_days != self.travel_days:
+            raise ValueError(
+                f"travel_days must equal the inclusive date range ({inclusive_days})"
+            )
+        return self
 
     class Config:
         json_schema_extra = {
@@ -202,7 +275,7 @@ class POISearchResponse(BaseModel):
     """POI search response."""
     success: bool = Field(..., description="是否成功")
     message: str = Field(default="", description="消息")
-    data: List[POIInfo] = Field(default=[], description="POI列表")
+    data: List[POIInfo] = Field(default_factory=list, description="POI列表")
 
 
 class RouteInfo(BaseModel):
@@ -224,7 +297,7 @@ class WeatherResponse(BaseModel):
     """Weather lookup response."""
     success: bool = Field(..., description="是否成功")
     message: str = Field(default="", description="消息")
-    data: List[WeatherInfo] = Field(default=[], description="天气信息")
+    data: List[WeatherInfo] = Field(default_factory=list, description="天气信息")
 
 
 # Error response
