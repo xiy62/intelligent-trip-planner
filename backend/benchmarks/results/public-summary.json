@@ -1,0 +1,20 @@
+{
+  "benchmark": "evaluation-v2-twelve-request-combined",
+  "scope": {
+    "request_count": 12,
+    "cities": ["北京", "上海", "杭州", "广州"],
+    "note": "Internal benchmark results; not production traffic metrics."
+  },
+  "rag_chroma": {
+    "retrieval_recall_at_4": 0.9167,
+    "retrieval_hit_rate": 1.0,
+    "hard_validation_pass_rate": 1.0,
+    "attribution_coverage_rate": 1.0,
+    "initial_failure_rate": 0.25,
+    "recovery_rate": 1.0,
+    "fallback_rate": 0.0,
+    "avg_route_coherence_score": 0.9723,
+    "avg_pacing_score": 0.9681,
+    "avg_preference_match_score": 0.6972
+  }
+}

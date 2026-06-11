@@ -1,0 +1,26 @@
+[
+  {
+    "source_id": "beijing-official-travel-guide",
+    "country": "CN",
+    "city": "北京",
+    "source_url": "https://english.beijing.gov.cn/travellinginbeijing/",
+    "source_type": "official_tourism_portal",
+    "title": "Beijing Official Travel Guide",
+    "theme": ["历史文化", "经典路线"],
+    "poi_names": ["故宫博物院", "天安门广场", "景山公园"],
+    "district": "东城区",
+    "language": "zh"
+  },
+  {
+    "source_id": "shanghai-official-travel-guide",
+    "country": "CN",
+    "city": "上海",
+    "source_url": "https://www.meet-in-shanghai.net/en/",
+    "source_type": "official_tourism_portal",
+    "title": "Shanghai Official Travel Guide",
+    "theme": ["城市漫步", "夜景", "美食"],
+    "poi_names": ["外滩", "豫园", "南京路步行街"],
+    "district": "黄浦区",
+    "language": "zh"
+  }
+]

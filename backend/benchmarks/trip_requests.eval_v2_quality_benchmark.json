@@ -1,0 +1,54 @@
+[
+  {
+    "city": "北京",
+    "start_date": "2026-06-10",
+    "end_date": "2026-06-11",
+    "travel_days": 2,
+    "transportation": "公共交通",
+    "accommodation": "经济型酒店",
+    "preferences": ["历史文化", "经典路线"],
+    "free_text_input": "重点安排故宫和中轴线，明确要求不要太赶，尽量控制每天景点数量。",
+    "expected_rag_doc_ids": ["beijing-history-core-001", "beijing-beijing-official-travel-guide"],
+    "expected_rag_themes": ["历史文化", "经典路线"],
+    "benchmark_note": "Evaluation V2 pacing stress: 北京历史文化请求要求不要太赶，应召回故宫/中轴线知识并减少过载 pacing warning。"
+  },
+  {
+    "city": "上海",
+    "start_date": "2026-06-12",
+    "end_date": "2026-06-13",
+    "travel_days": 2,
+    "transportation": "公共交通",
+    "accommodation": "精品酒店",
+    "preferences": ["夜景", "拍照"],
+    "free_text_input": "优先安排外滩、陆家嘴和滨江夜景，适合拍照，不要跨区太频繁。",
+    "expected_rag_doc_ids": ["shanghai-photo-modern-003", "shanghai-food-night-002"],
+    "expected_rag_themes": ["夜景", "拍照"],
+    "benchmark_note": "Evaluation V2 route coherence stress: 上海夜景拍照请求应召回现代地标/夜景知识并避免跨区跳转。"
+  },
+  {
+    "city": "杭州",
+    "start_date": "2026-06-14",
+    "end_date": "2026-06-15",
+    "travel_days": 2,
+    "transportation": "步行+公共交通",
+    "accommodation": "中档酒店",
+    "preferences": ["自然风光", "轻松"],
+    "free_text_input": "以西湖和灵隐寺为主，想要轻松一点，适合拍照和散步。",
+    "expected_rag_doc_ids": ["hangzhou-westlake-001", "hangzhou-lingyin-002"],
+    "expected_rag_themes": ["自然风光", "经典路线"],
+    "benchmark_note": "Evaluation V2 preference stress: 杭州轻松自然风光请求应召回西湖/灵隐知识并匹配轻松散步偏好。"
+  },
+  {
+    "city": "广州",
+    "start_date": "2026-06-16",
+    "end_date": "2026-06-17",
+    "travel_days": 2,
+    "transportation": "公共交通",
+    "accommodation": "中档酒店",
+    "preferences": ["美食", "夜景"],
+    "free_text_input": "重点体验老城区美食和珠江夜景，晚上安排拍照，不要把景点排得太满。",
+    "expected_rag_doc_ids": ["guangzhou-oldtown-food-001", "guangzhou-river-night-002"],
+    "expected_rag_themes": ["美食", "夜景"],
+    "benchmark_note": "Evaluation V2 combined stress: 广州美食夜景请求应召回老城美食和珠江夜景知识，并检测 pacing/preference。"
+  }
+]

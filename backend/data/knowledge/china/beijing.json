@@ -1,0 +1,156 @@
+[
+  {
+    "doc_id": "beijing-beijing-official-travel-guide",
+    "country": "CN",
+    "city": "北京",
+    "district": "东城区",
+    "theme": [
+      "历史文化",
+      "经典路线"
+    ],
+    "poi_names": [
+      "故宫博物院",
+      "天安门广场",
+      "景山公园"
+    ],
+    "best_for": [
+      "首次来京游客",
+      "历史文化游客",
+      "经典景点路线"
+    ],
+    "recommended_duration": "half_day_to_full_day",
+    "seasonality": [],
+    "transport_advice": [
+      "中心城区经典景点适合用公共交通和步行串联。",
+      "长城类远郊景点不宜和中心城区高密度景点安排在同一天。"
+    ],
+    "planning_tips": [
+      "历史文化偏好行程可优先围绕故宫、天安门广场、国家博物馆和景山公园等中心城区景点组织。",
+      "博物馆和古迹类景点建议预留较长停留时间，避免同一天安排过多远距离景点。",
+      "公园类景点如颐和园、天坛、北海公园和景山公园更适合与相近片区组合安排。"
+    ],
+    "source_type": "official_tourism_portal",
+    "source_url": "https://english.beijing.gov.cn/travellinginbeijing/",
+    "language": "zh",
+    "last_verified_at": "2026-05-06",
+    "title": "Beijing Official Travel Guide",
+    "content": "北京官方旅游页面列出了长城、天安门广场、故宫、国家博物馆、颐和园、天坛、北海公园、景山公园等代表性景点，并将旅游资源按 attractions、museums、parks 等类别组织。该信息适合为历史文化、博物馆、公园和经典景点路线提供基础规划参考。自动抽取内容中的活动新闻、READ MORE、票务列表和页面导航已从本知识文档中移除。"
+  },
+  {
+    "doc_id": "beijing-history-core-001",
+    "country": "CN",
+    "city": "北京",
+    "district": "东城区",
+    "theme": [
+      "历史文化",
+      "经典路线"
+    ],
+    "poi_names": [
+      "故宫博物院",
+      "景山公园",
+      "天安门广场"
+    ],
+    "best_for": [
+      "首次来京游客",
+      "历史文化游客"
+    ],
+    "recommended_duration": "full_day",
+    "seasonality": [
+      "四季皆可",
+      "节假日需避开高峰"
+    ],
+    "transport_advice": [
+      "优先地铁和步行",
+      "中轴线片区适合同日集中安排"
+    ],
+    "planning_tips": [
+      "故宫通常需要提前预约",
+      "故宫建议预留半天到一天",
+      "景山适合与故宫串联安排"
+    ],
+    "source_type": "official_tourism_portal",
+    "source_url": "https://english.beijing.gov.cn/",
+    "language": "zh",
+    "last_verified_at": "2026-04-19",
+    "title": "北京历史文化核心线路建议",
+    "content": "北京的历史文化经典路线适合围绕中轴线展开，优先集中安排故宫、景山和天安门周边，减少跨区移动，并为博物馆与古迹留出充足停留时间。"
+  },
+  {
+    "doc_id": "beijing-hutong-food-002",
+    "country": "CN",
+    "city": "北京",
+    "district": "东城区",
+    "theme": [
+      "美食",
+      "城市漫步"
+    ],
+    "poi_names": [
+      "南锣鼓巷",
+      "什刹海",
+      "鼓楼"
+    ],
+    "best_for": [
+      "citywalk",
+      "夜间步行",
+      "本地小吃体验"
+    ],
+    "recommended_duration": "half_day_to_evening",
+    "seasonality": [
+      "春秋更舒适",
+      "夏季夜间更适合步行"
+    ],
+    "transport_advice": [
+      "适合地铁到达后步行串联",
+      "晚间可集中在鼓楼和什刹海周边"
+    ],
+    "planning_tips": [
+      "胡同区域更适合慢节奏步行",
+      "夜间可以安排餐饮和湖边散步",
+      "避免在同一天再塞入远距离景点"
+    ],
+    "source_type": "official_tourism_portal",
+    "source_url": "https://english.beijing.gov.cn/",
+    "language": "zh",
+    "last_verified_at": "2026-04-19",
+    "title": "北京胡同与夜间美食路线建议",
+    "content": "以南锣鼓巷、鼓楼、什刹海为核心的胡同城市漫步更适合半天到夜间安排，可以把餐饮体验和夜间步行结合，保持单日区域集中。"
+  },
+  {
+    "doc_id": "beijing-outdoor-003",
+    "country": "CN",
+    "city": "北京",
+    "district": "延庆区",
+    "theme": [
+      "自然风光",
+      "拍照"
+    ],
+    "poi_names": [
+      "八达岭长城",
+      "颐和园"
+    ],
+    "best_for": [
+      "户外景观",
+      "轻度拍照行程"
+    ],
+    "recommended_duration": "full_day",
+    "seasonality": [
+      "晴天更佳",
+      "雨天不建议安排高强度长城路线"
+    ],
+    "transport_advice": [
+      "远郊景点更适合单独成日安排",
+      "长城与市区景点不建议同天混排"
+    ],
+    "planning_tips": [
+      "长城体力消耗较高",
+      "若追求轻松路线可优先颐和园等市区大景点",
+      "户外安排应优先结合天气"
+    ],
+    "source_type": "official_tourism_portal",
+    "source_url": "https://english.beijing.gov.cn/",
+    "language": "zh",
+    "last_verified_at": "2026-04-19",
+    "title": "北京户外与拍照路线建议",
+    "content": "北京的自然与拍照类路线适合将长城或大型园林单独安排成一整天，避免与中心城区高密度步行线路混排，并优先结合天气和体力负荷决策。"
+  }
+]
