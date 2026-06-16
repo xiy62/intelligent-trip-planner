@@ -212,6 +212,54 @@ class TripPlanEvaluationQualityTests(unittest.TestCase):
         self.assertLess(report.scores.attribution_coverage_score, 1.0)
         self.assertTrue(any(link.evidence_type == "none" for link in report.evidence_links))
 
+    def test_empty_day_attractions_fail_content_completeness_and_retry_planner(self):
+        plan = build_plan()
+        plan.days[0].attractions = []
+        plan.budget.total_attractions = sum(
+            attraction.ticket_price for day in plan.days for attraction in day.attractions
+        )
+        plan.budget.total = (
+            plan.budget.total_attractions
+            + plan.budget.total_hotels
+            + plan.budget.total_meals
+            + plan.budget.total_transportation
+        )
+
+        report = evaluate(plan)
+
+        self.assertFalse(report.passed)
+        self.assertIn("content_completeness_attractions", report.hard_failures)
+        self.assertIn("pacing_day_0_no_attractions", report.quality_warnings)
+        self.assertEqual(report.next_action, "plan_itinerary")
+
+    def test_empty_day_attractions_retry_retrieval_when_no_candidates_exist(self):
+        plan = build_plan()
+        plan.days[0].attractions = []
+        plan.budget.total_attractions = sum(
+            attraction.ticket_price for day in plan.days for attraction in day.attractions
+        )
+        plan.budget.total = (
+            plan.budget.total_attractions
+            + plan.budget.total_hotels
+            + plan.budget.total_meals
+            + plan.budget.total_transportation
+        )
+
+        report = evaluate_trip_plan(
+            request=build_request(),
+            travel_dates=["2026-06-01", "2026-06-02"],
+            draft_plan=plan,
+            candidate_attractions=[],
+            candidate_hotels=[HotelCandidate(name="如家酒店", source_id="poi-hotel")],
+            rag_chunks=[],
+            retry_counts=RetryState(),
+            max_retries=2,
+        )
+
+        self.assertFalse(report.passed)
+        self.assertIn("content_completeness_attractions", report.hard_failures)
+        self.assertEqual(report.next_action, "retrieve_attractions")
+
 
 if __name__ == "__main__":
     unittest.main()

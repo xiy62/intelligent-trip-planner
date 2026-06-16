@@ -1,0 +1,86 @@
+[
+  {
+    "doc_id": "chicago-millennium-park-loop-001",
+    "country": "US",
+    "city": "Chicago",
+    "district": "The Loop",
+    "theme": [
+      "architecture",
+      "parks",
+      "classic sightseeing"
+    ],
+    "poi_names": [
+      "Millennium Park",
+      "Cloud Gate",
+      "Chicago Cultural Center",
+      "Art Institute of Chicago"
+    ],
+    "best_for": [
+      "first-time visitors",
+      "architecture-focused travelers",
+      "public-transit itineraries"
+    ],
+    "recommended_duration": "half_day_to_full_day",
+    "seasonality": [
+      "Winter itineraries should include indoor stops near the Loop.",
+      "Summer and fall support longer outdoor architecture and park walks."
+    ],
+    "transport_advice": [
+      "Millennium Park and Loop cultural stops are easy to group by walking and public transit.",
+      "Avoid mixing far north or far south attractions into a short Loop-focused day."
+    ],
+    "planning_tips": [
+      "A first-time Chicago itinerary can use Millennium Park as an anchor, then add nearby architecture, museum, and dining stops.",
+      "Keep Art Institute or museum visits paced with nearby outdoor stops rather than stacking multiple long indoor visits.",
+      "Use the Loop as a compact cluster for travelers who request public transit or limited transfer time."
+    ],
+    "source_type": "official_tourism_portal",
+    "source_url": "https://www.choosechicago.com/",
+    "language": "en",
+    "last_verified_at": "2026-06-16",
+    "title": "Chicago Loop and Millennium Park Planning Notes",
+    "content": "Choose Chicago presents the city through visitor interests such as first-time visits, architecture, food, parks, museums, and major downtown attractions. Millennium Park and nearby Loop cultural stops form a compact cluster for realistic first-time itineraries."
+  },
+  {
+    "doc_id": "chicago-river-architecture-food-002",
+    "country": "US",
+    "city": "Chicago",
+    "district": "River North and Downtown",
+    "theme": [
+      "architecture",
+      "food",
+      "citywalk"
+    ],
+    "poi_names": [
+      "Chicago Riverwalk",
+      "Magnificent Mile",
+      "River North",
+      "Chicago Architecture Center"
+    ],
+    "best_for": [
+      "architecture-focused travelers",
+      "food-focused travelers",
+      "walkable downtown routes"
+    ],
+    "recommended_duration": "half_day_to_full_day",
+    "seasonality": [
+      "Wind and cold can make winter riverfront walks less comfortable, so add indoor alternatives.",
+      "Warm-weather days can support longer riverwalk and architecture-focused routes."
+    ],
+    "transport_advice": [
+      "The Riverwalk, River North, and Magnificent Mile can be grouped to reduce backtracking.",
+      "Public transit works well downtown, but walking time should include weather and crowd buffers."
+    ],
+    "planning_tips": [
+      "For architecture preferences, keep the day centered around the riverfront and downtown rather than scattering stops across the city.",
+      "Place lunch or dinner in River North or nearby downtown neighborhoods after architecture-focused walking.",
+      "Use indoor cultural stops as backup when wind, rain, or cold makes outdoor walking less appealing."
+    ],
+    "source_type": "official_tourism_portal",
+    "source_url": "https://www.choosechicago.com/articles/parks-outdoors/millennium-park-campus/",
+    "language": "en",
+    "last_verified_at": "2026-06-16",
+    "title": "Chicago River, Architecture, and Food Planning Notes",
+    "content": "Chicago itineraries often work best when architecture, riverfront walking, downtown food, and nearby cultural stops are grouped into a compact route. This supports stronger route coherence than mixing downtown with distant neighborhoods in the same short itinerary."
+  }
+]

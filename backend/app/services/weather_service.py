@@ -13,34 +13,34 @@ from ..models.schemas import WeatherInfo
 
 
 WEATHER_CODE_MAP: Dict[int, Tuple[str, str]] = {
-    0: ("晴", "晴"),
-    1: ("晴间多云", "晴间多云"),
-    2: ("多云", "多云"),
-    3: ("阴", "阴"),
-    45: ("雾", "雾"),
-    48: ("雾凇", "雾凇"),
-    51: ("毛毛雨", "毛毛雨"),
-    53: ("毛毛雨", "毛毛雨"),
-    55: ("毛毛雨", "毛毛雨"),
-    56: ("冻毛毛雨", "冻毛毛雨"),
-    57: ("冻毛毛雨", "冻毛毛雨"),
-    61: ("小雨", "小雨"),
-    63: ("中雨", "中雨"),
-    65: ("大雨", "大雨"),
-    66: ("冻雨", "冻雨"),
-    67: ("冻雨", "冻雨"),
-    71: ("小雪", "小雪"),
-    73: ("中雪", "中雪"),
-    75: ("大雪", "大雪"),
-    77: ("雪粒", "雪粒"),
-    80: ("阵雨", "阵雨"),
-    81: ("阵雨", "阵雨"),
-    82: ("强阵雨", "强阵雨"),
-    85: ("阵雪", "阵雪"),
-    86: ("阵雪", "阵雪"),
-    95: ("雷暴", "雷暴"),
-    96: ("雷暴伴冰雹", "雷暴伴冰雹"),
-    99: ("雷暴伴强冰雹", "雷暴伴强冰雹"),
+    0: ("Clear", "Clear"),
+    1: ("Mostly clear", "Mostly clear"),
+    2: ("Partly cloudy", "Partly cloudy"),
+    3: ("Overcast", "Overcast"),
+    45: ("Fog", "Fog"),
+    48: ("Rime fog", "Rime fog"),
+    51: ("Light drizzle", "Light drizzle"),
+    53: ("Drizzle", "Drizzle"),
+    55: ("Dense drizzle", "Dense drizzle"),
+    56: ("Freezing drizzle", "Freezing drizzle"),
+    57: ("Dense freezing drizzle", "Dense freezing drizzle"),
+    61: ("Light rain", "Light rain"),
+    63: ("Rain", "Rain"),
+    65: ("Heavy rain", "Heavy rain"),
+    66: ("Freezing rain", "Freezing rain"),
+    67: ("Heavy freezing rain", "Heavy freezing rain"),
+    71: ("Light snow", "Light snow"),
+    73: ("Snow", "Snow"),
+    75: ("Heavy snow", "Heavy snow"),
+    77: ("Snow grains", "Snow grains"),
+    80: ("Rain showers", "Rain showers"),
+    81: ("Rain showers", "Rain showers"),
+    82: ("Violent rain showers", "Violent rain showers"),
+    85: ("Snow showers", "Snow showers"),
+    86: ("Snow showers", "Snow showers"),
+    95: ("Thunderstorm", "Thunderstorm"),
+    96: ("Thunderstorm with hail", "Thunderstorm with hail"),
+    99: ("Thunderstorm with heavy hail", "Thunderstorm with heavy hail"),
 }
 
 OPENMETEO_CITY_ALIASES: Dict[str, str] = {
@@ -74,7 +74,7 @@ OPENMETEO_CITY_ALIASES: Dict[str, str] = {
 def _wind_direction_from_degree(deg: Optional[float]) -> str:
     if deg is None:
         return ""
-    directions = ["北风", "东北风", "东风", "东南风", "南风", "西南风", "西风", "西北风"]
+    directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
     idx = int((deg % 360) / 45.0 + 0.5) % 8
     return directions[idx]
 
@@ -121,7 +121,11 @@ class OpenMeteoWeatherProvider(BaseWeatherProvider):
         for i, d in enumerate(times):
             if i >= len(codes):
                 continue
-            day_weather, night_weather = WEATHER_CODE_MAP.get(int(codes[i]), ("未知", "未知"))
+            code = codes[i]
+            if code is None:
+                day_weather, night_weather = ("Unknown", "Unknown")
+            else:
+                day_weather, night_weather = WEATHER_CODE_MAP.get(int(code), ("Unknown", "Unknown"))
             ws = wind_speed[i] if i < len(wind_speed) else None
             wd = wind_deg[i] if i < len(wind_deg) else None
             by_date[d] = WeatherInfo(
@@ -142,8 +146,8 @@ class OpenMeteoWeatherProvider(BaseWeatherProvider):
                 results.append(
                     WeatherInfo(
                         date=d,
-                        day_weather="未知",
-                        night_weather="未知",
+                        day_weather="Unknown",
+                        night_weather="Unknown",
                         day_temp=0,
                         night_temp=0,
                         wind_direction="",
@@ -169,7 +173,7 @@ class OpenMeteoWeatherProvider(BaseWeatherProvider):
                 return None
             return float(best["latitude"]), float(best["longitude"])
         except Exception as e:
-            print(f"⚠️ Open-Meteo地理编码失败: {str(e)}")
+            print(f"Open-Meteo geocoding failed: {str(e)}")
             return None
 
     def _build_geocoding_queries(self, city: str) -> List[str]:
@@ -255,7 +259,7 @@ class OpenMeteoWeatherProvider(BaseWeatherProvider):
                 resp.raise_for_status()
             return resp.json()
         except Exception as e:
-            print(f"⚠️ Open-Meteo天气查询失败: {str(e)}")
+            print(f"Open-Meteo weather lookup failed: {str(e)}")
             return None
 
     def _travel_dates(self, start_date: str, travel_days: int) -> List[str]:
@@ -272,8 +276,8 @@ class OpenMeteoWeatherProvider(BaseWeatherProvider):
         return [
             WeatherInfo(
                 date=d,
-                day_weather="未知",
-                night_weather="未知",
+                day_weather="Unknown",
+                night_weather="Unknown",
                 day_temp=0,
                 night_temp=0,
                 wind_direction="",
@@ -300,11 +304,14 @@ class WeatherService:
         return self.provider.get_forecast(city, start_date, travel_days)
 
     def format_weather_for_planner(self, city: str, weather_info: List[WeatherInfo]) -> str:
-        lines = [f"{city}天气如下（已按行程日期对齐）："]
+        lines = [f"Weather for {city}, aligned to trip dates:"]
         for item in weather_info:
+            if item.day_weather == "Unknown" and item.night_weather == "Unknown":
+                lines.append(f"- {item.date}: forecast unavailable for this date.")
+                continue
             lines.append(
-                f"- {item.date}：白天{item.day_weather}，夜间{item.night_weather}，"
-                f"{item.day_temp}℃ / {item.night_temp}℃，{item.wind_direction} {item.wind_power}".strip()
+                f"- {item.date}: daytime {item.day_weather}, nighttime {item.night_weather}, "
+                f"{item.day_temp}°C / {item.night_temp}°C, {item.wind_direction} {item.wind_power}".strip()
             )
         return "\n".join(lines)
 

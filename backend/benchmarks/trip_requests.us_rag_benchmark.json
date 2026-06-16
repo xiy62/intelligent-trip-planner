@@ -1,0 +1,80 @@
+[
+  {
+    "city": "New York",
+    "start_date": "2026-06-25",
+    "end_date": "2026-06-26",
+    "travel_days": 2,
+    "transportation": "public transit",
+    "accommodation": "mid-range hotel",
+    "preferences": ["museums", "parks", "classic sightseeing"],
+    "free_text_input": "I want a realistic Manhattan itinerary with museums, Central Park, and good food nearby.",
+    "expected_rag_doc_ids": ["new-york-museum-mile-central-park-001"],
+    "expected_rag_themes": ["museums", "parks", "classic sightseeing"],
+    "benchmark_note": "NYC museum and Central Park route should retrieve the Museum Mile / Central Park planning document."
+  },
+  {
+    "city": "New York",
+    "start_date": "2026-06-25",
+    "end_date": "2026-06-26",
+    "travel_days": 2,
+    "transportation": "walking and subway",
+    "accommodation": "boutique hotel",
+    "preferences": ["history", "food", "citywalk"],
+    "free_text_input": "Plan a downtown history and food-focused route without sending me all over Manhattan.",
+    "expected_rag_doc_ids": ["new-york-downtown-history-food-002"],
+    "expected_rag_themes": ["history", "food", "citywalk"],
+    "benchmark_note": "NYC downtown request should retrieve the Lower Manhattan history, food, and citywalk document."
+  },
+  {
+    "city": "San Francisco",
+    "start_date": "2026-06-25",
+    "end_date": "2026-06-26",
+    "travel_days": 2,
+    "transportation": "public transit",
+    "accommodation": "mid-range hotel",
+    "preferences": ["waterfront", "food", "classic sightseeing"],
+    "free_text_input": "Keep the plan near the waterfront with food breaks and avoid too many cross-city transfers.",
+    "expected_rag_doc_ids": ["san-francisco-waterfront-wharf-001"],
+    "expected_rag_themes": ["waterfront", "food", "classic sightseeing"],
+    "benchmark_note": "SF waterfront request should retrieve the Fisherman's Wharf / waterfront planning document."
+  },
+  {
+    "city": "San Francisco",
+    "start_date": "2026-06-25",
+    "end_date": "2026-06-26",
+    "travel_days": 2,
+    "transportation": "public transit",
+    "accommodation": "budget hotel",
+    "preferences": ["parks", "museums", "relaxed pace"],
+    "free_text_input": "I prefer a relaxed Golden Gate Park day with museums and outdoor time, not a packed citywide tour.",
+    "expected_rag_doc_ids": ["san-francisco-golden-gate-park-museums-002"],
+    "expected_rag_themes": ["parks", "museums", "outdoors"],
+    "benchmark_note": "SF park and museum request should retrieve the Golden Gate Park / museum planning document."
+  },
+  {
+    "city": "Chicago",
+    "start_date": "2026-06-25",
+    "end_date": "2026-06-26",
+    "travel_days": 2,
+    "transportation": "public transit",
+    "accommodation": "mid-range hotel",
+    "preferences": ["architecture", "parks", "classic sightseeing"],
+    "free_text_input": "Create a first-time Chicago route centered around the Loop, parks, museums, and architecture.",
+    "expected_rag_doc_ids": ["chicago-millennium-park-loop-001"],
+    "expected_rag_themes": ["architecture", "parks", "classic sightseeing"],
+    "benchmark_note": "Chicago first-time Loop request should retrieve the Millennium Park / Loop planning document."
+  },
+  {
+    "city": "Chicago",
+    "start_date": "2026-06-25",
+    "end_date": "2026-06-26",
+    "travel_days": 2,
+    "transportation": "walking and public transit",
+    "accommodation": "boutique hotel",
+    "preferences": ["architecture", "food", "citywalk"],
+    "free_text_input": "I want a riverfront architecture and food citywalk with realistic pacing and minimal backtracking.",
+    "expected_rag_doc_ids": ["chicago-river-architecture-food-002"],
+    "expected_rag_themes": ["architecture", "food", "citywalk"],
+    "benchmark_note": "Chicago riverfront architecture request should retrieve the Riverwalk / architecture / food document."
+  }
+]

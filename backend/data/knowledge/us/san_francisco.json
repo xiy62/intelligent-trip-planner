@@ -1,0 +1,86 @@
+[
+  {
+    "doc_id": "san-francisco-waterfront-wharf-001",
+    "country": "US",
+    "city": "San Francisco",
+    "district": "Northeast Waterfront",
+    "theme": [
+      "waterfront",
+      "classic sightseeing",
+      "food"
+    ],
+    "poi_names": [
+      "Fisherman's Wharf",
+      "Pier 39",
+      "Ferry Building",
+      "Coit Tower"
+    ],
+    "best_for": [
+      "first-time visitors",
+      "waterfront walks",
+      "food-focused travelers"
+    ],
+    "recommended_duration": "half_day_to_full_day",
+    "seasonality": [
+      "Waterfront weather can be windy, so keep layers and indoor food stops available.",
+      "Foggy days may reduce long-view photo stops but still support neighborhood walking."
+    ],
+    "transport_advice": [
+      "Keep waterfront stops grouped to avoid repeated hill climbs and cross-city transfers.",
+      "Use transit, walking, or short rideshare hops between the Ferry Building, Embarcadero, and Fisherman's Wharf."
+    ],
+    "planning_tips": [
+      "A waterfront day should balance scenic stops with food breaks rather than stacking too many distant neighborhoods.",
+      "Pair Fisherman's Wharf or Pier 39 with nearby waterfront walking and a meal stop.",
+      "Avoid putting Golden Gate Park and the waterfront into the same short half-day unless the user accepts more transit time."
+    ],
+    "source_type": "official_tourism_portal",
+    "source_url": "https://www.sftravel.com/",
+    "language": "en",
+    "last_verified_at": "2026-06-16",
+    "title": "San Francisco Waterfront and Fisherman's Wharf Planning Notes",
+    "content": "San Francisco Travel highlights visitor planning around attractions, weather, safety, public transportation, Fisherman's Wharf, Coit Tower, Golden Gate experiences, and waterfront activities. For itinerary planning, waterfront stops should be grouped to preserve pacing and reduce unnecessary transfers."
+  },
+  {
+    "doc_id": "san-francisco-golden-gate-park-museums-002",
+    "country": "US",
+    "city": "San Francisco",
+    "district": "Golden Gate Park",
+    "theme": [
+      "parks",
+      "museums",
+      "outdoors"
+    ],
+    "poi_names": [
+      "Golden Gate Park",
+      "de Young Museum",
+      "California Academy of Sciences",
+      "Japanese Tea Garden"
+    ],
+    "best_for": [
+      "museum-focused travelers",
+      "outdoor travelers",
+      "relaxed pace"
+    ],
+    "recommended_duration": "half_day_to_full_day",
+    "seasonality": [
+      "Fog and wind can make layered clothing useful even in warmer months.",
+      "Rainy days should emphasize museums and shorten garden or park walks."
+    ],
+    "transport_advice": [
+      "Golden Gate Park attractions are best grouped together rather than split across multiple distant neighborhoods.",
+      "Public transit is workable, but schedules should leave buffer time for transfers."
+    ],
+    "planning_tips": [
+      "For a relaxed San Francisco day, combine one major museum with one or two park stops instead of trying to cover the entire city.",
+      "Golden Gate Park works well as a weather-flexible cluster because it has both indoor museums and outdoor gardens.",
+      "Avoid overloading the day with both park museums and distant waterfront landmarks."
+    ],
+    "source_type": "official_tourism_portal",
+    "source_url": "https://www.sftravel.com/things-to-do/attractions",
+    "language": "en",
+    "last_verified_at": "2026-06-16",
+    "title": "San Francisco Golden Gate Park and Museum Planning Notes",
+    "content": "San Francisco Travel describes attractions such as world-class museums, Fisherman's Wharf, Golden Gate Park, botanical gardens, and art museums. Golden Gate Park is a strong same-day cluster for museum, outdoor, and relaxed-pace itineraries because it combines indoor and outdoor options in one area."
+  }
+]

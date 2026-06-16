@@ -34,22 +34,22 @@ class MemoryService:
         if not profile or int(profile.get("trip_count") or 0) <= 0:
             return ""
 
-        parts = [f"过去成功生成过 {profile.get('trip_count')} 次行程"]
+        parts = [f"previous successful trip plans: {profile.get('trip_count')}"]
         recent_cities = list(profile.get("recent_cities") or [])
         preferences = list(profile.get("preferences") or [])
         if recent_cities:
-            parts.append(f"最近目的地: {', '.join(recent_cities)}")
+            parts.append(f"recent destinations: {', '.join(recent_cities)}")
         if profile.get("transportation"):
-            parts.append(f"常用交通方式: {profile['transportation']}")
+            parts.append(f"usual transportation: {profile['transportation']}")
         if profile.get("accommodation"):
-            parts.append(f"常用住宿偏好: {profile['accommodation']}")
+            parts.append(f"usual accommodation: {profile['accommodation']}")
         if preferences:
-            parts.append(f"历史偏好标签: {', '.join(preferences)}")
+            parts.append(f"historical preference tags: {', '.join(preferences)}")
 
         return (
-            "匿名历史偏好记忆（软约束，当前请求优先）: "
-            + "；".join(parts)
-            + "。如果历史偏好与本次请求冲突，必须以本次请求为准。"
+            "Anonymous historical preference memory (soft constraint; current request has priority): "
+            + "; ".join(parts)
+            + ". If historical memory conflicts with the current request, follow the current request."
         )
 
     def update_after_success(
@@ -267,9 +267,9 @@ class MemoryService:
         trip_count: int,
     ) -> str:
         return (
-            f"已记录 {trip_count} 次成功规划；最近目的地: {', '.join(recent_cities)}；"
-            f"常用交通: {request.transportation}；常用住宿: {request.accommodation}；"
-            f"偏好标签: {', '.join(preferences) if preferences else '无'}。"
+            f"Recorded {trip_count} successful trip plans; recent destinations: {', '.join(recent_cities)}; "
+            f"usual transportation: {request.transportation}; usual accommodation: {request.accommodation}; "
+            f"preference tags: {', '.join(preferences) if preferences else 'none'}."
         )
 
 

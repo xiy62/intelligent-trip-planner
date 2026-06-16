@@ -71,8 +71,8 @@ class MemoryServiceTests(unittest.TestCase):
             self.assertIn("历史文化", profile["preferences"])
 
             summary = memory_service.build_memory_context(profile_id)
-            self.assertIn("匿名历史偏好记忆", summary)
-            self.assertIn("当前请求优先", summary)
+            self.assertIn("Anonymous historical preference memory", summary)
+            self.assertIn("current request", summary)
 
             snapshot = memory_service.get_profile_snapshot(profile_id)
             self.assertEqual(snapshot["trip_count"], 1)

@@ -30,7 +30,7 @@ class AttractionCandidate(BaseModel):
     name: str
     address: str = ""
     location: Optional[Location] = None
-    source: str = "amap_mcp"
+    source: str = "google_maps"
     source_id: str = ""
     raw_text: str = ""
 
@@ -41,7 +41,7 @@ class HotelCandidate(BaseModel):
     name: str
     address: str = ""
     location: Optional[Location] = None
-    source: str = "amap_mcp"
+    source: str = "google_maps"
     source_id: str = ""
     raw_text: str = ""
 

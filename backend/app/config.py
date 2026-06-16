@@ -23,11 +23,13 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173,http://127.0.0.1:3000"
     )
 
-    amap_api_key: str = ""
-    map_provider: str = "amap"
+    google_maps_api_key: str = ""
+    map_provider: str = "google"
 
     weather_provider: str = "openmeteo"
     openweather_api_key: str = ""
+
+    rag_mode: str = "chroma_retrieval"
 
     unsplash_access_key: str = ""
     unsplash_secret_key: str = ""
@@ -61,8 +63,10 @@ def validate_config():
     errors = []
     warnings = []
 
-    if settings.map_provider == "amap" and not settings.amap_api_key:
-        errors.append("AMAP_API_KEY is not configured")
+    if settings.map_provider == "google" and not settings.google_maps_api_key:
+        errors.append("GOOGLE_MAPS_API_KEY is not configured")
+    elif settings.map_provider != "google":
+        errors.append(f"Unsupported MAP_PROVIDER: {settings.map_provider}")
 
     if settings.weather_provider == "openweather" and not settings.openweather_api_key:
         warnings.append("OPENWEATHER_API_KEY is not configured; OpenWeather will be unavailable")
@@ -93,7 +97,8 @@ def print_config():
     print(f"Server: {settings.host}:{settings.port}")
     print(f"Map provider: {settings.map_provider}")
     print(f"Weather provider: {settings.weather_provider}")
-    print(f"AMap API key: {'configured' if settings.amap_api_key else 'not configured'}")
+    print(f"RAG mode: {settings.rag_mode}")
+    print(f"Google Maps API key: {'configured' if settings.google_maps_api_key else 'not configured'}")
     print(f"LLM API key: {'configured' if llm_api_key else 'not configured'}")
     print(f"LLM base URL: {llm_base_url}")
     print(f"LLM model: {llm_model}")

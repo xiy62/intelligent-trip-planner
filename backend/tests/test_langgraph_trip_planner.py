@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import unittest
 import json
 import tempfile
+import unittest
 from pathlib import Path
 
 from app.agents.langgraph_trip_planner import LangGraphTripPlanner
@@ -14,122 +14,122 @@ from app.services.memory_service import MemoryService
 
 def build_request() -> TripRequest:
     return TripRequest(
-        city="北京",
+        city="New York",
         start_date="2026-06-01",
         end_date="2026-06-02",
         travel_days=2,
-        transportation="公共交通",
-        accommodation="经济型酒店",
-        preferences=["历史文化", "美食"],
-        free_text_input="希望行程不要太赶",
+        transportation="Public transit",
+        accommodation="Budget hotel",
+        preferences=["Museums", "Food"],
+        free_text_input="Keep the itinerary relaxed.",
     )
 
 
 def build_valid_plan_json(
-    attraction_name: str = "故宫",
-    hotel_name: str = "如家酒店",
-    transportation: str = "公共交通",
-    accommodation: str = "经济型酒店",
+    attraction_name: str = "Metropolitan Museum of Art",
+    hotel_name: str = "Pod Times Square",
+    transportation: str = "Public transit",
+    accommodation: str = "Budget hotel",
 ) -> str:
     return f"""```json
 {{
-  "city": "北京",
+  "city": "New York",
   "start_date": "2026-06-01",
   "end_date": "2026-06-02",
   "days": [
     {{
       "date": "2026-06-01",
       "day_index": 0,
-      "description": "第1天行程",
+      "description": "Museum and Central Park day",
       "transportation": "{transportation}",
       "accommodation": "{accommodation}",
       "hotel": {{
         "name": "{hotel_name}",
-        "address": "东城区酒店1号",
-        "estimated_cost": 300
+        "address": "400 W 42nd St, New York, NY",
+        "estimated_cost": 220
       }},
       "attractions": [
         {{
           "name": "{attraction_name}",
-          "address": "东城区景山前街4号",
-          "location": {{"longitude": 116.397, "latitude": 39.917}},
+          "address": "1000 5th Ave, New York, NY",
+          "location": {{"longitude": -73.9632, "latitude": 40.7794}},
           "visit_duration": 180,
-          "description": "历史文化景点",
-          "category": "景点",
-          "ticket_price": 60
+          "description": "Major museum and cultural landmark",
+          "category": "Museum",
+          "ticket_price": 30
         }},
         {{
-          "name": "天坛",
-          "address": "东城区天坛路",
-          "location": {{"longitude": 116.41, "latitude": 39.88}},
+          "name": "Central Park",
+          "address": "New York, NY",
+          "location": {{"longitude": -73.9654, "latitude": 40.7829}},
           "visit_duration": 120,
-          "description": "世界文化遗产",
-          "category": "景点",
-          "ticket_price": 15
+          "description": "Urban park with relaxed walking routes",
+          "category": "Park",
+          "ticket_price": 0
         }}
       ],
       "meals": [
-        {{"type": "breakfast", "name": "早餐", "estimated_cost": 30}},
-        {{"type": "lunch", "name": "午餐", "estimated_cost": 50}},
-        {{"type": "dinner", "name": "晚餐", "estimated_cost": 80}}
+        {{"type": "breakfast", "name": "Hotel breakfast", "estimated_cost": 20}},
+        {{"type": "lunch", "name": "Museum cafe", "estimated_cost": 35}},
+        {{"type": "dinner", "name": "Hell's Kitchen dinner", "estimated_cost": 60}}
       ]
     }},
     {{
       "date": "2026-06-02",
       "day_index": 1,
-      "description": "第2天行程",
+      "description": "Downtown food and waterfront day",
       "transportation": "{transportation}",
       "accommodation": "{accommodation}",
       "hotel": {{
         "name": "{hotel_name}",
-        "address": "东城区酒店1号",
-        "estimated_cost": 300
+        "address": "400 W 42nd St, New York, NY",
+        "estimated_cost": 220
       }},
       "attractions": [
         {{
-          "name": "景山公园",
-          "address": "景山西街",
-          "location": {{"longitude": 116.397, "latitude": 39.924}},
+          "name": "Brooklyn Bridge",
+          "address": "Brooklyn Bridge, New York, NY",
+          "location": {{"longitude": -73.9969, "latitude": 40.7061}},
           "visit_duration": 90,
-          "description": "适合步行",
-          "category": "景点",
-          "ticket_price": 10
+          "description": "Classic skyline walk",
+          "category": "Landmark",
+          "ticket_price": 0
         }},
         {{
-          "name": "南锣鼓巷",
-          "address": "东城区南锣鼓巷",
-          "location": {{"longitude": 116.403, "latitude": 39.94}},
+          "name": "Chelsea Market",
+          "address": "75 9th Ave, New York, NY",
+          "location": {{"longitude": -74.006, "latitude": 40.7424}},
           "visit_duration": 120,
-          "description": "适合美食探索",
-          "category": "景点",
+          "description": "Food hall and market",
+          "category": "Food",
           "ticket_price": 0
         }}
       ],
       "meals": [
-        {{"type": "breakfast", "name": "早餐", "estimated_cost": 30}},
-        {{"type": "lunch", "name": "午餐", "estimated_cost": 50}},
-        {{"type": "dinner", "name": "晚餐", "estimated_cost": 80}}
+        {{"type": "breakfast", "name": "Bagel breakfast", "estimated_cost": 18}},
+        {{"type": "lunch", "name": "Chelsea Market lunch", "estimated_cost": 40}},
+        {{"type": "dinner", "name": "Downtown dinner", "estimated_cost": 70}}
       ]
     }}
   ],
   "weather_info": [
     {{
       "date": "2026-09-01",
-      "day_weather": "暴雨",
-      "night_weather": "暴雨",
+      "day_weather": "Storm",
+      "night_weather": "Storm",
       "day_temp": 99,
       "night_temp": 88,
-      "wind_direction": "北风",
-      "wind_power": "10级"
+      "wind_direction": "N",
+      "wind_power": "40 km/h"
     }}
   ],
-  "overall_suggestions": "请舒适出行",
+  "overall_suggestions": "Use transit and avoid overpacking each day.",
   "budget": {{
-    "total_attractions": 85,
-    "total_hotels": 600,
-    "total_meals": 320,
-    "total_transportation": 120,
-    "total": 1125
+    "total_attractions": 30,
+    "total_hotels": 440,
+    "total_meals": 243,
+    "total_transportation": 60,
+    "total": 773
   }}
 }}
 ```"""
@@ -152,16 +152,27 @@ class FakeLLM:
 def parse_candidate_response(response: str):
     items = []
     for index, line in enumerate(response.splitlines()):
-        if "地址:" not in line:
+        if "Address:" not in line:
             continue
-        name, address = line.split("地址:", 1)
+        name, address = line.split("Address:", 1)
         name = name.split(".", 1)[-1].strip(" -")
-        items.append({"id": f"fake-{index}-{name}", "name": name, "address": address.strip()})
+        slug = name.lower().replace(" ", "-").replace("'", "")
+        items.append(
+            {
+                "id": f"fake-{index}-{slug}",
+                "name": name,
+                "address": address.strip(),
+                "image_url": f"/api/map/photo?photo_name=fake-{slug}",
+                "maps_url": f"https://maps.example.com/{slug}",
+                "website_url": f"https://www.example.com/{slug}",
+                "rating": 4.7,
+            }
+        )
     return items
 
 
 class FakeSearchTool:
-    name = "amap_search_poi"
+    name = "map_search_poi"
 
     def __init__(self, attraction_responses, hotel_responses):
         self.attraction_rounds = [parse_candidate_response(item) for item in attraction_responses]
@@ -169,15 +180,15 @@ class FakeSearchTool:
         self.attraction_calls = 0
 
     def invoke(self, payload):
-        keyword = payload["keywords"]
-        if "酒店" in keyword or "宾馆" in keyword:
+        keyword = payload["keywords"].lower()
+        if "hotel" in keyword or "inn" in keyword:
             return list(self.hotel_items)
         round_index = min(self.attraction_calls // 3, len(self.attraction_rounds) - 1)
         self.attraction_calls += 1
         return list(self.attraction_rounds[round_index])
 
 
-class FakeAmapService:
+class FakeMapService:
     def __init__(self, attraction_responses, hotel_responses):
         self.tool = FakeSearchTool(attraction_responses, hotel_responses)
 
@@ -190,21 +201,21 @@ class FakeWeatherService:
         self.results = [
             WeatherInfo(
                 date="2026-06-01",
-                day_weather="晴",
-                night_weather="多云",
+                day_weather="Clear",
+                night_weather="Cloudy",
                 day_temp=30,
                 night_temp=20,
-                wind_direction="南风",
-                wind_power="3级",
+                wind_direction="S",
+                wind_power="12 km/h",
             ),
             WeatherInfo(
                 date="2026-06-02",
-                day_weather="阴",
-                night_weather="小雨",
+                day_weather="Overcast",
+                night_weather="Light rain",
                 day_temp=28,
                 night_temp=18,
-                wind_direction="东风",
-                wind_power="2级",
+                wind_direction="E",
+                wind_power="8 km/h",
             ),
         ]
 
@@ -212,34 +223,41 @@ class FakeWeatherService:
         return list(self.results)
 
     def format_weather_for_planner(self, city: str, weather_info):
-        lines = [f"{city}天气如下（已按行程日期对齐）："]
+        lines = [f"Weather for {city}, aligned to trip dates:"]
         for item in weather_info:
-            lines.append(f"- {item.date}：白天{item.day_weather}，夜间{item.night_weather}")
+            lines.append(f"- {item.date}: daytime {item.day_weather}, nighttime {item.night_weather}")
         return "\n".join(lines)
 
 
 class FakeNativeRuntime:
     def __init__(self, attraction_responses, hotel_responses, planner_responses):
-        self.amap_service = FakeAmapService(attraction_responses, hotel_responses)
+        self.map_service = FakeMapService(attraction_responses, hotel_responses)
         self.llm = FakeLLM(planner_responses)
         self.weather_service = FakeWeatherService()
 
     def build_planner(self, **kwargs):
         return LangGraphTripPlanner(
             llm=self.llm,
-            amap_service=self.amap_service,
+            map_service=self.map_service,
             weather_service=self.weather_service,
             **kwargs,
         )
 
 
+ATTRACTIONS_ALL = (
+    "1. Metropolitan Museum of Art - Address: 1000 5th Ave, New York, NY\n"
+    "2. Central Park - Address: New York, NY\n"
+    "3. Brooklyn Bridge - Address: Brooklyn Bridge, New York, NY\n"
+    "4. Chelsea Market - Address: 75 9th Ave, New York, NY"
+)
+HOTELS_ALL = "1. Pod Times Square - Address: 400 W 42nd St, New York, NY"
+
+
 class LangGraphTripPlannerTests(unittest.TestCase):
     def test_weather_authority_and_checkpoint_snapshot(self):
         runtime = FakeNativeRuntime(
-            attraction_responses=[
-                "1. 故宫 - 地址: 东城区景山前街4号\n2. 天坛 - 地址: 东城区天坛路\n3. 景山公园 - 地址: 景山西街\n4. 南锣鼓巷 - 地址: 东城区南锣鼓巷"
-            ],
-            hotel_responses=["1. 如家酒店 - 地址: 东城区酒店1号"],
+            attraction_responses=[ATTRACTIONS_ALL],
+            hotel_responses=[HOTELS_ALL],
             planner_responses=[build_valid_plan_json()],
         )
         planner = runtime.build_planner()
@@ -248,25 +266,27 @@ class LangGraphTripPlannerTests(unittest.TestCase):
 
         final_plan = state["final_plan"]
         self.assertEqual(final_plan.weather_info[0].date, "2026-06-01")
-        self.assertEqual(final_plan.weather_info[0].day_weather, "晴")
-        self.assertEqual(final_plan.weather_info[1].night_weather, "小雨")
+        self.assertEqual(final_plan.weather_info[0].day_weather, "Clear")
+        self.assertEqual(final_plan.weather_info[1].night_weather, "Light rain")
+        self.assertEqual(final_plan.days[0].attractions[0].poi_id, "fake-0-metropolitan-museum-of-art")
+        self.assertEqual(final_plan.days[0].attractions[0].maps_url, "https://maps.example.com/metropolitan-museum-of-art")
+        self.assertEqual(final_plan.days[0].attractions[0].image_url, "/api/map/photo?photo_name=fake-metropolitan-museum-of-art")
+        self.assertEqual(final_plan.days[0].hotel.maps_url, "https://maps.example.com/pod-times-square")
 
         snapshot = planner.get_state_snapshot(thread_id)
-        self.assertEqual(snapshot.values["final_plan"].city, "北京")
+        self.assertEqual(snapshot.values["final_plan"].city, "New York")
         self.assertEqual(snapshot.values["metrics"].evaluation_pass_count, 1)
 
     def test_planner_malformed_json_retries_then_succeeds(self):
         runtime = FakeNativeRuntime(
-            attraction_responses=[
-                "1. 故宫 - 地址: 东城区景山前街4号\n2. 天坛 - 地址: 东城区天坛路\n3. 景山公园 - 地址: 景山西街\n4. 南锣鼓巷 - 地址: 东城区南锣鼓巷"
-            ],
-            hotel_responses=["1. 如家酒店 - 地址: 东城区酒店1号"],
+            attraction_responses=[ATTRACTIONS_ALL],
+            hotel_responses=[HOTELS_ALL],
             planner_responses=["not-json", build_valid_plan_json()],
         )
         planner = runtime.build_planner(max_retries=2)
         state = planner.invoke_graph(build_request())
 
-        self.assertEqual(state["final_plan"].city, "北京")
+        self.assertEqual(state["final_plan"].city, "New York")
         self.assertEqual(state["retry_counts"].plan_itinerary, 2)
         self.assertEqual(state["metrics"].schema_failure_count, 1)
         self.assertTrue(state["evaluation_report"].passed)
@@ -274,30 +294,30 @@ class LangGraphTripPlannerTests(unittest.TestCase):
     def test_grounding_failure_retries_attraction_retrieval(self):
         runtime = FakeNativeRuntime(
             attraction_responses=[
-                "1. 颐和园 - 地址: 海淀区",
-                "1. 故宫 - 地址: 东城区景山前街4号\n2. 天坛 - 地址: 东城区天坛路\n3. 景山公园 - 地址: 景山西街\n4. 南锣鼓巷 - 地址: 东城区南锣鼓巷",
+                "1. Statue of Liberty - Address: New York, NY",
+                ATTRACTIONS_ALL,
             ],
-            hotel_responses=["1. 如家酒店 - 地址: 东城区酒店1号"],
+            hotel_responses=[HOTELS_ALL],
             planner_responses=[build_valid_plan_json(), build_valid_plan_json()],
         )
         planner = runtime.build_planner(max_retries=2)
         state = planner.invoke_graph(build_request())
 
-        self.assertEqual(state["final_plan"].city, "北京")
+        self.assertEqual(state["final_plan"].city, "New York")
         self.assertTrue(state["evaluation_report"].passed)
         self.assertGreaterEqual(state["retry_counts"].retrieve_attractions, 1)
         self.assertEqual(state["metrics"].grounding_failure_count, 1)
 
     def test_retry_exhaustion_falls_back(self):
         runtime = FakeNativeRuntime(
-            attraction_responses=["1. 故宫 - 地址: 东城区景山前街4号"],
-            hotel_responses=["1. 如家酒店 - 地址: 东城区酒店1号"],
+            attraction_responses=["1. Metropolitan Museum of Art - Address: 1000 5th Ave, New York, NY"],
+            hotel_responses=[HOTELS_ALL],
             planner_responses=["bad-json", "still-bad-json"],
         )
         planner = runtime.build_planner(max_retries=1)
         state = planner.invoke_graph(build_request())
 
-        self.assertTrue(state["final_plan"].overall_suggestions.startswith("这是为您规划的北京2日游行程"))
+        self.assertTrue(state["final_plan"].overall_suggestions.startswith("This is a fallback"))
         self.assertEqual(state["metrics"].fallback_count, 1)
         self.assertEqual(state["retry_counts"].fallback_response, 1)
 
@@ -319,10 +339,8 @@ class LangGraphTripPlannerTests(unittest.TestCase):
             )
 
             runtime = FakeNativeRuntime(
-                attraction_responses=[
-                    "1. 故宫 - 地址: 东城区景山前街4号\n2. 天坛 - 地址: 东城区天坛路\n3. 景山公园 - 地址: 景山西街\n4. 南锣鼓巷 - 地址: 东城区南锣鼓巷"
-                ],
-                hotel_responses=["1. 如家酒店 - 地址: 东城区酒店1号"],
+                attraction_responses=[ATTRACTIONS_ALL],
+                hotel_responses=[HOTELS_ALL],
                 planner_responses=[build_valid_plan_json()],
             )
             planner = runtime.build_planner(memory_service=memory_service)
@@ -330,20 +348,20 @@ class LangGraphTripPlannerTests(unittest.TestCase):
                 update={
                     "profile_id": profile_id,
                     "conversation_id": "second-conversation",
-                    "accommodation": "豪华酒店",
+                    "accommodation": "Luxury hotel",
                 }
             )
             state = planner.invoke_graph(current_request)
 
             self.assertTrue(state["memory_applied"])
-            self.assertIn("历史文化", state["memory_summary"])
-            self.assertEqual(state["memory_profile"]["accommodation"], "经济型酒店")
-            self.assertIn("北京", state["memory_profile"]["recent_cities"])
+            self.assertIn("Museums", state["memory_summary"])
+            self.assertEqual(state["memory_profile"]["accommodation"], "Budget hotel")
+            self.assertIn("New York", state["memory_profile"]["recent_cities"])
             self.assertEqual(state["conversation_id"], "second-conversation")
             planner_prompt = runtime.llm.calls[0]
-            self.assertIn("匿名偏好记忆", planner_prompt)
-            self.assertIn("当前请求优先", planner_prompt)
-            self.assertIn("住宿: 豪华酒店", planner_prompt)
+            self.assertIn("Anonymous preference memory", planner_prompt)
+            self.assertIn("current request", planner_prompt)
+            self.assertIn("Accommodation preference: Luxury hotel", planner_prompt)
 
     def test_current_request_alignment_guardrail_overrides_memory_conflict(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -363,43 +381,41 @@ class LangGraphTripPlannerTests(unittest.TestCase):
             )
 
             runtime = FakeNativeRuntime(
-                attraction_responses=[
-                    "1. 故宫 - 地址: 东城区景山前街4号\n2. 天坛 - 地址: 东城区天坛路\n3. 景山公园 - 地址: 景山西街\n4. 南锣鼓巷 - 地址: 东城区南锣鼓巷"
-                ],
-                hotel_responses=["1. 如家酒店 - 地址: 东城区酒店1号"],
+                attraction_responses=[ATTRACTIONS_ALL],
+                hotel_responses=[HOTELS_ALL],
                 planner_responses=[
-                    build_valid_plan_json(accommodation="经济型酒店"),
+                    build_valid_plan_json(accommodation="Budget hotel"),
                 ],
             )
             planner = runtime.build_planner(max_retries=2, memory_service=memory_service)
             request = build_request().model_copy(
                 update={
                     "profile_id": profile_id,
-                    "accommodation": "豪华酒店",
+                    "accommodation": "Luxury hotel",
                 }
             )
             state = planner.invoke_graph(request)
 
             self.assertTrue(state["evaluation_report"].passed)
             self.assertEqual(state["retry_counts"].plan_itinerary, 1)
-            self.assertEqual(state["final_plan"].days[0].accommodation, "豪华酒店")
-            self.assertEqual(state["final_plan"].days[1].accommodation, "豪华酒店")
-            self.assertEqual(memory_service.get_profile(profile_id)["accommodation"], "豪华酒店")
+            self.assertEqual(state["final_plan"].days[0].accommodation, "Luxury hotel")
+            self.assertEqual(state["final_plan"].days[1].accommodation, "Luxury hotel")
+            self.assertEqual(memory_service.get_profile(profile_id)["accommodation"], "Luxury hotel")
 
     def test_fallback_does_not_write_anonymous_profile_memory(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             memory_service = MemoryService(Path(tmpdir) / "memory.sqlite3")
             profile_id = "profile_fallback_123"
             runtime = FakeNativeRuntime(
-                attraction_responses=["1. 故宫 - 地址: 东城区景山前街4号"],
-                hotel_responses=["1. 如家酒店 - 地址: 东城区酒店1号"],
+                attraction_responses=["1. Metropolitan Museum of Art - Address: 1000 5th Ave, New York, NY"],
+                hotel_responses=[HOTELS_ALL],
                 planner_responses=["bad-json", "still-bad-json"],
             )
             planner = runtime.build_planner(max_retries=1, memory_service=memory_service)
             request = build_request().model_copy(update={"profile_id": profile_id})
             state = planner.invoke_graph(request)
 
-            self.assertTrue(state["final_plan"].overall_suggestions.startswith("这是为您规划的北京2日游行程"))
+            self.assertTrue(state["final_plan"].overall_suggestions.startswith("This is a fallback"))
             self.assertIsNone(memory_service.get_profile(profile_id))
 
 

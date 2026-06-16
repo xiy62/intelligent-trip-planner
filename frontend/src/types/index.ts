@@ -13,7 +13,11 @@ export interface Attraction {
   description: string
   category?: string
   rating?: number
+  photos?: string[]
+  poi_id?: string
   image_url?: string
+  maps_url?: string
+  website_url?: string
   ticket_price?: number
 }
 
@@ -24,6 +28,10 @@ export interface Meal {
   location?: Location
   description?: string
   estimated_cost?: number
+  image_url?: string
+  maps_url?: string
+  website_url?: string
+  poi_id?: string
 }
 
 export interface Hotel {
@@ -35,6 +43,10 @@ export interface Hotel {
   distance: string
   type: string
   estimated_cost?: number
+  image_url?: string
+  maps_url?: string
+  website_url?: string
+  poi_id?: string
 }
 
 export interface Budget {

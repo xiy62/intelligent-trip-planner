@@ -11,27 +11,27 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 class TripRequest(BaseModel):
     """Structured trip-planning request."""
-    city: str = Field(..., min_length=1, max_length=100, description="目的地城市", example="北京")
-    start_date: str = Field(..., description="开始日期 YYYY-MM-DD", example="2025-06-01")
-    end_date: str = Field(..., description="结束日期 YYYY-MM-DD", example="2025-06-03")
-    travel_days: int = Field(..., description="旅行天数", ge=1, le=30, example=3)
+    city: str = Field(..., min_length=1, max_length=100, description="Destination city", example="New York")
+    start_date: str = Field(..., description="Start date in YYYY-MM-DD format", example="2026-07-01")
+    end_date: str = Field(..., description="End date in YYYY-MM-DD format", example="2026-07-03")
+    travel_days: int = Field(..., description="Number of travel days", ge=1, le=30, example=3)
     transportation: str = Field(
-        ..., min_length=1, max_length=100, description="交通方式", example="公共交通"
+        ..., min_length=1, max_length=100, description="Preferred transportation", example="Public transit"
     )
     accommodation: str = Field(
-        ..., min_length=1, max_length=100, description="住宿偏好", example="经济型酒店"
+        ..., min_length=1, max_length=100, description="Accommodation preference", example="Mid-range hotel"
     )
     preferences: List[str] = Field(
         default_factory=list,
         max_length=10,
-        description="旅行偏好标签",
-        example=["历史文化", "美食"],
+        description="Travel preference labels",
+        example=["Museums", "Food"],
     )
     free_text_input: Optional[str] = Field(
-        default="", max_length=1000, description="额外要求", example="希望多安排一些博物馆"
+        default="", max_length=1000, description="Additional user requirements", example="Keep the itinerary relaxed and include museums."
     )
-    profile_id: Optional[str] = Field(default=None, max_length=128, description="匿名设备偏好记忆ID")
-    conversation_id: Optional[str] = Field(default=None, max_length=128, description="旅行规划会话ID")
+    profile_id: Optional[str] = Field(default=None, max_length=128, description="Anonymous preference-memory profile ID")
+    conversation_id: Optional[str] = Field(default=None, max_length=128, description="Trip-planning conversation ID")
 
     @field_validator("city", "transportation", "accommodation", mode="before")
     @classmethod
@@ -96,100 +96,110 @@ class TripRequest(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "city": "北京",
-                "start_date": "2025-06-01",
-                "end_date": "2025-06-03",
+                "city": "New York",
+                "start_date": "2026-07-01",
+                "end_date": "2026-07-03",
                 "travel_days": 3,
-                "transportation": "公共交通",
-                "accommodation": "经济型酒店",
-                "preferences": ["历史文化", "美食"],
-                "free_text_input": "希望多安排一些博物馆"
+                "transportation": "Public transit",
+                "accommodation": "Mid-range hotel",
+                "preferences": ["Museums", "Food"],
+                "free_text_input": "Keep the itinerary relaxed."
             }
         }
 
 
 class POISearchRequest(BaseModel):
     """POI search request."""
-    keywords: str = Field(..., description="搜索关键词", example="故宫")
-    city: str = Field(..., description="城市", example="北京")
-    citylimit: bool = Field(default=True, description="是否限制在城市范围内")
+    keywords: str = Field(..., description="Search keywords", example="museum")
+    city: str = Field(..., description="City", example="New York")
+    citylimit: bool = Field(default=True, description="Whether to restrict results to the requested city")
 
 
 class RouteRequest(BaseModel):
     """Route-planning request."""
-    origin_address: str = Field(..., description="起点地址", example="北京市朝阳区阜通东大街6号")
-    destination_address: str = Field(..., description="终点地址", example="北京市海淀区上地十街10号")
-    origin_city: Optional[str] = Field(default=None, description="起点城市")
-    destination_city: Optional[str] = Field(default=None, description="终点城市")
-    route_type: str = Field(default="walking", description="路线类型: walking/driving/transit")
+    origin_address: str = Field(..., description="Origin address", example="Times Square")
+    destination_address: str = Field(..., description="Destination address", example="Central Park")
+    origin_city: Optional[str] = Field(default=None, description="Origin city")
+    destination_city: Optional[str] = Field(default=None, description="Destination city")
+    route_type: str = Field(default="walking", description="Route type: walking/driving/transit/bicycling")
 
 
 # Response and domain models
 
 class Location(BaseModel):
     """Geographic coordinates."""
-    longitude: float = Field(..., description="经度")
-    latitude: float = Field(..., description="纬度")
+    longitude: float = Field(..., description="Longitude")
+    latitude: float = Field(..., description="Latitude")
 
 
 class Attraction(BaseModel):
     """Attraction recommendation."""
-    name: str = Field(..., description="景点名称")
-    address: str = Field(..., description="地址")
-    location: Location = Field(..., description="经纬度坐标")
-    visit_duration: int = Field(..., description="建议游览时间(分钟)")
-    description: str = Field(..., description="景点描述")
-    category: Optional[str] = Field(default="景点", description="景点类别")
-    rating: Optional[float] = Field(default=None, description="评分")
-    photos: Optional[List[str]] = Field(default_factory=list, description="景点图片URL列表")
+    name: str = Field(..., description="Attraction name")
+    address: str = Field(..., description="Address")
+    location: Location = Field(..., description="Coordinates")
+    visit_duration: int = Field(..., description="Recommended visit duration in minutes")
+    description: str = Field(..., description="Attraction description")
+    category: Optional[str] = Field(default="Attraction", description="Attraction category")
+    rating: Optional[float] = Field(default=None, description="Rating")
+    photos: Optional[List[str]] = Field(default_factory=list, description="Photo URL list")
     poi_id: Optional[str] = Field(default="", description="POI ID")
-    image_url: Optional[str] = Field(default=None, description="图片URL")
-    ticket_price: int = Field(default=0, description="门票价格(元)")
+    image_url: Optional[str] = Field(default=None, description="Image URL")
+    maps_url: Optional[str] = Field(default=None, description="Map provider URL")
+    website_url: Optional[str] = Field(default=None, description="Official website URL")
+    ticket_price: int = Field(default=0, description="Ticket price")
 
 
 class Meal(BaseModel):
     """Meal recommendation."""
-    type: str = Field(..., description="餐饮类型: breakfast/lunch/dinner/snack")
-    name: str = Field(..., description="餐饮名称")
-    address: Optional[str] = Field(default=None, description="地址")
-    location: Optional[Location] = Field(default=None, description="经纬度坐标")
-    description: Optional[str] = Field(default=None, description="描述")
-    estimated_cost: int = Field(default=0, description="预估费用(元)")
+    type: str = Field(..., description="Meal type: breakfast/lunch/dinner/snack")
+    name: str = Field(..., description="Meal recommendation name")
+    address: Optional[str] = Field(default=None, description="Address")
+    location: Optional[Location] = Field(default=None, description="Coordinates")
+    description: Optional[str] = Field(default=None, description="Description")
+    estimated_cost: int = Field(default=0, description="Estimated cost")
+    image_url: Optional[str] = Field(default=None, description="Image URL")
+    maps_url: Optional[str] = Field(default=None, description="Map provider URL")
+    website_url: Optional[str] = Field(default=None, description="Official website URL")
+    poi_id: Optional[str] = Field(default="", description="POI ID")
 
 
 class Hotel(BaseModel):
     """Hotel recommendation."""
-    name: str = Field(..., description="酒店名称")
-    address: str = Field(default="", description="酒店地址")
-    location: Optional[Location] = Field(default=None, description="酒店位置")
-    price_range: str = Field(default="", description="价格范围")
-    rating: str = Field(default="", description="评分")
-    distance: str = Field(default="", description="距离景点距离")
-    type: str = Field(default="", description="酒店类型")
-    estimated_cost: int = Field(default=0, description="预估费用(元/晚)")
+    name: str = Field(..., description="Hotel name")
+    address: str = Field(default="", description="Hotel address")
+    location: Optional[Location] = Field(default=None, description="Hotel coordinates")
+    price_range: str = Field(default="", description="Price range")
+    rating: str = Field(default="", description="Rating")
+    distance: str = Field(default="", description="Distance to attractions")
+    type: str = Field(default="", description="Hotel type")
+    estimated_cost: int = Field(default=0, description="Estimated nightly cost")
+    image_url: Optional[str] = Field(default=None, description="Image URL")
+    maps_url: Optional[str] = Field(default=None, description="Map provider URL")
+    website_url: Optional[str] = Field(default=None, description="Official website URL")
+    poi_id: Optional[str] = Field(default="", description="POI ID")
 
 
 class DayPlan(BaseModel):
     """One day of an itinerary."""
-    date: str = Field(..., description="日期 YYYY-MM-DD")
-    day_index: int = Field(..., description="第几天(从0开始)")
-    description: str = Field(..., description="当日行程描述")
-    transportation: str = Field(..., description="交通方式")
-    accommodation: str = Field(..., description="住宿")
-    hotel: Optional[Hotel] = Field(default=None, description="推荐酒店")
-    attractions: List[Attraction] = Field(default=[], description="景点列表")
-    meals: List[Meal] = Field(default=[], description="餐饮列表")
+    date: str = Field(..., description="Date in YYYY-MM-DD format")
+    day_index: int = Field(..., description="Zero-based day index")
+    description: str = Field(..., description="Daily itinerary description")
+    transportation: str = Field(..., description="Transportation")
+    accommodation: str = Field(..., description="Accommodation preference")
+    hotel: Optional[Hotel] = Field(default=None, description="Recommended hotel")
+    attractions: List[Attraction] = Field(default=[], description="Attraction list")
+    meals: List[Meal] = Field(default=[], description="Meal list")
 
 
 class WeatherInfo(BaseModel):
     """Weather aligned to one trip date."""
-    date: str = Field(..., description="日期 YYYY-MM-DD")
-    day_weather: str = Field(default="", description="白天天气")
-    night_weather: str = Field(default="", description="夜间天气")
-    day_temp: Union[int, str] = Field(default=0, description="白天温度")
-    night_temp: Union[int, str] = Field(default=0, description="夜间温度")
-    wind_direction: str = Field(default="", description="风向")
-    wind_power: str = Field(default="", description="风力")
+    date: str = Field(..., description="Date in YYYY-MM-DD format")
+    day_weather: str = Field(default="", description="Daytime weather")
+    night_weather: str = Field(default="", description="Nighttime weather")
+    day_temp: Union[int, str] = Field(default=0, description="Daytime temperature")
+    night_temp: Union[int, str] = Field(default=0, description="Nighttime temperature")
+    wind_direction: str = Field(default="", description="Wind direction")
+    wind_power: str = Field(default="", description="Wind speed")
 
     @field_validator('day_temp', 'night_temp', mode='before')
     @classmethod
@@ -207,103 +217,107 @@ class WeatherInfo(BaseModel):
 
 class Budget(BaseModel):
     """Itemized trip budget."""
-    total_attractions: int = Field(default=0, description="景点门票总费用")
-    total_hotels: int = Field(default=0, description="酒店总费用")
-    total_meals: int = Field(default=0, description="餐饮总费用")
-    total_transportation: int = Field(default=0, description="交通总费用")
-    total: int = Field(default=0, description="总费用")
+    total_attractions: int = Field(default=0, description="Total attraction ticket cost")
+    total_hotels: int = Field(default=0, description="Total hotel cost")
+    total_meals: int = Field(default=0, description="Total meal cost")
+    total_transportation: int = Field(default=0, description="Total transportation cost")
+    total: int = Field(default=0, description="Total estimated cost")
 
 
 class TripPlan(BaseModel):
     """Validated multi-day trip plan."""
-    city: str = Field(..., description="目的地城市")
-    start_date: str = Field(..., description="开始日期")
-    end_date: str = Field(..., description="结束日期")
-    days: List[DayPlan] = Field(..., description="每日行程")
-    weather_info: List[WeatherInfo] = Field(default=[], description="天气信息")
-    overall_suggestions: str = Field(..., description="总体建议")
-    budget: Optional[Budget] = Field(default=None, description="预算信息")
+    city: str = Field(..., description="Destination city")
+    start_date: str = Field(..., description="Start date")
+    end_date: str = Field(..., description="End date")
+    days: List[DayPlan] = Field(..., description="Daily itinerary")
+    weather_info: List[WeatherInfo] = Field(default=[], description="Weather information")
+    overall_suggestions: str = Field(..., description="Overall suggestions")
+    budget: Optional[Budget] = Field(default=None, description="Budget information")
 
 
 class MemoryProfile(BaseModel):
     """Anonymous preference-memory summary."""
-    profile_id: str = Field(..., description="匿名设备偏好记忆ID")
-    transportation: str = Field(default="", description="历史常用交通方式")
-    accommodation: str = Field(default="", description="历史常用住宿偏好")
-    preferences: List[str] = Field(default_factory=list, description="历史偏好标签")
-    recent_cities: List[str] = Field(default_factory=list, description="最近规划过的目的地")
-    trip_count: int = Field(default=0, description="成功写入记忆的规划次数")
-    last_summary: str = Field(default="", description="最近记忆摘要")
-    created_at: Optional[float] = Field(default=None, description="创建时间戳")
-    updated_at: Optional[float] = Field(default=None, description="更新时间戳")
+    profile_id: str = Field(..., description="Anonymous preference-memory profile ID")
+    transportation: str = Field(default="", description="Previously preferred transportation")
+    accommodation: str = Field(default="", description="Previously preferred accommodation")
+    preferences: List[str] = Field(default_factory=list, description="Historical preference labels")
+    recent_cities: List[str] = Field(default_factory=list, description="Recently planned destinations")
+    trip_count: int = Field(default=0, description="Number of successful memory writes")
+    last_summary: str = Field(default="", description="Latest memory summary")
+    created_at: Optional[float] = Field(default=None, description="Created timestamp")
+    updated_at: Optional[float] = Field(default=None, description="Updated timestamp")
 
 
 class TripPlanResponse(BaseModel):
     """Trip-planning API response."""
-    success: bool = Field(..., description="是否成功")
-    message: str = Field(default="", description="消息")
-    data: Optional[TripPlan] = Field(default=None, description="旅行计划数据")
-    conversation_id: Optional[str] = Field(default=None, description="后端会话ID")
-    memory_applied: bool = Field(default=False, description="是否应用了历史偏好记忆")
-    memory_summary: Optional[str] = Field(default=None, description="本次应用的历史偏好摘要")
-    memory_profile: Optional[MemoryProfile] = Field(default=None, description="结构化匿名偏好记忆")
+    success: bool = Field(..., description="Whether the request succeeded")
+    message: str = Field(default="", description="Response message")
+    data: Optional[TripPlan] = Field(default=None, description="Trip plan data")
+    conversation_id: Optional[str] = Field(default=None, description="Backend conversation ID")
+    memory_applied: bool = Field(default=False, description="Whether historical preference memory was applied")
+    memory_summary: Optional[str] = Field(default=None, description="Historical preference summary applied to this request")
+    memory_profile: Optional[MemoryProfile] = Field(default=None, description="Structured anonymous preference memory")
 
 
 class MemoryClearRequest(BaseModel):
     """Anonymous memory cleanup request."""
-    profile_id: str = Field(..., description="匿名设备偏好记忆ID")
+    profile_id: str = Field(..., description="Anonymous preference-memory profile ID")
 
 
 class MemoryClearResponse(BaseModel):
     """Anonymous memory cleanup response."""
-    success: bool = Field(..., description="是否成功")
-    message: str = Field(default="", description="消息")
-    profile_id: str = Field(..., description="匿名设备偏好记忆ID")
+    success: bool = Field(..., description="Whether the request succeeded")
+    message: str = Field(default="", description="Response message")
+    profile_id: str = Field(..., description="Anonymous preference-memory profile ID")
 
 
 class POIInfo(BaseModel):
     """Normalized POI record."""
     id: str = Field(..., description="POI ID")
-    name: str = Field(..., description="名称")
-    type: str = Field(..., description="类型")
-    address: str = Field(..., description="地址")
-    location: Location = Field(..., description="经纬度坐标")
-    tel: Optional[str] = Field(default=None, description="电话")
+    name: str = Field(..., description="Name")
+    type: str = Field(..., description="Type")
+    address: str = Field(..., description="Address")
+    location: Location = Field(..., description="Coordinates")
+    tel: Optional[str] = Field(default=None, description="Phone number")
+    rating: Optional[float] = Field(default=None, description="Rating")
+    image_url: Optional[str] = Field(default=None, description="Image URL")
+    maps_url: Optional[str] = Field(default=None, description="Map provider URL")
+    website_url: Optional[str] = Field(default=None, description="Official website URL")
 
 
 class POISearchResponse(BaseModel):
     """POI search response."""
-    success: bool = Field(..., description="是否成功")
-    message: str = Field(default="", description="消息")
-    data: List[POIInfo] = Field(default_factory=list, description="POI列表")
+    success: bool = Field(..., description="Whether the request succeeded")
+    message: str = Field(default="", description="Response message")
+    data: List[POIInfo] = Field(default_factory=list, description="POI list")
 
 
 class RouteInfo(BaseModel):
     """Normalized route result."""
-    distance: float = Field(..., description="距离(米)")
-    duration: int = Field(..., description="时间(秒)")
-    route_type: str = Field(..., description="路线类型")
-    description: str = Field(..., description="路线描述")
+    distance: float = Field(..., description="Distance in meters")
+    duration: int = Field(..., description="Duration in seconds")
+    route_type: str = Field(..., description="Route type")
+    description: str = Field(..., description="Route description")
 
 
 class RouteResponse(BaseModel):
     """Route-planning response."""
-    success: bool = Field(..., description="是否成功")
-    message: str = Field(default="", description="消息")
-    data: Optional[RouteInfo] = Field(default=None, description="路线信息")
+    success: bool = Field(..., description="Whether the request succeeded")
+    message: str = Field(default="", description="Response message")
+    data: Optional[RouteInfo] = Field(default=None, description="Route information")
 
 
 class WeatherResponse(BaseModel):
     """Weather lookup response."""
-    success: bool = Field(..., description="是否成功")
-    message: str = Field(default="", description="消息")
-    data: List[WeatherInfo] = Field(default_factory=list, description="天气信息")
+    success: bool = Field(..., description="Whether the request succeeded")
+    message: str = Field(default="", description="Response message")
+    data: List[WeatherInfo] = Field(default_factory=list, description="Weather information")
 
 
 # Error response
 
 class ErrorResponse(BaseModel):
     """Standard API error response."""
-    success: bool = Field(default=False, description="是否成功")
-    message: str = Field(..., description="错误消息")
-    error_code: Optional[str] = Field(default=None, description="错误代码")
+    success: bool = Field(default=False, description="Whether the request succeeded")
+    message: str = Field(..., description="Error message")
+    error_code: Optional[str] = Field(default=None, description="Error code")

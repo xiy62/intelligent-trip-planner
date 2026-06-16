@@ -2,7 +2,7 @@
 
 A stateful AI trip-planning application that combines live travel services, destination-focused retrieval, structured generation, and an evaluation-driven recovery loop.
 
-The backend uses **FastAPI**, **LangChain**, and **LangGraph** to coordinate attraction retrieval, hotel retrieval, deterministic weather lookup, Chroma RAG, itinerary generation, validation, retry routing, fallback handling, memory, and local observability.
+The backend uses **FastAPI**, **LangChain**, and **LangGraph** to coordinate Google Maps place retrieval, hotel retrieval, deterministic weather lookup, Chroma RAG, itinerary generation, validation, retry routing, fallback handling, memory, and local observability. The web client is a **React + Vite + TypeScript** application with Google Maps rendering.
 
 ## Why This Project
 
@@ -31,9 +31,9 @@ flowchart LR
 Core layers:
 
 - **LangGraph orchestration:** typed state, in-memory checkpointing, conditional retries, fallback control flow.
-- **LangChain runtime:** `ChatOpenAI`, structured output parsing, and native AMap tool wrappers.
+- **LangChain runtime:** `ChatOpenAI`, structured output parsing, and native Google Maps tool wrappers.
 - **RAG:** Chroma with OpenAI `text-embedding-3-small` embeddings over approved destination knowledge.
-- **Deterministic services:** authoritative weather data and direct AMap POI retrieval.
+- **Deterministic services:** authoritative weather data and direct Google Maps POI retrieval.
 - **Evaluation and observability:** hard validation, soft quality diagnostics, evidence attribution, node latency, retry traces, and SQLite-backed run inspection.
 - **Human-in-the-loop ingestion:** source manifest, rule-based extraction, draft review, approved promotion, and index rebuild.
 
@@ -43,14 +43,14 @@ The reliability layer separates deterministic validation from model generation:
 
 - Pydantic rejects malformed or inconsistent requests before LangGraph, external services, or the LLM are invoked.
 - Request validation covers blank required fields, strict ISO dates, reversed ranges, date/travel-day mismatches, oversized free text, noisy whitespace, duplicate preferences, and bounded prompt-injection-style input.
-- Service resilience tests cover transient AMap timeouts, exhausted retry budgets, and provider error responses.
+- Service resilience tests cover transient Google Maps provider timeouts, exhausted retry budgets, and provider error responses.
 - Graph tests cover malformed planner JSON, targeted grounding retries, retry exhaustion, fallback behavior, authoritative weather, checkpoint state, and current-request alignment.
 
-The backend suite currently contains **50 deterministic unit and API-boundary tests**. CI runs these tests without real external API keys or paid model calls.
+The backend suite currently contains **52 deterministic unit and API-boundary tests**. CI runs these tests without real external API keys or paid model calls.
 
 ## Verified Internal Benchmark Signals
 
-On a fixed 12-request benchmark across Beijing, Shanghai, Hangzhou, and Guangzhou:
+On a fixed internal 12-request benchmark for the RAG/evaluation layer:
 
 | Metric | Result | Denominator / interpretation |
 | --- | ---: | --- |
@@ -75,7 +75,7 @@ Prerequisites:
 
 - Python 3.11+
 - Node.js 20+
-- AMap Web Service API key
+- Google Maps Platform API key with Places, Geocoding, Routes, and Maps JavaScript APIs enabled
 - OpenAI or OpenAI-compatible LLM API key
 
 Start the backend:
@@ -106,14 +106,14 @@ Open `http://localhost:5173`. API documentation is available at `http://localhos
 curl -X POST http://localhost:8000/api/trip/plan \
   -H "Content-Type: application/json" \
   -d '{
-    "city": "北京",
+    "city": "New York",
     "start_date": "2026-07-01",
     "end_date": "2026-07-02",
     "travel_days": 2,
-    "transportation": "公共交通",
-    "accommodation": "经济型酒店",
-    "preferences": ["历史文化", "美食"],
-    "free_text_input": "希望行程不要太赶"
+    "transportation": "Public transit",
+    "accommodation": "Mid-range hotel",
+    "preferences": ["Museums", "Food"],
+    "free_text_input": "Keep the itinerary relaxed."
   }'
 ```
 
@@ -140,8 +140,8 @@ The repository includes approved seed knowledge and benchmark datasets. Generate
 
 ## Limitations
 
-- The curated RAG corpus currently focuses on four Chinese cities.
-- AMap is the active POI provider, so broader geographic support requires a provider abstraction and another map integration.
+- The active map provider is Google Maps, but the curated RAG corpus still contains earlier China-focused seed knowledge.
+- US-city RAG coverage is not complete yet; unmatched cities use generic English planning guidance rather than unrelated city chunks.
 - Route coherence uses coordinate-distance heuristics rather than live route-time evaluation.
 - Soft quality scores are diagnostic signals and do not trigger retries by default.
 - Internal benchmarks are intentionally small and should not be interpreted as production-scale evaluation.

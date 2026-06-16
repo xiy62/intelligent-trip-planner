@@ -1,4 +1,4 @@
-"""Shared evaluation utilities for legacy and LangGraph trip planners."""
+"""Shared evaluation utilities for LangGraph trip planning."""
 
 from __future__ import annotations
 
@@ -24,7 +24,26 @@ def normalize_entity_name(value: str) -> str:
     normalized = (value or "").strip().lower()
     normalized = re.sub(r"\s+", "", normalized)
     normalized = re.sub(r"[()（）·\-—,:：'\"“”‘’]", "", normalized)
-    for suffix in ("景区", "景点", "公园", "博物院", "博物馆", "酒店", "青年酒店", "商旅酒店", "连锁酒店", "大酒店"):
+    for suffix in (
+        "scenicarea",
+        "attraction",
+        "park",
+        "museum",
+        "hotel",
+        "inn",
+        "hostel",
+        "resort",
+        "景区",
+        "景点",
+        "公园",
+        "博物院",
+        "博物馆",
+        "酒店",
+        "青年酒店",
+        "商旅酒店",
+        "连锁酒店",
+        "大酒店",
+    ):
         if normalized.endswith(suffix):
             normalized = normalized[: -len(suffix)]
     return normalized
@@ -136,9 +155,9 @@ def haversine_km(origin: Location, destination: Location) -> float:
 def route_distance_threshold_km(transportation: str) -> float:
     """Return a soft same-day POI jump threshold by requested transportation mode."""
     normalized = normalized_text(transportation)
-    if any(term in normalized for term in ("步行", "徒步", "citywalk", "walk")):
+    if any(term in normalized for term in ("步行", "徒步", "citywalk", "walk", "walking")):
         return 5.0
-    if any(term in normalized for term in ("打车", "出租", "自驾", "驾车", "taxi", "car", "drive")):
+    if any(term in normalized for term in ("打车", "出租", "自驾", "驾车", "taxi", "car", "drive", "driving", "rideshare")):
         return 30.0
     return 15.0
 
@@ -214,6 +233,23 @@ def preference_terms(request: TripRequest) -> List[str]:
     if request.free_text_input:
         free_text = request.free_text_input
         known_terms = [
+            "history",
+            "culture",
+            "museum",
+            "museums",
+            "food",
+            "restaurants",
+            "nightlife",
+            "skyline",
+            "nature",
+            "outdoors",
+            "parks",
+            "relaxed",
+            "relaxing",
+            "photography",
+            "citywalk",
+            "classic route",
+            "not too rushed",
             "历史文化",
             "城市经典",
             "经典路线",
@@ -237,10 +273,10 @@ def preference_terms(request: TripRequest) -> List[str]:
     terms: List[str] = []
     for value in values:
         term = normalized_text(value)
-        for prefix in ("希望以", "希望", "想要", "想", "以"):
+        for prefix in ("i want", "please", "prefer", "希望以", "希望", "想要", "想", "以"):
             if term.startswith(prefix):
                 term = term[len(prefix):]
-        for suffix in ("为主", "为重点", "优先"):
+        for suffix in ("focused", "first", "为主", "为重点", "优先"):
             if term.endswith(suffix):
                 term = term[: -len(suffix)]
         if len(term) >= 2 and term not in terms:
@@ -408,6 +444,16 @@ def evaluate_trip_plan(
         hard_failures.append("current_request_alignment")
         unsupported_claims.extend(alignment_issues)
 
+    empty_attraction_days = [
+        day.day_index for day in draft_plan.days if len(day.attractions) == 0
+    ]
+    if empty_attraction_days:
+        hard_failures.append("content_completeness_attractions")
+        unsupported_claims.append(
+            "days missing attraction recommendations: "
+            + ", ".join(str(day_index) for day_index in empty_attraction_days)
+        )
+
     attraction_names = [normalize_entity_name(candidate.name) for candidate in candidate_attractions]
     hotel_names = [normalize_entity_name(candidate.name) for candidate in candidate_hotels]
     rag_text = " ".join(chunk.content for chunk in rag_chunks)
@@ -492,6 +538,9 @@ def evaluate_trip_plan(
     if not passed:
         if "schema_correctness" in hard_failures:
             next_action = next_action_with_retry_budget(retry_counts, "plan_itinerary", max_retries)
+        elif "content_completeness_attractions" in hard_failures:
+            action = "plan_itinerary" if candidate_attractions else "retrieve_attractions"
+            next_action = next_action_with_retry_budget(retry_counts, action, max_retries)
         elif "retrieval_grounding_attractions" in hard_failures:
             next_action = next_action_with_retry_budget(retry_counts, "retrieve_attractions", max_retries)
         elif "retrieval_grounding_hotels" in hard_failures:

@@ -28,8 +28,9 @@ from ..models.schemas import Budget, TripPlan, TripRequest, WeatherInfo
 from ..prompts.attraction import build_attraction_search_terms
 from ..prompts.hotel import build_hotel_search_terms
 from ..prompts.planner import build_planner_prompt, build_retry_feedback
-from ..services.amap_service import get_amap_service
+from ..config import get_settings
 from ..services.llm_service import get_llm
+from ..services.map_service import get_map_service
 from ..services.memory_service import MemoryService, get_memory_service
 from ..services.rag_service import TravelRAGService, get_rag_service
 from ..services.weather_service import get_weather_service
@@ -63,16 +64,16 @@ class LangGraphTripPlanner:
         rag_service: Optional[TravelRAGService] = None,
         memory_service: Optional[MemoryService] = None,
         llm: Optional[Any] = None,
-        amap_service: Optional[Any] = None,
+        map_service: Optional[Any] = None,
         weather_service: Optional[Any] = None,
     ):
         self.weather_service = weather_service or get_weather_service()
         self.llm = llm or get_llm()
-        self.amap_service = amap_service or get_amap_service()
-        tools = {tool.name: tool for tool in self.amap_service.get_langchain_tools()}
-        self.search_poi_tool = tools.get("amap_search_poi")
+        self.map_service = map_service or get_map_service()
+        tools = {tool.name: tool for tool in self.map_service.get_langchain_tools()}
+        self.search_poi_tool = tools.get("map_search_poi")
         if self.search_poi_tool is None:
-            raise ValueError("AMap service must provide the amap_search_poi LangChain tool")
+            raise ValueError("Map service must provide the map_search_poi LangChain tool")
         self.max_retries = max_retries
         self.rag_mode = rag_mode
         self.rag_service = rag_service or get_rag_service()
@@ -215,7 +216,7 @@ class LangGraphTripPlanner:
                 candidate = AttractionCandidate(
                     name=str(item.get("name", "")),
                     address=str(item.get("address", "")),
-                    source="amap_http",
+                    source="google_maps",
                     source_id=str(item.get("id", "")),
                     raw_text=json.dumps(item, ensure_ascii=False),
                 )
@@ -249,7 +250,7 @@ class LangGraphTripPlanner:
                 candidate = HotelCandidate(
                     name=str(item.get("name", "")),
                     address=str(item.get("address", "")),
-                    source="amap_http",
+                    source="google_maps",
                     source_id=str(item.get("id", "")),
                     raw_text=json.dumps(item, ensure_ascii=False),
                 )
@@ -328,6 +329,7 @@ class LangGraphTripPlanner:
         raw_response, draft_plan = self._run_native_planner(planner_query, request)
         if draft_plan is not None:
             draft_plan = self._normalize_trip_plan(draft_plan, request)
+            draft_plan = self._enrich_trip_plan_with_place_metadata(draft_plan, state)
             draft_plan = self._apply_authoritative_weather(
                 draft_plan, list(state.get("weather_info", [])), request
             )
@@ -548,17 +550,17 @@ class LangGraphTripPlanner:
 
     def _serialize_attraction_candidates(self, candidates: List[AttractionCandidate]) -> str:
         if not candidates:
-            return "暂无景点候选，请根据用户偏好谨慎规划并标记信息不完整。"
+            return "No attraction candidates were retrieved. Plan conservatively and mark information as incomplete."
         return "\n".join(
-            f"- {candidate.name} | 地址: {candidate.address or '未知'}"
+            f"- {candidate.name} | Address: {candidate.address or 'unknown'}"
             for candidate in candidates
         )
 
     def _serialize_hotel_candidates(self, candidates: List[HotelCandidate]) -> str:
         if not candidates:
-            return "暂无酒店候选，请优先推荐交通便利的住宿区域。"
+            return "No hotel candidates were retrieved. Prefer a convenient neighborhood instead of inventing a hotel."
         return "\n".join(
-            f"- {candidate.name} | 地址: {candidate.address or '未知'}"
+            f"- {candidate.name} | Address: {candidate.address or 'unknown'}"
             for candidate in candidates
         )
 
@@ -566,11 +568,11 @@ class LangGraphTripPlanner:
         return "\n".join(f"- {chunk.title}: {chunk.content}" for chunk in chunks)
 
     def _build_request_summary(self, request: TripRequest) -> str:
-        preferences = "、".join(request.preferences) if request.preferences else "无明确偏好"
-        free_text = request.free_text_input or "无"
+        preferences = ", ".join(request.preferences) if request.preferences else "no explicit preferences"
+        free_text = request.free_text_input or "none"
         return (
-            f"{request.city} {request.travel_days}天行程，交通方式为{request.transportation}，"
-            f"住宿偏好为{request.accommodation}，偏好包括{preferences}，额外要求：{free_text}。"
+            f"{request.travel_days}-day trip to {request.city}; transportation={request.transportation}; "
+            f"accommodation={request.accommodation}; preferences={preferences}; extra requirements={free_text}."
         )
 
     def _get_travel_dates(self, start_date: str, travel_days: int) -> List[str]:
@@ -636,8 +638,8 @@ class LangGraphTripPlanner:
                 normalized_weather.append(
                     WeatherInfo(
                         date=current_date,
-                        day_weather="未知",
-                        night_weather="未知",
+                        day_weather="Unknown",
+                        night_weather="Unknown",
                         day_temp=0,
                         night_temp=0,
                         wind_direction="",
@@ -661,6 +663,61 @@ class LangGraphTripPlanner:
             day.accommodation = request.accommodation
         trip_plan.budget = self._normalize_budget(trip_plan)
         return trip_plan
+
+    def _enrich_trip_plan_with_place_metadata(self, trip_plan: TripPlan, state: TripGraphState) -> TripPlan:
+        attraction_metadata = self._candidate_metadata_by_name(
+            list(state.get("candidate_attractions", []))
+        )
+        hotel_metadata = self._candidate_metadata_by_name(
+            list(state.get("candidate_hotels", []))
+        )
+
+        for day in trip_plan.days:
+            for attraction in day.attractions:
+                metadata = attraction_metadata.get(self._normalize_entity_name(attraction.name))
+                if not metadata:
+                    continue
+                attraction.poi_id = attraction.poi_id or str(metadata.get("id") or "")
+                attraction.maps_url = attraction.maps_url or metadata.get("maps_url")
+                attraction.website_url = attraction.website_url or metadata.get("website_url")
+                attraction.image_url = attraction.image_url or metadata.get("image_url")
+                if not attraction.photos and metadata.get("image_url"):
+                    attraction.photos = [metadata["image_url"]]
+                if attraction.rating is None and metadata.get("rating") is not None:
+                    attraction.rating = metadata.get("rating")
+
+            if day.hotel:
+                metadata = hotel_metadata.get(self._normalize_entity_name(day.hotel.name))
+                if metadata:
+                    day.hotel.poi_id = day.hotel.poi_id or str(metadata.get("id") or "")
+                    day.hotel.maps_url = day.hotel.maps_url or metadata.get("maps_url")
+                    day.hotel.website_url = day.hotel.website_url or metadata.get("website_url")
+                    day.hotel.image_url = day.hotel.image_url or metadata.get("image_url")
+                    if not day.hotel.rating and metadata.get("rating") is not None:
+                        day.hotel.rating = str(metadata.get("rating"))
+        return trip_plan
+
+    def _candidate_metadata_by_name(self, candidates: List[Any]) -> Dict[str, Dict[str, Any]]:
+        metadata_by_name: Dict[str, Dict[str, Any]] = {}
+        for candidate in candidates:
+            normalized = self._normalize_entity_name(getattr(candidate, "name", ""))
+            if not normalized:
+                continue
+            metadata: Dict[str, Any] = {
+                "id": getattr(candidate, "source_id", ""),
+                "name": getattr(candidate, "name", ""),
+                "address": getattr(candidate, "address", ""),
+            }
+            raw_text = getattr(candidate, "raw_text", "")
+            if raw_text:
+                try:
+                    raw = json.loads(raw_text)
+                    if isinstance(raw, dict):
+                        metadata.update(raw)
+                except json.JSONDecodeError:
+                    pass
+            metadata_by_name[normalized] = metadata
+        return metadata_by_name
 
     def _normalize_budget(self, trip_plan: TripPlan) -> Budget:
         """Make budget totals internally consistent after model generation."""
@@ -707,8 +764,8 @@ class LangGraphTripPlanner:
                 aligned.append(
                     WeatherInfo(
                         date=current_date,
-                        day_weather="未知",
-                        night_weather="未知",
+                        day_weather="Unknown",
+                        night_weather="Unknown",
                         day_temp=0,
                         night_temp=0,
                         wind_direction="",
@@ -717,7 +774,7 @@ class LangGraphTripPlanner:
                 )
         trip_plan.weather_info = aligned
         if missing:
-            note = "部分日期天气数据不可用，已按行程日期补齐为“未知”，请出发前再次确认实时天气。"
+            note = "Some weather data was unavailable and was filled as Unknown. Please verify real-time weather before departure."
             if note not in trip_plan.overall_suggestions:
                 trip_plan.overall_suggestions = f"{trip_plan.overall_suggestions}\n{note}".strip()
         return trip_plan
@@ -731,7 +788,7 @@ class LangGraphTripPlanner:
                 {
                     "date": current_date.strftime("%Y-%m-%d"),
                     "day_index": index,
-                    "description": f"第{index + 1}天行程",
+                    "description": f"Day {index + 1} itinerary",
                     "transportation": request.transportation,
                     "accommodation": request.accommodation,
                     "attractions": [],
@@ -744,7 +801,10 @@ class LangGraphTripPlanner:
             end_date=request.end_date,
             days=days,
             weather_info=[],
-            overall_suggestions=f"这是为您规划的{request.city}{request.travel_days}日游行程,建议提前查看各景点的开放时间。",
+            overall_suggestions=(
+                f"This is a fallback {request.travel_days}-day itinerary shell for {request.city}. "
+                "Please verify attraction opening hours before departure."
+            ),
             budget=None,
         )
 
@@ -756,5 +816,5 @@ def get_trip_planner_agent() -> LangGraphTripPlanner:
     """Return a singleton LangGraph planner."""
     global _langgraph_trip_planner
     if _langgraph_trip_planner is None:
-        _langgraph_trip_planner = LangGraphTripPlanner()
+        _langgraph_trip_planner = LangGraphTripPlanner(rag_mode=get_settings().rag_mode)
     return _langgraph_trip_planner

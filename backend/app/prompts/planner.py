@@ -1,4 +1,4 @@
-"""Planner prompts for legacy and LangChain-native execution."""
+"""Planner prompts for LangChain-native execution."""
 
 from __future__ import annotations
 
@@ -9,9 +9,9 @@ from ..models.schemas import TripRequest
 from .shared import TRIP_JSON_RULES
 
 
-PLANNER_AGENT_PROMPT = """你是行程规划专家。你的任务是根据景点信息和天气信息,生成详细的旅行计划。
+PLANNER_AGENT_PROMPT = """You are an itinerary planning specialist. Generate a detailed trip plan from retrieved attractions, hotels, weather, and travel knowledge.
 
-请严格按照JSON返回旅行计划，字段必须包括:
+Return JSON with these required fields:
 - city
 - start_date
 - end_date
@@ -20,7 +20,7 @@ PLANNER_AGENT_PROMPT = """你是行程规划专家。你的任务是根据景点
 - overall_suggestions
 - budget
 
-预算字段必须包含:
+The budget field must include:
 - total_attractions
 - total_hotels
 - total_meals
@@ -48,40 +48,40 @@ def build_retry_feedback(
 
     feedback_lines = [
         "",
-        "**上一轮生成失败，请严格修正以下问题后重新生成:**",
-        f"- Hard failures: {', '.join(report.hard_failures) if report.hard_failures else '无'}",
+        "**The previous draft failed evaluation. Regenerate the plan and fix these issues:**",
+        f"- Hard failures: {', '.join(report.hard_failures) if report.hard_failures else 'none'}",
     ]
     if unsupported_attractions:
         feedback_lines.append(
-            f"- 以下景点上一轮未通过grounding校验，禁止再次使用: {', '.join(unsupported_attractions)}"
+            f"- These attractions were unsupported in the previous draft and must not be reused: {', '.join(unsupported_attractions)}"
         )
     if unsupported_hotels:
         feedback_lines.append(
-            f"- 以下酒店上一轮未通过grounding校验，禁止再次使用: {', '.join(unsupported_hotels)}"
+            f"- These hotels were unsupported in the previous draft and must not be reused: {', '.join(unsupported_hotels)}"
         )
     if attraction_names:
         feedback_lines.append(
-            f"- 景点必须只从以下候选中选择，名称必须完全一致: {', '.join(attraction_names)}"
+            f"- Attractions must be selected only from these candidates, using exact names: {', '.join(attraction_names)}"
         )
     if hotel_names:
         feedback_lines.append(
-            f"- 酒店必须只从以下候选中选择，名称必须完全一致: {', '.join(hotel_names)}"
+            f"- Hotels must be selected only from these candidates, using exact names: {', '.join(hotel_names)}"
         )
     if "budget_consistency" in report.hard_failures or "budget_total_not_fully_aligned" in report.warnings:
         feedback_lines.append(
-            "- budget.total_attractions、budget.total_hotels、budget.total_meals 必须分别等于各天明细汇总；budget.total 必须等于四项子预算之和。"
+            "- budget.total_attractions, budget.total_hotels, and budget.total_meals must equal itemized day-level totals; budget.total must equal the sum of all budget categories."
         )
     if "current_request_alignment" in report.hard_failures:
         feedback_lines.append(
-            "- 当前请求字段优先级最高：days[].transportation 必须匹配本次请求的交通方式，days[].accommodation 必须匹配本次请求的住宿偏好；历史记忆不能覆盖本次请求。"
+            "- Current request fields have highest priority: days[].transportation and days[].accommodation must exactly match the current request. Historical memory must not override the current request."
         )
         if report.unsupported_claims:
-            feedback_lines.append(f"- 当前请求对齐问题: {'; '.join(report.unsupported_claims)}")
+            feedback_lines.append(f"- Current-request alignment issues: {'; '.join(report.unsupported_claims)}")
     if "date_coverage" in report.hard_failures:
         feedback_lines.append(
-            f"- days[].date 和 weather_info[].date 必须完整覆盖以下日期: {', '.join(travel_dates)}"
+            f"- days[].date and weather_info[].date must fully cover these dates: {', '.join(travel_dates)}"
         )
-    feedback_lines.append("- 输出必须仍然是完整JSON，不要输出解释性文字。")
+    feedback_lines.append("- Output must still be complete JSON only. Do not include explanatory prose.")
     return "\n".join(feedback_lines)
 
 
@@ -95,40 +95,40 @@ def build_planner_prompt(
     format_instructions: str = "",
     memory_context: str = "",
 ) -> str:
-    prompt = f"""请根据以下信息生成{request.city}的{request.travel_days}天旅行计划:
+    prompt = f"""Generate a {request.travel_days}-day itinerary for {request.city} using the information below.
 
-**基本信息:**
-- 城市: {request.city}
-- 日期: {request.start_date} 至 {request.end_date}
-- 天数: {request.travel_days}天
-- 交通方式: {request.transportation}
-- 住宿: {request.accommodation}
-- 偏好: {', '.join(request.preferences) if request.preferences else '无'}
+**Basic information:**
+- City: {request.city}
+- Dates: {request.start_date} to {request.end_date}
+- Travel days: {request.travel_days}
+- Transportation: {request.transportation}
+- Accommodation preference: {request.accommodation}
+- Preferences: {', '.join(request.preferences) if request.preferences else 'none'}
 
-**景点候选:**
+**Attraction candidates:**
 {attractions_text}
 
-**天气信息:**
+**Weather:**
 {weather_text}
 
-**酒店候选:**
+**Hotel candidates:**
 {hotels_text}
 
-**旅行知识参考:**
+**Travel knowledge reference:**
 {rag_text}
 
-**匿名偏好记忆:**
-{memory_context or '无'}
+**Anonymous preference memory:**
+{memory_context or 'none'}
 
-记忆使用原则: 历史偏好只能作为软约束；如果它与本次请求中的城市、日期、交通、住宿、偏好或额外要求冲突，必须以本次请求为准。
+Memory rule: historical preferences are soft constraints only. If memory conflicts with this request's city, dates, transportation, accommodation, preferences, or free-text requirements, follow the current request.
 
-**输出规则:**
+**Output rules:**
 {TRIP_JSON_RULES}
 """
     if request.free_text_input:
-        prompt += f"\n**额外要求:** {request.free_text_input}\n"
+        prompt += f"\n**Additional requirements:** {request.free_text_input}\n"
     if retry_feedback:
         prompt += f"\n{retry_feedback}\n"
     if format_instructions:
-        prompt += f"\n**格式要求:**\n{format_instructions}\n"
+        prompt += f"\n**Format instructions:**\n{format_instructions}\n"
     return prompt

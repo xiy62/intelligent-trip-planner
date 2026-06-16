@@ -18,37 +18,37 @@ DEFAULT_LOCAL_KNOWLEDGE = [
     {
         "chunk_id": "travel-style-history-culture",
         "source": "local_travel_playbook",
-        "title": "历史文化偏好规划建议",
-        "content": "历史文化类行程优先安排博物馆、古迹和步行友好的片区，避免把远距离景点塞进同一天。",
-        "keywords": ["历史文化", "博物馆", "古迹"],
+        "title": "History and Culture Planning Guidance",
+        "content": "For history and culture trips, prioritize museums, landmarks, and walkable districts. Avoid packing far-apart attractions into the same day.",
+        "keywords": ["history", "culture", "museums", "landmarks", "历史文化", "博物馆", "古迹"],
     },
     {
         "chunk_id": "travel-style-food",
         "source": "local_travel_playbook",
-        "title": "美食偏好规划建议",
-        "content": "美食偏好行程适合把午餐和晚餐嵌入热门街区，减少跨城移动，优先安排在高密度商圈附近。",
-        "keywords": ["美食", "小吃", "餐饮", "城市漫步", "citywalk"],
+        "title": "Food-Focused Planning Guidance",
+        "content": "For food-focused trips, place lunch and dinner near dense neighborhoods or markets to reduce unnecessary cross-city travel.",
+        "keywords": ["food", "restaurants", "markets", "citywalk", "美食", "小吃", "餐饮", "城市漫步"],
     },
     {
         "chunk_id": "travel-style-nature",
         "source": "local_travel_playbook",
-        "title": "自然风光偏好规划建议",
-        "content": "自然风光类行程应优先关注天气与体力负荷，晴天安排长时间户外活动，阴雨天缩短户外停留。",
-        "keywords": ["自然风光", "公园", "徒步", "拍照"],
+        "title": "Outdoor and Nature Planning Guidance",
+        "content": "For outdoor trips, consider weather, daylight, and physical load. Keep rainy-day outdoor stops shorter and add indoor alternatives.",
+        "keywords": ["nature", "outdoors", "parks", "hiking", "photos", "自然风光", "公园", "徒步", "拍照"],
     },
     {
         "chunk_id": "transport-transit",
         "source": "local_travel_playbook",
-        "title": "公共交通行程建议",
-        "content": "公共交通行程应尽量减少跨区跳跃，把相近景点聚合在同一天，降低换乘成本和延误风险。",
-        "keywords": ["公共交通", "地铁", "公交"],
+        "title": "Public Transit Planning Guidance",
+        "content": "For public-transit trips, group nearby attractions by day to reduce transfers, delays, and backtracking.",
+        "keywords": ["public transit", "subway", "bus", "公共交通", "地铁", "公交"],
     },
     {
         "chunk_id": "accommodation-budget",
         "source": "local_travel_playbook",
-        "title": "经济型住宿建议",
-        "content": "经济型住宿推荐优先靠近主要交通枢纽或第一天/最后一天景点密集片区，以平衡预算和通勤时间。",
-        "keywords": ["经济型酒店", "快捷酒店", "民宿"],
+        "title": "Budget Accommodation Guidance",
+        "content": "For budget accommodation, prefer hotels near major transit hubs or the densest first/last-day sightseeing area.",
+        "keywords": ["budget hotel", "hotel", "inn", "hostel", "经济型酒店", "快捷酒店", "民宿"],
     },
 ]
 
@@ -82,13 +82,13 @@ class TravelRAGService:
         self,
         knowledge_root: Optional[Path] = None,
         persist_directory: Optional[Path] = None,
-        collection_name: str = "travel_knowledge_cn",
+        collection_name: str = "travel_knowledge",
         embedding_model: str = "text-embedding-3-small",
         local_corpus: Optional[List[Dict[str, Any]]] = None,
         embedding_function=None,
     ):
         backend_root = Path(__file__).resolve().parents[2]
-        self.knowledge_root = knowledge_root or backend_root / "data" / "knowledge" / "china"
+        self.knowledge_root = knowledge_root or backend_root / "data" / "knowledge"
         self.persist_directory = persist_directory or backend_root / "data" / "index" / "chroma"
         self.collection_name = collection_name
         self.embedding_model = embedding_model
@@ -147,8 +147,6 @@ class TravelRAGService:
         vectorstore = self._get_vectorstore()
         try:
             docs = vectorstore.similarity_search(query, k=k, filter={"city": request.city})
-            if not docs:
-                docs = vectorstore.similarity_search(query, k=k)
         except Exception:
             docs = []
 
@@ -174,7 +172,7 @@ class TravelRAGService:
         request: TripRequest,
         attraction_candidates: Optional[Iterable[AttractionCandidate]] = None,
     ) -> str:
-        terms: List[str] = [request.city, request.transportation, request.accommodation, f"{request.travel_days}天"]
+        terms: List[str] = [request.city, request.transportation, request.accommodation, f"{request.travel_days} days"]
         terms.extend(request.preferences or [])
         if attraction_candidates:
             names = [candidate.name for candidate in list(attraction_candidates)[:3] if candidate.name]
@@ -270,29 +268,29 @@ class TravelRAGService:
         seasonality = "\n".join(f"- {tip}" for tip in doc.seasonality if tip).strip()
 
         header = [
-            f"城市: {doc.city}",
-            f"片区: {doc.district}" if doc.district else "",
-            f"主题: {', '.join(doc.theme)}" if doc.theme else "",
-            f"适合人群: {', '.join(doc.best_for)}" if doc.best_for else "",
-            f"推荐时长: {doc.recommended_duration}" if doc.recommended_duration else "",
+            f"City: {doc.city}",
+            f"District: {doc.district}" if doc.district else "",
+            f"Themes: {', '.join(doc.theme)}" if doc.theme else "",
+            f"Best for: {', '.join(doc.best_for)}" if doc.best_for else "",
+            f"Recommended duration: {doc.recommended_duration}" if doc.recommended_duration else "",
         ]
         header_text = "\n".join(line for line in header if line)
 
         if overview:
             yield "overview", f"{doc.title}\n{header_text}\n\n{overview}".strip()
         if planning:
-            yield "planning_tips", f"{doc.title}\n行程建议:\n{planning}".strip()
+            yield "planning_tips", f"{doc.title}\nPlanning tips:\n{planning}".strip()
         if transport:
-            yield "transport", f"{doc.title}\n交通建议:\n{transport}".strip()
+            yield "transport", f"{doc.title}\nTransport advice:\n{transport}".strip()
         if seasonality:
-            yield "seasonality", f"{doc.title}\n季节建议:\n{seasonality}".strip()
+            yield "seasonality", f"{doc.title}\nSeasonality:\n{seasonality}".strip()
 
     def _default_chunk(self, city: str, backend: str) -> RAGChunk:
         return RAGChunk(
             chunk_id=f"default-{city}",
             source="local_travel_playbook",
-            title="默认行程规划建议",
-            content="优先把相近景点放在同一天，控制每天景点数量，并结合天气安排室内外活动。",
+            title="General Itinerary Planning Guidance",
+            content="Group nearby attractions on the same day, keep daily pacing realistic, and use weather to balance indoor and outdoor activities.",
             metadata={"match_score": 0, "city": city, "rag_backend": backend},
         )
 

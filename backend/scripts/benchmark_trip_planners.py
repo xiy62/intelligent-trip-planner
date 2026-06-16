@@ -300,6 +300,11 @@ def aggregate_results(entries: List[Dict[str, Any]]) -> Dict[str, Any]:
         "budget_consistency_failure_rate": round(hard_failures.count("budget_consistency") / len(entries), 4)
         if entries
         else 0.0,
+        "content_completeness_failure_rate": round(
+            hard_failures.count("content_completeness_attractions") / len(entries), 4
+        )
+        if entries
+        else 0.0,
         "grounding_failure_rate": round(
             sum(1 for report in reports if any(item.startswith("retrieval_grounding") for item in report.get("hard_failures", [])))
             / len(entries),

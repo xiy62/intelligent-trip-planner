@@ -46,6 +46,14 @@ class RAGServiceTests(unittest.TestCase):
         self.assertTrue(chunks)
         self.assertEqual(chunks[0].metadata["rag_backend"], "local_lightweight")
 
+    def test_default_corpus_loads_us_knowledge_documents(self):
+        service = TravelRAGService()
+        doc_ids = {doc.doc_id for doc in service.load_knowledge_docs()}
+
+        self.assertIn("new-york-museum-mile-central-park-001", doc_ids)
+        self.assertIn("san-francisco-waterfront-wharf-001", doc_ids)
+        self.assertIn("chicago-millennium-park-loop-001", doc_ids)
+
     def test_chroma_roundtrip_returns_city_chunk(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             persist_dir = Path(tmpdir) / "index"
@@ -62,3 +70,31 @@ class RAGServiceTests(unittest.TestCase):
             self.assertTrue(chunks)
             self.assertEqual(chunks[0].metadata["rag_backend"], "chroma_retrieval")
             self.assertIn(chunks[0].metadata["city"], {"上海"})
+
+    def test_chroma_roundtrip_returns_new_york_chunk(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            persist_dir = Path(tmpdir) / "index"
+            service = TravelRAGService(
+                persist_directory=persist_dir,
+                embedding_function=FakeEmbeddings(),
+            )
+            service.ensure_index(force_rebuild=True)
+            chunks = service.retrieve_chroma_chunks(
+                TripRequest(
+                    city="New York",
+                    start_date="2026-07-01",
+                    end_date="2026-07-02",
+                    travel_days=2,
+                    transportation="Public transit",
+                    accommodation="Mid-range hotel",
+                    preferences=["Museums", "Food"],
+                    free_text_input="Keep museum visits realistic and group nearby neighborhoods.",
+                ),
+                attraction_candidates=[],
+                k=4,
+            )
+
+            self.assertTrue(chunks)
+            self.assertEqual(chunks[0].metadata["rag_backend"], "chroma_retrieval")
+            self.assertEqual(chunks[0].metadata["city"], "New York")
+            self.assertEqual(chunks[0].metadata["language"], "en")

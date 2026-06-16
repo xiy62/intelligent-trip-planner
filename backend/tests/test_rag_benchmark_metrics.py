@@ -100,6 +100,7 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
         self.assertIn("avg_route_coherence_score", summary)
         self.assertIn("avg_preference_match_score", summary)
         self.assertIn("avg_attribution_coverage_score", summary)
+        self.assertIn("content_completeness_failure_rate", summary)
         self.assertEqual(summary["quality_warning_rate"], 1.0)
         self.assertEqual(summary["pacing_warning_rate"], 0.3333)
         self.assertEqual(summary["route_warning_rate"], 0.3333)
@@ -130,6 +131,24 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
         self.assertEqual(cases[0].request.city, "北京")
         self.assertEqual(cases[0].expected_rag_doc_ids, ["beijing-history-core-001"])
         self.assertFalse(hasattr(cases[0].request, "expected_rag_doc_ids"))
+
+    def test_us_rag_benchmark_labels_reference_existing_corpus_docs(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        dataset_path = repo_root / "benchmarks" / "trip_requests.us_rag_benchmark.json"
+        corpus_dir = repo_root / "data" / "knowledge" / "us"
+        corpus_doc_ids = set()
+        for corpus_file in corpus_dir.glob("*.json"):
+            for document in json.loads(corpus_file.read_text(encoding="utf-8")):
+                corpus_doc_ids.add(document["doc_id"])
+
+        cases = load_benchmark_cases(dataset_path)
+        expected_doc_ids = {
+            doc_id for case in cases for doc_id in case.expected_rag_doc_ids
+        }
+
+        self.assertEqual(len(cases), 6)
+        self.assertTrue(expected_doc_ids)
+        self.assertTrue(expected_doc_ids.issubset(corpus_doc_ids))
 
     def test_compact_rag_sources_serializes_chunk_metadata(self):
         state = {

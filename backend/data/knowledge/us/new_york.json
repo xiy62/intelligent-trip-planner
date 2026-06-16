@@ -1,0 +1,85 @@
+[
+  {
+    "doc_id": "new-york-museum-mile-central-park-001",
+    "country": "US",
+    "city": "New York",
+    "district": "Manhattan",
+    "theme": [
+      "museums",
+      "parks",
+      "classic sightseeing"
+    ],
+    "poi_names": [
+      "The Metropolitan Museum of Art",
+      "Central Park",
+      "Museum Mile"
+    ],
+    "best_for": [
+      "first-time visitors",
+      "museum-focused travelers",
+      "public-transit itineraries"
+    ],
+    "recommended_duration": "half_day_to_full_day",
+    "seasonality": [
+      "Outdoor park time is easier to extend in mild weather.",
+      "Cold or rainy days should bias the schedule toward museums and shorter outdoor walks."
+    ],
+    "transport_advice": [
+      "Museum Mile and Central Park can be paired in the same day because they are geographically close.",
+      "Use the subway or short rideshare transfers instead of crossing boroughs between museum stops."
+    ],
+    "planning_tips": [
+      "For a museum-heavy New York day, avoid scheduling more than two major museums unless the user explicitly asks for an intense pace.",
+      "Pair The Metropolitan Museum of Art with Central Park or nearby Upper East Side food stops to reduce backtracking.",
+      "Keep evening dining near the final sightseeing area or a direct subway line back to the hotel."
+    ],
+    "source_type": "official_tourism_portal",
+    "source_url": "https://www.nyctourism.com/",
+    "language": "en",
+    "last_verified_at": "2026-06-16",
+    "title": "New York Museum Mile and Central Park Planning Notes",
+    "content": "NYC Tourism presents New York City as a five-borough destination with major categories such as museums, galleries, tours, attractions, neighborhoods, dining, and parks. For itinerary planning, Manhattan museum clusters and Central Park work well as a same-day grouping because they reduce cross-city transfers and support a realistic public-transit pace."
+  },
+  {
+    "doc_id": "new-york-downtown-history-food-002",
+    "country": "US",
+    "city": "New York",
+    "district": "Lower Manhattan",
+    "theme": [
+      "history",
+      "food",
+      "citywalk"
+    ],
+    "poi_names": [
+      "9/11 Memorial & Museum",
+      "Brooklyn Bridge",
+      "Chinatown",
+      "SoHo"
+    ],
+    "best_for": [
+      "history-focused travelers",
+      "food-focused travelers",
+      "walkable neighborhood routes"
+    ],
+    "recommended_duration": "full_day",
+    "seasonality": [
+      "Summer citywalk days should include indoor breaks and hydration.",
+      "Winter itineraries should shorten outdoor bridge or waterfront walks."
+    ],
+    "transport_advice": [
+      "Lower Manhattan, Chinatown, SoHo, and the Brooklyn Bridge area are better handled as a clustered downtown route.",
+      "Avoid pairing downtown history stops with far north Manhattan attractions on the same short day."
+    ],
+    "planning_tips": [
+      "Use downtown history stops in the morning, then place lunch around Chinatown, SoHo, or nearby neighborhoods.",
+      "If the user asks for food and walking, prioritize compact neighborhoods over scattered landmark hopping.",
+      "Keep the Brooklyn Bridge walk optional when weather or pacing is unfavorable."
+    ],
+    "source_type": "official_tourism_portal",
+    "source_url": "https://www.nyctourism.com/",
+    "language": "en",
+    "last_verified_at": "2026-06-16",
+    "title": "New York Downtown History, Food, and Citywalk Planning Notes",
+    "content": "New York planning benefits from grouping attractions by neighborhood because the city has dense but distinct areas. A downtown route can connect history, citywalk, and food experiences while avoiding unnecessary transfers between Lower Manhattan and uptown museum districts."
+  }
+]

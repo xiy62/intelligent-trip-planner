@@ -5,7 +5,8 @@ from __future__ import annotations
 import unittest
 from datetime import datetime, timedelta
 
-from app.services.weather_service import OpenMeteoWeatherProvider
+from app.models.schemas import WeatherInfo
+from app.services.weather_service import OpenMeteoWeatherProvider, WeatherService
 
 
 class OpenMeteoWeatherProviderTests(unittest.TestCase):
@@ -75,8 +76,47 @@ class OpenMeteoWeatherProviderTests(unittest.TestCase):
         forecast = self.provider.get_forecast("北京", start_date, 2)
 
         self.assertEqual(len(forecast), 2)
-        self.assertTrue(all(item.day_weather == "未知" for item in forecast))
-        self.assertTrue(all(item.night_weather == "未知" for item in forecast))
+        self.assertTrue(all(item.day_weather == "Unknown" for item in forecast))
+        self.assertTrue(all(item.night_weather == "Unknown" for item in forecast))
+
+    def test_null_weather_code_returns_unknown_weather(self):
+        self.provider._within_forecast_horizon = lambda _start_date: True
+        self.provider._geocode_city = lambda _city: (40.7128, -74.0060)
+        self.provider._fetch_forecast = lambda *_args: {
+            "daily": {
+                "time": ["2026-07-01"],
+                "weather_code": [None],
+                "temperature_2m_max": [None],
+                "temperature_2m_min": [None],
+                "wind_speed_10m_max": [None],
+                "wind_direction_10m_dominant": [None],
+            }
+        }
+
+        forecast = self.provider.get_forecast("New York", "2026-07-01", 1)
+
+        self.assertEqual(len(forecast), 1)
+        self.assertEqual(forecast[0].day_weather, "Unknown")
+        self.assertEqual(forecast[0].night_weather, "Unknown")
+        self.assertEqual(forecast[0].day_temp, 0)
+
+    def test_formatter_hides_zero_temperature_when_forecast_unavailable(self):
+        service = WeatherService()
+        summary = service.format_weather_for_planner(
+            "New York",
+            [
+                WeatherInfo(
+                    date="2026-07-01",
+                    day_weather="Unknown",
+                    night_weather="Unknown",
+                    day_temp=0,
+                    night_temp=0,
+                )
+            ],
+        )
+
+        self.assertIn("forecast unavailable", summary)
+        self.assertNotIn("0°C", summary)
 
 
 if __name__ == "__main__":
