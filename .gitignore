@@ -27,6 +27,9 @@ backend/data/memory/
 backend/data/observability/
 backend/data/raw/
 backend/data/drafts/
+backend/data/uploads/
+backend/data/extracted/
+backend/data/ingestion/
 !backend/benchmarks/results/
 backend/benchmarks/results/*
 !backend/benchmarks/results/public-summary.json

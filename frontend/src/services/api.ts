@@ -5,6 +5,12 @@ import type {
   ObservabilityRun,
   ObservabilityRunDetail,
   ObservabilitySummary,
+  RAGDraft,
+  RAGDraftDetail,
+  RAGDraftSummary,
+  RAGIngestionJob,
+  RAGPrefillResponse,
+  RAGPromoteResult,
   TripFormData,
   TripPlanResponse
 } from '@/types'
@@ -77,6 +83,78 @@ export async function clearObservabilityRuns(source?: string): Promise<{ success
     params: source ? { source } : {}
   })
   return response.data
+}
+
+export async function uploadRagSource(formData: FormData): Promise<RAGDraftDetail> {
+  const response = await apiClient.post<{ success: boolean; data: RAGDraftDetail }>(
+    '/api/rag-ingestion/uploads',
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } }
+  )
+  return response.data.data
+}
+
+export async function listRagDrafts(params: {
+  country?: string
+  city?: string
+  review_status?: string
+} = {}): Promise<RAGDraftSummary[]> {
+  const response = await apiClient.get<{ success: boolean; data: RAGDraftSummary[] }>('/api/rag-ingestion/drafts', {
+    params
+  })
+  return response.data.data
+}
+
+export async function getRagDraft(draftId: string): Promise<RAGDraftDetail> {
+  const response = await apiClient.get<{ success: boolean; data: RAGDraftDetail }>(`/api/rag-ingestion/drafts/${draftId}`)
+  return response.data.data
+}
+
+export async function updateRagDraft(draftId: string, draft: RAGDraft): Promise<RAGDraftDetail> {
+  const response = await apiClient.put<{ success: boolean; data: RAGDraftDetail }>(
+    `/api/rag-ingestion/drafts/${draftId}`,
+    draft
+  )
+  return response.data.data
+}
+
+export async function approveRagDraft(draftId: string, payload: {
+  reviewer?: string
+  review_notes?: string
+}): Promise<RAGDraftDetail> {
+  const response = await apiClient.post<{ success: boolean; data: RAGDraftDetail }>(
+    `/api/rag-ingestion/drafts/${draftId}/approve`,
+    payload
+  )
+  return response.data.data
+}
+
+export async function aiPrefillRagDraft(draftId: string): Promise<RAGPrefillResponse> {
+  const response = await apiClient.post<{ success: boolean; data: RAGPrefillResponse }>(
+    `/api/rag-ingestion/drafts/${draftId}/ai-prefill`
+  )
+  return response.data.data
+}
+
+export async function promoteRagDrafts(payload: {
+  country?: string
+  overwrite?: boolean
+} = {}): Promise<RAGPromoteResult> {
+  const response = await apiClient.post<{ success: boolean; data: RAGPromoteResult }>(
+    '/api/rag-ingestion/promote',
+    payload
+  )
+  return response.data.data
+}
+
+export async function rebuildRagIndex(): Promise<RAGIngestionJob> {
+  const response = await apiClient.post<{ success: boolean; data: RAGIngestionJob }>('/api/rag-ingestion/index/rebuild')
+  return response.data.data
+}
+
+export async function getRagIngestionJob(jobId: string): Promise<RAGIngestionJob> {
+  const response = await apiClient.get<{ success: boolean; data: RAGIngestionJob }>(`/api/rag-ingestion/jobs/${jobId}`)
+  return response.data.data
 }
 
 export default apiClient

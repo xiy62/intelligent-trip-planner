@@ -101,6 +101,9 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
         self.assertIn("avg_preference_match_score", summary)
         self.assertIn("avg_attribution_coverage_score", summary)
         self.assertIn("content_completeness_failure_rate", summary)
+        self.assertIn("retrieved_unique_doc_count_avg", summary)
+        self.assertIn("duplicate_doc_rate", summary)
+        self.assertIn("avg_rerank_score", summary)
         self.assertEqual(summary["quality_warning_rate"], 1.0)
         self.assertEqual(summary["pacing_warning_rate"], 0.3333)
         self.assertEqual(summary["route_warning_rate"], 0.3333)
@@ -146,7 +149,7 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
             doc_id for case in cases for doc_id in case.expected_rag_doc_ids
         }
 
-        self.assertEqual(len(cases), 6)
+        self.assertEqual(len(cases), 15)
         self.assertTrue(expected_doc_ids)
         self.assertTrue(expected_doc_ids.issubset(corpus_doc_ids))
 
@@ -165,6 +168,10 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
                         "city": "北京",
                         "theme": "历史文化",
                         "rag_backend": "chroma_retrieval",
+                        "vector_rank": 1,
+                        "rerank_score": 1.25,
+                        "rerank_reasons": ["vector_rank:1", "theme_overlap:history"],
+                        "dedup_rank": 1,
                     },
                 )
             ]
@@ -175,6 +182,9 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
         self.assertEqual(sources[0]["doc_id"], "doc-a")
         self.assertEqual(sources[0]["source_url"], "https://example.com/a")
         self.assertEqual(sources[0]["rag_backend"], "chroma_retrieval")
+        self.assertEqual(sources[0]["vector_rank"], 1)
+        self.assertEqual(sources[0]["rerank_score"], 1.25)
+        self.assertEqual(sources[0]["dedup_rank"], 1)
 
     def test_plan_with_langgraph_persists_observability_when_enabled(self):
         request = TripRequest(

@@ -36,6 +36,46 @@ from ..services.rag_service import TravelRAGService, get_rag_service
 from ..services.weather_service import get_weather_service
 from .trip_plan_evaluation import evaluate_trip_plan, normalize_entity_name
 
+NON_ATTRACTION_PLACE_TYPES = {
+    "car_rental",
+    "consultant",
+    "corporate_office",
+    "finance",
+    "insurance_agency",
+    "lodging",
+    "real_estate_agency",
+    "service",
+    "tour_agency",
+    "tourist_information_center",
+    "travel_agency",
+}
+
+NON_ATTRACTION_NAME_TERMS = {
+    "agency",
+    "concierge",
+    "tour operator",
+    "tours of",
+    "travel agency",
+    "travel boutique",
+    "travel inc",
+    "travel, inc",
+}
+
+ATTRACTION_PLACE_TYPE_HINTS = {
+    "amusement_park",
+    "aquarium",
+    "art_gallery",
+    "botanical_garden",
+    "historical_landmark",
+    "museum",
+    "national_park",
+    "park",
+    "performing_arts_theater",
+    "tourist_attraction",
+    "visitor_center",
+    "zoo",
+}
+
 ALLOWED_MSGPACK_MODULES = [
     ("app.models.schemas", "TripRequest"),
     ("app.models.schemas", "TripPlan"),
@@ -213,6 +253,8 @@ class LangGraphTripPlanner:
             for item in self.search_poi_tool.invoke(
                 {"keywords": term, "city": request.city, "citylimit": True, "page_size": 8}
             ):
+                if self._is_non_attraction_poi(item, request.city):
+                    continue
                 candidate = AttractionCandidate(
                     name=str(item.get("name", "")),
                     address=str(item.get("address", "")),
@@ -609,6 +651,44 @@ class LangGraphTripPlanner:
 
     def _normalize_entity_name(self, value: str) -> str:
         return normalize_entity_name(value)
+
+    def _is_non_attraction_poi(self, item: Dict[str, Any], city: str = "") -> bool:
+        """Filter map-provider service businesses before planner grounding."""
+        name = str(item.get("name", "")).lower()
+        address = str(item.get("address", "")).lower()
+        raw = item.get("raw") if isinstance(item.get("raw"), dict) else {}
+        raw_types = raw.get("types") if isinstance(raw, dict) else []
+        type_values = []
+        if item.get("type"):
+            type_values.extend(str(item.get("type", "")).lower().replace(",", " ").split())
+        if isinstance(raw_types, list):
+            type_values.extend(str(value).lower() for value in raw_types)
+        type_set = set(type_values)
+
+        if self._is_outside_requested_city(address, city):
+            return True
+        if type_set & ATTRACTION_PLACE_TYPE_HINTS:
+            return False
+        if type_set & NON_ATTRACTION_PLACE_TYPES:
+            return True
+        return any(term in name for term in NON_ATTRACTION_NAME_TERMS)
+
+    def _is_outside_requested_city(self, address: str, city: str) -> bool:
+        """Catch broad Google text-search results that are outside the requested city."""
+        normalized_city = self._normalize_entity_name(city)
+        if not address or not normalized_city:
+            return False
+        if normalized_city == "newyork":
+            nyc_aliases = (
+                "new york, ny",
+                "manhattan, ny",
+                "brooklyn, ny",
+                "queens, ny",
+                "bronx, ny",
+                "staten island, ny",
+            )
+            return ", ny" in address and not any(alias in address for alias in nyc_aliases)
+        return city.lower() not in address and ", " in address
 
     def _normalize_trip_plan(self, trip_plan: TripPlan, request: TripRequest) -> TripPlan:
         travel_dates = self._get_travel_dates(request.start_date, request.travel_days)

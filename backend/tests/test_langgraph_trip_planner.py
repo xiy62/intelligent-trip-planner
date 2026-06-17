@@ -196,6 +196,24 @@ class FakeMapService:
         return [self.tool]
 
 
+class StaticSearchTool:
+    name = "map_search_poi"
+
+    def __init__(self, items):
+        self.items = items
+
+    def invoke(self, payload):
+        return list(self.items)
+
+
+class StaticMapService:
+    def __init__(self, items):
+        self.tool = StaticSearchTool(items)
+
+    def get_langchain_tools(self):
+        return [self.tool]
+
+
 class FakeWeatherService:
     def __init__(self):
         self.results = [
@@ -307,6 +325,63 @@ class LangGraphTripPlannerTests(unittest.TestCase):
         self.assertTrue(state["evaluation_report"].passed)
         self.assertGreaterEqual(state["retry_counts"].retrieve_attractions, 1)
         self.assertEqual(state["metrics"].grounding_failure_count, 1)
+
+    def test_attraction_retrieval_filters_travel_service_providers(self):
+        planner = LangGraphTripPlanner(
+            llm=FakeLLM([build_valid_plan_json()]),
+            map_service=StaticMapService(
+                [
+                    {
+                        "id": "service-1",
+                        "name": "Fora Travel, Inc.",
+                        "address": "New York, NY",
+                        "type": "travel_agency, point_of_interest, establishment",
+                        "raw": {"types": ["travel_agency", "point_of_interest", "establishment"]},
+                    },
+                    {
+                        "id": "service-2",
+                        "name": "Sidewalk Food Tours of New York",
+                        "address": "New York, NY",
+                        "type": "point_of_interest, establishment",
+                        "raw": {"types": ["point_of_interest", "establishment"]},
+                    },
+                    {
+                        "id": "service-3",
+                        "name": "Solo New York",
+                        "address": "400 Wireless Blvd #1, Hauppauge, NY 11788",
+                        "type": "corporate_office, point_of_interest, establishment",
+                        "raw": {"types": ["corporate_office", "point_of_interest", "establishment"]},
+                    },
+                    {
+                        "id": "park-1",
+                        "name": "Central Park",
+                        "address": "New York, NY",
+                        "type": "park, tourist_attraction, point_of_interest",
+                        "raw": {"types": ["park", "tourist_attraction", "point_of_interest"]},
+                    },
+                    {
+                        "id": "museum-1",
+                        "name": "Metropolitan Museum of Art",
+                        "address": "1000 5th Ave, New York, NY",
+                        "type": "museum, tourist_attraction, point_of_interest",
+                        "raw": {"types": ["museum", "tourist_attraction", "point_of_interest"]},
+                    },
+                ]
+            ),
+            weather_service=FakeWeatherService(),
+        )
+        request = build_request().model_copy(
+            update={"preferences": ["solo travel", "women travelers", "safety"]}
+        )
+
+        state = planner.retrieve_attractions({"request": request})
+        names = [candidate.name for candidate in state["candidate_attractions"]]
+
+        self.assertNotIn("Fora Travel, Inc.", names)
+        self.assertNotIn("Sidewalk Food Tours of New York", names)
+        self.assertNotIn("Solo New York", names)
+        self.assertIn("Central Park", names)
+        self.assertIn("Metropolitan Museum of Art", names)
 
     def test_retry_exhaustion_falls_back(self):
         runtime = FakeNativeRuntime(

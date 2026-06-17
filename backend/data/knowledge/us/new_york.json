@@ -1,44 +1,45 @@
 [
   {
-    "doc_id": "new-york-museum-mile-central-park-001",
+    "doc_id": "new-york-brooklyn-food-neighborhoods-003",
     "country": "US",
     "city": "New York",
-    "district": "Manhattan",
+    "district": "Brooklyn",
     "theme": [
-      "museums",
-      "parks",
-      "classic sightseeing"
+      "food",
+      "neighborhoods",
+      "citywalk"
     ],
     "poi_names": [
-      "The Metropolitan Museum of Art",
-      "Central Park",
-      "Museum Mile"
+      "DUMBO",
+      "Brooklyn Bridge Park",
+      "Williamsburg",
+      "Brooklyn Flea"
     ],
     "best_for": [
-      "first-time visitors",
-      "museum-focused travelers",
-      "public-transit itineraries"
+      "food-focused travelers",
+      "neighborhood exploration",
+      "walkable routes"
     ],
     "recommended_duration": "half_day_to_full_day",
     "seasonality": [
-      "Outdoor park time is easier to extend in mild weather.",
-      "Cold or rainy days should bias the schedule toward museums and shorter outdoor walks."
+      "Outdoor markets and waterfront walks are strongest in mild weather.",
+      "Cold or rainy days should keep food stops closer to subway access."
     ],
     "transport_advice": [
-      "Museum Mile and Central Park can be paired in the same day because they are geographically close.",
-      "Use the subway or short rideshare transfers instead of crossing boroughs between museum stops."
+      "Group Brooklyn waterfront and neighborhood stops together instead of crossing repeatedly between boroughs.",
+      "Use subway routes that connect Brooklyn directly to the hotel area to avoid late-day backtracking."
     ],
     "planning_tips": [
-      "For a museum-heavy New York day, avoid scheduling more than two major museums unless the user explicitly asks for an intense pace.",
-      "Pair The Metropolitan Museum of Art with Central Park or nearby Upper East Side food stops to reduce backtracking.",
-      "Keep evening dining near the final sightseeing area or a direct subway line back to the hotel."
+      "For food and neighborhood requests, prefer one or two compact Brooklyn areas over scattered citywide stops.",
+      "Pair DUMBO or Brooklyn Bridge Park with nearby food stops and optional evening skyline views.",
+      "Avoid combining deep Brooklyn exploration with uptown Manhattan museums in the same short day."
     ],
     "source_type": "official_tourism_portal",
-    "source_url": "https://www.nyctourism.com/",
+    "source_url": "https://www.nyctourism.com/boroughs-neighborhoods/brooklyn/",
     "language": "en",
     "last_verified_at": "2026-06-16",
-    "title": "New York Museum Mile and Central Park Planning Notes",
-    "content": "NYC Tourism presents New York City as a five-borough destination with major categories such as museums, galleries, tours, attractions, neighborhoods, dining, and parks. For itinerary planning, Manhattan museum clusters and Central Park work well as a same-day grouping because they reduce cross-city transfers and support a realistic public-transit pace."
+    "title": "New York Brooklyn Food and Neighborhood Planning Notes",
+    "content": "NYC Tourism organizes Brooklyn as a borough with distinct neighborhoods, waterfront areas, dining, markets, arts, and skyline viewpoints. Brooklyn-focused itineraries work best when food stops, waterfront walks, and neighborhood exploration are grouped to avoid unnecessary borough hopping."
   },
   {
     "doc_id": "new-york-downtown-history-food-002",
@@ -81,5 +82,188 @@
     "last_verified_at": "2026-06-16",
     "title": "New York Downtown History, Food, and Citywalk Planning Notes",
     "content": "New York planning benefits from grouping attractions by neighborhood because the city has dense but distinct areas. A downtown route can connect history, citywalk, and food experiences while avoiding unnecessary transfers between Lower Manhattan and uptown museum districts."
+  },
+  {
+    "doc_id": "new-york-family-arts-parks-005",
+    "country": "US",
+    "city": "New York",
+    "district": "Manhattan",
+    "theme": [
+      "family",
+      "arts",
+      "parks"
+    ],
+    "poi_names": [
+      "American Museum of Natural History",
+      "Central Park",
+      "Lincoln Center",
+      "Children's Museum of Manhattan"
+    ],
+    "best_for": [
+      "families",
+      "relaxed pace",
+      "mixed indoor and outdoor days"
+    ],
+    "recommended_duration": "full_day",
+    "seasonality": [
+      "Rainy days should prioritize museums and indoor arts stops.",
+      "Mild weather supports Central Park breaks between indoor visits."
+    ],
+    "transport_advice": [
+      "Use the Upper West Side as a same-day cluster for museums, parks, and arts stops.",
+      "Leave buffer time for family travel pace and avoid long cross-borough transfers."
+    ],
+    "planning_tips": [
+      "For family-friendly plans, combine one major museum with Central Park or a short arts stop instead of overloading the day.",
+      "Use park time as a pacing buffer between ticketed indoor attractions.",
+      "Keep meals close to the museum or park area to avoid unnecessary transfers."
+    ],
+    "source_type": "official_tourism_portal",
+    "source_url": "https://www.nyctourism.com/family/",
+    "language": "en",
+    "last_verified_at": "2026-06-16",
+    "title": "New York Family, Arts, and Park Planning Notes",
+    "content": "Family-oriented New York planning benefits from combining indoor museums, arts venues, and Central Park breaks in the same part of Manhattan. The itinerary should leave more buffer time than an adult-only citywalk route."
+  },
+  {
+    "doc_id": "new-york-museum-mile-central-park-001",
+    "country": "US",
+    "city": "New York",
+    "district": "Manhattan",
+    "theme": [
+      "museums",
+      "parks",
+      "classic sightseeing"
+    ],
+    "poi_names": [
+      "The Metropolitan Museum of Art",
+      "Central Park",
+      "Museum Mile"
+    ],
+    "best_for": [
+      "first-time visitors",
+      "museum-focused travelers",
+      "public-transit itineraries"
+    ],
+    "recommended_duration": "half_day_to_full_day",
+    "seasonality": [
+      "Outdoor park time is easier to extend in mild weather.",
+      "Cold or rainy days should bias the schedule toward museums and shorter outdoor walks."
+    ],
+    "transport_advice": [
+      "Museum Mile and Central Park can be paired in the same day because they are geographically close.",
+      "Use the subway or short rideshare transfers instead of crossing boroughs between museum stops."
+    ],
+    "planning_tips": [
+      "For a museum-heavy New York day, avoid scheduling more than two major museums unless the user explicitly asks for an intense pace.",
+      "Pair The Metropolitan Museum of Art with Central Park or nearby Upper East Side food stops to reduce backtracking.",
+      "Keep evening dining near the final sightseeing area or a direct subway line back to the hotel."
+    ],
+    "source_type": "official_tourism_portal",
+    "source_url": "https://www.nyctourism.com/",
+    "language": "en",
+    "last_verified_at": "2026-06-16",
+    "title": "New York Museum Mile and Central Park Planning Notes",
+    "content": "NYC Tourism presents New York City as a five-borough destination with major categories such as museums, galleries, tours, attractions, neighborhoods, dining, and parks. For itinerary planning, Manhattan museum clusters and Central Park work well as a same-day grouping because they reduce cross-city transfers and support a realistic public-transit pace."
+  },
+  {
+    "doc_id": "new-york-nyc-001",
+    "country": "US",
+    "city": "New York",
+    "district": "",
+    "theme": [
+      "woman",
+      "solo travel",
+      "women travelers",
+      "budget travel",
+      "public transit",
+      "safety",
+      "walking"
+    ],
+    "poi_names": [
+      "Times Square",
+      "Central Park",
+      "Rockefeller Center",
+      "Upper West Side",
+      "High Line",
+      "Hudson River",
+      "Staten Island Ferry",
+      "Broadway",
+      "Soho"
+    ],
+    "best_for": [
+      "woman solo travel in nyc",
+      "women traveling alone",
+      "first-time solo travelers",
+      "walkable city breaks",
+      "budget-conscious travelers"
+    ],
+    "recommended_duration": "",
+    "seasonality": [],
+    "transport_advice": [
+      "Stay near a well-connected transit hub with multiple subway line options.",
+      "The subway runs all night, but night and weekend changes can mean less frequent service or reroutes.",
+      "Use the MTA app or website for real-time delays and cross-check Google or Apple Maps.",
+      "Carry a physical or downloaded subway map to orient yourself.",
+      "At night, ride in the conductor's car and stick to busy exits and train cars.",
+      "Consider rideshares over subways late at night."
+    ],
+    "planning_tips": [
+      "Choose a Manhattan neighborhood to simplify a first solo stay.",
+      "Build a loose itinerary and leave room for spontaneity.",
+      "Use free and low-cost activities to offset travel costs.",
+      "Eat early or at the bar for easier solo dining and walk-ins.",
+      "For socializing, join classes, walking tours, cultural events, yoga, or running groups.",
+      "Research neighborhoods before going, since some streets become isolated within a few blocks.",
+      "Do not accept unsolicited items handed to you on the street."
+    ],
+    "source_type": "official_tourism_portal",
+    "source_url": "https://www.nyctourism.com/articles/tips-for-women-traveling-alone-nyc-solo-woman-travel/",
+    "language": "en",
+    "last_verified_at": "2026-06-17",
+    "title": "tips-for-women-traveling-alone-nyc-solo-woman-travel",
+    "content": "NYC is well suited to solo women travelers because it is highly walkable, has all-night subway service, and offers many neighborhoods and attractions that can be grouped by transit access. For first-time solo travelers, staying in Manhattan simplifies sightseeing; Midtown puts you near Times Square, Central Park, and Rockefeller Center, while the Upper West Side offers access to Harlem, Columbia University, and Lincoln Center. The city also has many free or low-cost options, including Central Park, the High Line, neighborhood parks, the Staten Island Ferry, Citi Bike, free kayaking on the Hudson, and museum free/pay-what-you-wish days. For safety and convenience, stay near a well-connected transit hub, use the MTA app or website for real-time updates, expect night and weekend service changes, and consider rideshares late at night. Solo dining is common, often at the bar, and works well for walk-ins and early dinners."
+  },
+  {
+    "doc_id": "new-york-skyline-nightlife-004",
+    "country": "US",
+    "city": "New York",
+    "district": "Manhattan and Brooklyn Waterfront",
+    "theme": [
+      "skyline",
+      "nightlife",
+      "photography"
+    ],
+    "poi_names": [
+      "Top of the Rock",
+      "Brooklyn Bridge Park",
+      "Times Square",
+      "Hudson Yards"
+    ],
+    "best_for": [
+      "photography-focused travelers",
+      "night views",
+      "first-time visitors"
+    ],
+    "recommended_duration": "evening",
+    "seasonality": [
+      "Winter evenings require shorter outdoor segments and indoor warm-up stops.",
+      "Summer evenings can support longer waterfront and skyline viewing time."
+    ],
+    "transport_advice": [
+      "End the day near a direct subway or rideshare route back to the hotel.",
+      "Do not pair multiple distant skyline viewpoints in one evening unless the user accepts extra transit time."
+    ],
+    "planning_tips": [
+      "For night-view requests, pick one primary observation or waterfront viewpoint rather than stacking several paid viewpoints.",
+      "Place dinner before or after the skyline stop in the same neighborhood to keep the evening simple.",
+      "Keep Times Square as a short optional stop if the user wants classic first-time New York energy."
+    ],
+    "source_type": "official_tourism_portal",
+    "source_url": "https://www.nyctourism.com/things-to-do/attractions/",
+    "language": "en",
+    "last_verified_at": "2026-06-16",
+    "title": "New York Skyline, Night Views, and Photography Planning Notes",
+    "content": "New York night itineraries should treat skyline viewpoints, waterfront walks, theater districts, and late dining as a compact evening route. The main planning risk is overloading the evening with distant viewpoints that create unnecessary transfers."
   }
 ]

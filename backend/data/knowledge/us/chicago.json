@@ -82,5 +82,131 @@
     "last_verified_at": "2026-06-16",
     "title": "Chicago River, Architecture, and Food Planning Notes",
     "content": "Chicago itineraries often work best when architecture, riverfront walking, downtown food, and nearby cultural stops are grouped into a compact route. This supports stronger route coherence than mixing downtown with distant neighborhoods in the same short itinerary."
+  },
+  {
+    "doc_id": "chicago-museum-campus-culture-003",
+    "country": "US",
+    "city": "Chicago",
+    "district": "Museum Campus and South Loop",
+    "theme": [
+      "museums",
+      "culture",
+      "lakefront"
+    ],
+    "poi_names": [
+      "Field Museum",
+      "Shedd Aquarium",
+      "Adler Planetarium",
+      "Museum Campus"
+    ],
+    "best_for": [
+      "museum-focused travelers",
+      "families",
+      "lakefront itineraries"
+    ],
+    "recommended_duration": "half_day_to_full_day",
+    "seasonality": [
+      "Winter and rainy days are good fits for indoor museums with shorter lakefront walks.",
+      "Clear days support adding skyline views from the Museum Campus area."
+    ],
+    "transport_advice": [
+      "Keep Museum Campus attractions grouped together because they are close but time-intensive.",
+      "Use transit or rideshare buffers for evening return, especially after museum closing times."
+    ],
+    "planning_tips": [
+      "For museum-heavy Chicago days, choose one or two major museums instead of trying to complete all Museum Campus venues.",
+      "Use the lakefront as a short scenic break rather than a separate distant activity.",
+      "Avoid pairing Museum Campus with far north neighborhoods unless the user asks for a packed schedule."
+    ],
+    "source_type": "official_tourism_portal",
+    "source_url": "https://www.choosechicago.com/things-to-do/museums-and-arts/",
+    "language": "en",
+    "last_verified_at": "2026-06-16",
+    "title": "Chicago Museum Campus and Culture Planning Notes",
+    "content": "Choose Chicago presents museums, culture, lakefront activities, and family-friendly attractions as major visitor themes. Museum Campus itineraries should account for long indoor visit durations and avoid stacking too many major museums into a single day."
+  },
+  {
+    "doc_id": "chicago-west-loop-food-neighborhoods-004",
+    "country": "US",
+    "city": "Chicago",
+    "district": "West Loop and Fulton Market",
+    "theme": [
+      "food",
+      "neighborhoods",
+      "nightlife"
+    ],
+    "poi_names": [
+      "West Loop",
+      "Fulton Market",
+      "Randolph Street",
+      "Greektown"
+    ],
+    "best_for": [
+      "food-focused travelers",
+      "evening dining",
+      "neighborhood exploration"
+    ],
+    "recommended_duration": "evening",
+    "seasonality": [
+      "Cold-weather evenings should keep dining and nightlife stops close together.",
+      "Summer evenings can support more walking between Fulton Market and nearby neighborhoods."
+    ],
+    "transport_advice": [
+      "Group West Loop and Fulton Market food stops together instead of pairing them with distant lakefront attractions late at night.",
+      "Use rideshare or transit planning for the return trip after dinner."
+    ],
+    "planning_tips": [
+      "For food requests, make West Loop or Fulton Market the dining anchor and build nearby evening activities around it.",
+      "Avoid scheduling a heavy museum day immediately followed by multiple distant nightlife stops.",
+      "Keep late-night travel simple by ending near a direct route back to the hotel."
+    ],
+    "source_type": "official_tourism_portal",
+    "source_url": "https://www.choosechicago.com/neighborhoods/west-loop/",
+    "language": "en",
+    "last_verified_at": "2026-06-16",
+    "title": "Chicago West Loop Food and Neighborhood Planning Notes",
+    "content": "Chicago's West Loop and Fulton Market are useful planning anchors for food-focused and nightlife-oriented itineraries. The main itinerary design goal is to keep evening dining, neighborhood walking, and return transportation compact."
+  },
+  {
+    "doc_id": "chicago-lakefront-parks-outdoors-005",
+    "country": "US",
+    "city": "Chicago",
+    "district": "Lakefront and Downtown Parks",
+    "theme": [
+      "lakefront",
+      "parks",
+      "outdoors"
+    ],
+    "poi_names": [
+      "Lakefront Trail",
+      "Grant Park",
+      "Maggie Daley Park",
+      "Navy Pier"
+    ],
+    "best_for": [
+      "outdoor travelers",
+      "family-friendly pacing",
+      "scenic walking routes"
+    ],
+    "recommended_duration": "half_day",
+    "seasonality": [
+      "Winter wind can make lakefront walking uncomfortable, so add indoor alternatives nearby.",
+      "Summer and fall support longer outdoor walks along the lakefront."
+    ],
+    "transport_advice": [
+      "Group lakefront parks and downtown outdoor stops by walking segments when weather is favorable.",
+      "Avoid long lakefront walks when the request asks for a relaxed pace in cold or windy weather."
+    ],
+    "planning_tips": [
+      "For outdoors and parks preferences, use the lakefront as a scenic connector rather than an isolated stop.",
+      "Pair Grant Park or Maggie Daley Park with nearby museum, Loop, or food stops depending on weather.",
+      "Keep Navy Pier optional for users who want classic sightseeing but avoid forcing it into every lakefront route."
+    ],
+    "source_type": "official_tourism_portal",
+    "source_url": "https://www.choosechicago.com/articles/parks-outdoors/",
+    "language": "en",
+    "last_verified_at": "2026-06-16",
+    "title": "Chicago Lakefront, Parks, and Outdoor Planning Notes",
+    "content": "Chicago lakefront itineraries should balance parks, scenic walking, weather exposure, and nearby indoor alternatives. Lakefront and downtown park stops work best when they support pacing rather than create a long weather-dependent route."
   }
 ]

@@ -96,6 +96,10 @@ def compact_rag_sources(state: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "city": metadata.get("city", ""),
                 "theme": metadata.get("theme", ""),
                 "rag_backend": metadata.get("rag_backend", ""),
+                "vector_rank": metadata.get("vector_rank"),
+                "rerank_score": metadata.get("rerank_score"),
+                "rerank_reasons": metadata.get("rerank_reasons", []),
+                "dedup_rank": metadata.get("dedup_rank"),
             }
         )
     return sources
@@ -267,6 +271,26 @@ def aggregate_results(entries: List[Dict[str, Any]]) -> Dict[str, Any]:
     recovered_runs = [entry for entry in entries if entry.get("recovered_after_retry")]
     recall_values = [value for entry in entries if (value := recall_for_entry(entry)) is not None]
     hit_values = [1.0 if value > 0 else 0.0 for value in recall_values]
+    retrieved_doc_id_lists = [
+        [
+            source.get("doc_id")
+            for source in entry.get("retrieved_rag_sources", [])
+            if source.get("doc_id")
+        ]
+        for entry in entries
+    ]
+    unique_doc_counts = [len(set(doc_ids)) for doc_ids in retrieved_doc_id_lists if doc_ids]
+    duplicate_doc_rates = [
+        (len(doc_ids) - len(set(doc_ids))) / len(doc_ids)
+        for doc_ids in retrieved_doc_id_lists
+        if doc_ids
+    ]
+    rerank_scores = [
+        float(source["rerank_score"])
+        for entry in entries
+        for source in entry.get("retrieved_rag_sources", [])
+        if source.get("rerank_score") is not None
+    ]
     return {
         "request_count": len(entries),
         "avg_latency_ms": round(statistics.fmean(latencies), 3) if latencies else 0.0,
@@ -354,6 +378,15 @@ def aggregate_results(entries: List[Dict[str, Any]]) -> Dict[str, Any]:
         "recall_labeled_request_count": len(recall_values),
         "retrieval_hit_rate": round(statistics.fmean(hit_values), 4) if hit_values else None,
         "retrieval_recall_at_4": round(statistics.fmean(recall_values), 4) if recall_values else None,
+        "retrieved_unique_doc_count_avg": round(statistics.fmean(unique_doc_counts), 4)
+        if unique_doc_counts
+        else 0.0,
+        "duplicate_doc_rate": round(statistics.fmean(duplicate_doc_rates), 4)
+        if duplicate_doc_rates
+        else 0.0,
+        "avg_rerank_score": round(statistics.fmean(rerank_scores), 4)
+        if rerank_scores
+        else None,
     }
 
 

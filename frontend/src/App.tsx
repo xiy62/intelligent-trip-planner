@@ -13,6 +13,7 @@ export default function App() {
         <nav className="app-nav">
           <Link to="/">Plan</Link>
           <Link to="/observability">Observability</Link>
+          <Link to="/rag-ingestion">RAG Ingestion</Link>
         </nav>
       </Header>
       <Content className="app-content">

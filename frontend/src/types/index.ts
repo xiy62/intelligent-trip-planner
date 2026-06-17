@@ -197,3 +197,84 @@ export interface ObservabilityResponse<T> {
   success: boolean
   data: T
 }
+
+export interface RAGDraft {
+  doc_id: string
+  country: string
+  city: string
+  district: string
+  theme: string[]
+  poi_names: string[]
+  best_for: string[]
+  recommended_duration: string
+  seasonality: string[]
+  transport_advice: string[]
+  planning_tips: string[]
+  source_type: string
+  source_url: string
+  language: string
+  last_verified_at: string
+  title: string
+  content: string
+  review_status: string
+  reviewer: string
+  review_notes: string
+  source_id: string
+  raw_html_path: string
+  raw_text_path: string
+  fetched_at: string
+}
+
+export interface RAGDraftSummary {
+  draft_id: string
+  doc_id: string
+  country: string
+  city: string
+  title: string
+  source_type: string
+  source_url: string
+  review_status: string
+  promoted: boolean
+  corpus_status: string
+  reviewer: string
+  updated_path: string
+  fetched_at: string
+}
+
+export interface RAGDraftDetail extends RAGDraftSummary {
+  draft: RAGDraft
+  extracted_text: string
+}
+
+export interface RAGPrefillEvidence {
+  field: string
+  suggestion: string
+  evidence: string
+}
+
+export interface RAGPrefillResponse {
+  suggested_draft: RAGDraft
+  field_evidence: RAGPrefillEvidence[]
+  warnings: string[]
+  source_char_count: number
+  used_char_count: number
+}
+
+export interface RAGPromoteResult {
+  country: string
+  scanned: number
+  approved: number
+  promoted: number
+  skipped_existing: number
+}
+
+export interface RAGIngestionJob {
+  job_id: string
+  job_type: string
+  status: 'queued' | 'running' | 'succeeded' | 'failed'
+  started_at: number
+  finished_at: number
+  message: string
+  error: string
+  created_at: number
+}

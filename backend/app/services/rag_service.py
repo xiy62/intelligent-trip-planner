@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -12,6 +13,32 @@ from pydantic import BaseModel, Field
 from ..config import get_settings
 from ..models.langgraph_state import AttractionCandidate, RAGChunk
 from ..models.schemas import TripRequest
+
+RAG_STOPWORDS = {
+    "a",
+    "an",
+    "and",
+    "around",
+    "back",
+    "day",
+    "days",
+    "for",
+    "hotel",
+    "i",
+    "in",
+    "itinerary",
+    "me",
+    "near",
+    "of",
+    "on",
+    "or",
+    "plan",
+    "route",
+    "the",
+    "to",
+    "with",
+    "without",
+}
 
 
 DEFAULT_LOCAL_KNOWLEDGE = [
@@ -146,13 +173,22 @@ class TravelRAGService:
         query = self.build_query(request, attraction_candidates)
         vectorstore = self._get_vectorstore()
         try:
-            docs = vectorstore.similarity_search(query, k=k, filter={"city": request.city})
+            docs = vectorstore.similarity_search(
+                query,
+                k=max(k * 3, 12),
+                filter={"city": request.city},
+            )
         except Exception:
             docs = []
 
         chunks: List[RAGChunk] = []
-        for index, doc in enumerate(docs):
-            metadata = dict(doc.metadata)
+        ranked_docs = self._rerank_and_dedup_docs(
+            request=request,
+            docs=docs,
+            attraction_candidates=attraction_candidates,
+            k=k,
+        )
+        for index, (doc, metadata) in enumerate(ranked_docs):
             chunk_id = str(metadata.get("chunk_id") or f"{metadata.get('doc_id', 'doc')}-{index}")
             chunks.append(
                 RAGChunk(
@@ -180,6 +216,129 @@ class TravelRAGService:
         if request.free_text_input:
             terms.append(request.free_text_input)
         return " ".join(term for term in terms if term)
+
+    def _rerank_and_dedup_docs(
+        self,
+        *,
+        request: TripRequest,
+        docs: List[Any],
+        attraction_candidates: List[AttractionCandidate],
+        k: int,
+    ) -> List[tuple[Any, Dict[str, Any]]]:
+        request_terms = self._request_terms(request, attraction_candidates)
+        scored_docs = []
+        for vector_rank, doc in enumerate(docs, start=1):
+            metadata = dict(doc.metadata)
+            score, reasons = self._score_rag_doc(
+                request=request,
+                request_terms=request_terms,
+                doc=doc,
+                metadata=metadata,
+                vector_rank=vector_rank,
+            )
+            metadata["vector_rank"] = vector_rank
+            metadata["rerank_score"] = round(score, 4)
+            metadata["rerank_reasons"] = reasons
+            scored_docs.append((score, vector_rank, doc, metadata))
+
+        scored_docs.sort(key=lambda item: (-item[0], item[1]))
+        selected: List[tuple[Any, Dict[str, Any]]] = []
+        selected_doc_ids = set()
+        selected_chunk_ids = set()
+
+        for _, _, doc, metadata in scored_docs:
+            doc_id = str(metadata.get("doc_id", ""))
+            chunk_id = str(metadata.get("chunk_id", ""))
+            if doc_id and doc_id in selected_doc_ids:
+                continue
+            selected.append((doc, metadata))
+            if doc_id:
+                selected_doc_ids.add(doc_id)
+            if chunk_id:
+                selected_chunk_ids.add(chunk_id)
+            if len(selected) >= k:
+                break
+
+        if len(selected) < k:
+            for _, _, doc, metadata in scored_docs:
+                chunk_id = str(metadata.get("chunk_id", ""))
+                if chunk_id and chunk_id in selected_chunk_ids:
+                    continue
+                selected.append((doc, metadata))
+                if chunk_id:
+                    selected_chunk_ids.add(chunk_id)
+                if len(selected) >= k:
+                    break
+
+        for dedup_rank, (_, metadata) in enumerate(selected, start=1):
+            metadata["dedup_rank"] = dedup_rank
+        return selected
+
+    def _score_rag_doc(
+        self,
+        *,
+        request: TripRequest,
+        request_terms: set[str],
+        doc: Any,
+        metadata: Dict[str, Any],
+        vector_rank: int,
+    ) -> tuple[float, List[str]]:
+        score = max(0.0, 1.0 - ((vector_rank - 1) * 0.04))
+        reasons = [f"vector_rank:{vector_rank}"]
+
+        if metadata.get("city") == request.city:
+            score += 0.3
+            reasons.append("city_exact")
+
+        request_language = "en" if request.city.isascii() else "zh"
+        if metadata.get("language") == request_language:
+            score += 0.1
+            reasons.append(f"language:{request_language}")
+
+        theme_terms = self._tokenize(str(metadata.get("theme", "")))
+        theme_overlap = request_terms & theme_terms
+        if theme_overlap:
+            score += min(0.75, 0.25 * len(theme_overlap))
+            reasons.append(f"theme_overlap:{','.join(sorted(theme_overlap))}")
+
+        poi_terms = self._tokenize(str(metadata.get("poi_names", "")))
+        poi_overlap = request_terms & poi_terms
+        if poi_overlap:
+            score += min(0.45, 0.15 * len(poi_overlap))
+            reasons.append(f"poi_overlap:{','.join(sorted(poi_overlap))}")
+
+        content_terms = self._tokenize(
+            f"{metadata.get('title', '')} {doc.page_content}"
+        )
+        content_overlap = request_terms & content_terms
+        if content_overlap:
+            score += min(0.5, 0.05 * len(content_overlap))
+            reasons.append(f"content_overlap:{','.join(sorted(content_overlap)[:8])}")
+
+        return score, reasons
+
+    def _request_terms(
+        self,
+        request: TripRequest,
+        attraction_candidates: List[AttractionCandidate],
+    ) -> set[str]:
+        values = [
+            request.city,
+            request.transportation,
+            request.accommodation,
+            request.free_text_input,
+            *(request.preferences or []),
+            *(candidate.name for candidate in attraction_candidates[:5] if candidate.name),
+        ]
+        return self._tokenize(" ".join(value for value in values if value))
+
+    def _tokenize(self, value: str) -> set[str]:
+        terms = set()
+        for token in re.findall(r"[a-z0-9]+|[\u4e00-\u9fff]{2,}", value.lower()):
+            if len(token) < 2 or token in RAG_STOPWORDS:
+                continue
+            terms.add(token)
+        return terms
 
     def has_index(self) -> bool:
         return self.persist_directory.exists() and any(self.persist_directory.iterdir())

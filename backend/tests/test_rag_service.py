@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 
 from app.models.schemas import TripRequest
@@ -98,3 +99,81 @@ class RAGServiceTests(unittest.TestCase):
             self.assertEqual(chunks[0].metadata["rag_backend"], "chroma_retrieval")
             self.assertEqual(chunks[0].metadata["city"], "New York")
             self.assertEqual(chunks[0].metadata["language"], "en")
+
+    def test_rerank_and_dedup_prefers_unique_matching_documents(self):
+        service = TravelRAGService(embedding_function=FakeEmbeddings())
+        request = TripRequest(
+            city="New York",
+            start_date="2026-07-01",
+            end_date="2026-07-02",
+            travel_days=2,
+            transportation="subway and walking",
+            accommodation="mid-range hotel",
+            preferences=["food", "parks"],
+            free_text_input="I want Brooklyn food and park time.",
+        )
+        docs = [
+            Document(
+                page_content="General New York sightseeing.",
+                metadata={
+                    "chunk_id": "doc-a-overview",
+                    "doc_id": "doc-a",
+                    "city": "New York",
+                    "theme": "classic sightseeing",
+                    "poi_names": "Times Square",
+                    "language": "en",
+                    "title": "General",
+                },
+            ),
+            Document(
+                page_content="Another chunk from the same generic document.",
+                metadata={
+                    "chunk_id": "doc-a-planning",
+                    "doc_id": "doc-a",
+                    "city": "New York",
+                    "theme": "classic sightseeing",
+                    "poi_names": "Times Square",
+                    "language": "en",
+                    "title": "General Planning",
+                },
+            ),
+            Document(
+                page_content="Brooklyn food neighborhoods and waterfront walking.",
+                metadata={
+                    "chunk_id": "doc-b-overview",
+                    "doc_id": "doc-b",
+                    "city": "New York",
+                    "theme": "food,neighborhoods,citywalk",
+                    "poi_names": "Brooklyn,DUMBO",
+                    "language": "en",
+                    "title": "Brooklyn Food",
+                },
+            ),
+            Document(
+                page_content="Central Park and relaxed outdoor time.",
+                metadata={
+                    "chunk_id": "doc-c-overview",
+                    "doc_id": "doc-c",
+                    "city": "New York",
+                    "theme": "parks,outdoors",
+                    "poi_names": "Central Park",
+                    "language": "en",
+                    "title": "Parks",
+                },
+            ),
+        ]
+
+        selected = service._rerank_and_dedup_docs(
+            request=request,
+            docs=docs,
+            attraction_candidates=[],
+            k=3,
+        )
+        selected_doc_ids = [metadata["doc_id"] for _, metadata in selected]
+
+        self.assertEqual(len(selected_doc_ids), len(set(selected_doc_ids)))
+        self.assertIn("doc-b", selected_doc_ids)
+        self.assertIn("doc-c", selected_doc_ids)
+        self.assertTrue(all("rerank_score" in metadata for _, metadata in selected))
+        self.assertTrue(all("vector_rank" in metadata for _, metadata in selected))
+        self.assertEqual([metadata["dedup_rank"] for _, metadata in selected], [1, 2, 3])

@@ -6,6 +6,7 @@ import 'antd/dist/reset.css'
 import App from './App'
 import Home from './views/Home'
 import Observability from './views/Observability'
+import RAGIngestion from './views/RAGIngestion'
 import Result from './views/Result'
 import './styles.css'
 
@@ -16,7 +17,8 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Home /> },
       { path: 'result', element: <Result /> },
-      { path: 'observability', element: <Observability /> }
+      { path: 'observability', element: <Observability /> },
+      { path: 'rag-ingestion', element: <RAGIngestion /> }
     ]
   }
 ])
