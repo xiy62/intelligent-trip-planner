@@ -645,6 +645,10 @@ class LangGraphTripPlanner:
                 metrics.started_at = time.time()
         elapsed_ms = (time.perf_counter() - started_at) * 1000.0
         metrics.node_latency_ms[node_name] = round(elapsed_ms, 3)
+        metrics.node_total_latency_ms[node_name] = round(
+            metrics.node_total_latency_ms.get(node_name, 0.0) + elapsed_ms,
+            3,
+        )
         metrics.node_attempts[node_name] = metrics.node_attempts.get(node_name, 0) + 1
         return metrics
 

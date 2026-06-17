@@ -142,6 +142,7 @@ class RunMetrics(BaseModel):
     ended_at: float = 0.0
     end_to_end_ms: float = 0.0
     node_latency_ms: Dict[str, float] = Field(default_factory=dict)
+    node_total_latency_ms: Dict[str, float] = Field(default_factory=dict)
     node_attempts: Dict[str, int] = Field(default_factory=dict)
     evaluation_pass_count: int = 0
     evaluation_attempt_count: int = 0
@@ -178,6 +179,8 @@ def merge_run_metrics(left: Optional[RunMetrics], right: Optional[RunMetrics]) -
     merged.ended_at = max(left.ended_at, right.ended_at)
     merged.end_to_end_ms = max(left.end_to_end_ms, right.end_to_end_ms)
     merged.node_latency_ms.update(right.node_latency_ms)
+    for key, value in right.node_total_latency_ms.items():
+        merged.node_total_latency_ms[key] = max(merged.node_total_latency_ms.get(key, 0.0), value)
     for key, value in right.node_attempts.items():
         merged.node_attempts[key] = max(merged.node_attempts.get(key, 0), value)
 
