@@ -17,6 +17,7 @@ from scripts.benchmark_trip_planners import (
     load_benchmark_cases,
     plan_with_langgraph,
     recall_for_entry,
+    retrieval_stage_latency_ms,
 )
 
 
@@ -48,6 +49,8 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
         entries = [
             {
                 "latency_ms": 10.0,
+                "parallel_retrieval_enabled": True,
+                "retrieval_stage_latency_ms": 4.0,
                 "first_evaluation_pass": True,
                 "recovered_after_retry": False,
                 "fallback": False,
@@ -62,6 +65,8 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
             },
             {
                 "latency_ms": 20.0,
+                "parallel_retrieval_enabled": True,
+                "retrieval_stage_latency_ms": 8.0,
                 "report": {
                     "passed": False,
                     "hard_failures": [],
@@ -76,6 +81,8 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
             },
             {
                 "latency_ms": 30.0,
+                "parallel_retrieval_enabled": True,
+                "retrieval_stage_latency_ms": 12.0,
                 "report": {
                     "passed": True,
                     "hard_failures": [],
@@ -93,6 +100,8 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
         summary = aggregate_results(entries)
 
         self.assertEqual(summary["recall_labeled_request_count"], 2)
+        self.assertTrue(summary["parallel_retrieval_enabled"])
+        self.assertEqual(summary["avg_retrieval_stage_latency_ms"], 8.0)
         self.assertEqual(summary["retrieval_hit_rate"], 1.0)
         self.assertEqual(summary["retrieval_recall_at_4"], 0.75)
         self.assertIn("hard_validation_pass_rate", summary)
@@ -186,6 +195,18 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
         self.assertEqual(sources[0]["rerank_score"], 1.25)
         self.assertEqual(sources[0]["dedup_rank"], 1)
 
+    def test_retrieval_stage_latency_uses_parallel_critical_path(self):
+        latency = retrieval_stage_latency_ms(
+            {
+                "retrieve_attractions": 120.0,
+                "retrieve_rag_context": 80.0,
+                "retrieve_hotels": 350.0,
+                "retrieve_weather": 40.0,
+            }
+        )
+
+        self.assertEqual(latency, 350.0)
+
     def test_plan_with_langgraph_persists_observability_when_enabled(self):
         request = TripRequest(
             city="北京",
@@ -226,6 +247,7 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
 
         class FakePlanner:
             rag_mode = "chroma_retrieval"
+            parallel_retrieval_enabled = True
 
             def invoke_graph(self, request, thread_id=None):
                 return state
@@ -252,6 +274,8 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
             benchmark_trip_planners.get_observability_service = original_getter
 
         self.assertEqual(result["observability_run_id"], "obs-run-1")
+        self.assertTrue(result["parallel_retrieval_enabled"])
+        self.assertEqual(result["retrieval_stage_latency_ms"], 0.0)
         self.assertEqual(fake_service.calls[0][1]["source"], "benchmark")
         self.assertEqual(fake_service.calls[0][1]["rag_mode"], "chroma_retrieval")
 
@@ -269,6 +293,7 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
 
         class FailingPlanner:
             rag_mode = "chroma_retrieval"
+            parallel_retrieval_enabled = True
 
             def invoke_graph(self, request, thread_id=None):
                 raise TimeoutError("external service timed out")

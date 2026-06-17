@@ -130,6 +130,22 @@ def quality_warning_category(warning: str) -> str:
     return "other"
 
 
+def retrieval_stage_latency_ms(node_latency_ms: Dict[str, float]) -> float:
+    """Estimate retrieval critical-path latency for the current graph topology."""
+    attraction_and_rag = (
+        float(node_latency_ms.get("retrieve_attractions", 0.0))
+        + float(node_latency_ms.get("retrieve_rag_context", 0.0))
+    )
+    return round(
+        max(
+            attraction_and_rag,
+            float(node_latency_ms.get("retrieve_hotels", 0.0)),
+            float(node_latency_ms.get("retrieve_weather", 0.0)),
+        ),
+        3,
+    )
+
+
 def plan_with_langgraph(
     planner: LangGraphTripPlanner,
     request: TripRequest,
@@ -145,6 +161,7 @@ def plan_with_langgraph(
     except Exception as exc:
         return {
             "planner": planner.rag_mode,
+            "parallel_retrieval_enabled": bool(getattr(planner, "parallel_retrieval_enabled", False)),
             "request": request.model_dump(),
             "expected_rag_doc_ids": list(benchmark_metadata.get("expected_rag_doc_ids", [])),
             "expected_rag_themes": list(benchmark_metadata.get("expected_rag_themes", [])),
@@ -169,6 +186,7 @@ def plan_with_langgraph(
             "retry_counts": {},
             "decision_trace": [f"benchmark_runtime_error: {exc.__class__.__name__}"],
             "node_latency_ms": {},
+            "retrieval_stage_latency_ms": 0.0,
             "final_plan_summary": {"days": 0, "city": request.city, "attractions": 0, "hotels": 0},
             "error": {
                 "type": exc.__class__.__name__,
@@ -180,6 +198,7 @@ def plan_with_langgraph(
     metrics = state.get("metrics")
     result = {
         "planner": planner.rag_mode,
+        "parallel_retrieval_enabled": bool(getattr(planner, "parallel_retrieval_enabled", False)),
         "request": request.model_dump(),
         "expected_rag_doc_ids": list(benchmark_metadata.get("expected_rag_doc_ids", [])),
         "expected_rag_themes": list(benchmark_metadata.get("expected_rag_themes", [])),
@@ -194,6 +213,9 @@ def plan_with_langgraph(
         "retry_counts": state.get("retry_counts").model_dump() if state.get("retry_counts") else {},
         "decision_trace": list(state.get("decision_trace", [])),
         "node_latency_ms": metrics.node_latency_ms if metrics is not None else {},
+        "retrieval_stage_latency_ms": retrieval_stage_latency_ms(metrics.node_latency_ms)
+        if metrics is not None
+        else 0.0,
         "final_plan_summary": summarize_trip_plan(final_plan),
     }
     if persist_observability:
@@ -233,6 +255,7 @@ def is_likely_fallback_plan(plan: TripPlan, request: TripRequest) -> bool:
 
 def aggregate_results(entries: List[Dict[str, Any]]) -> Dict[str, Any]:
     latencies = [entry["latency_ms"] for entry in entries]
+    retrieval_stage_latencies = [entry.get("retrieval_stage_latency_ms", 0.0) for entry in entries]
     reports = [entry.get("report", {}) for entry in entries]
     hard_failures = [failure for report in reports for failure in report.get("hard_failures", [])]
     grounded_scores = [report.get("scores", {}).get("grounding_score", 0.0) for report in reports]
@@ -293,7 +316,11 @@ def aggregate_results(entries: List[Dict[str, Any]]) -> Dict[str, Any]:
     ]
     return {
         "request_count": len(entries),
+        "parallel_retrieval_enabled": bool(entries and entries[0].get("parallel_retrieval_enabled")),
         "avg_latency_ms": round(statistics.fmean(latencies), 3) if latencies else 0.0,
+        "avg_retrieval_stage_latency_ms": round(statistics.fmean(retrieval_stage_latencies), 3)
+        if retrieval_stage_latencies
+        else 0.0,
         "p50_latency_ms": round(percentile(latencies, 0.5), 3),
         "p95_latency_ms": round(percentile(latencies, 0.95), 3),
         "initial_failure_rate": round(len(initially_failed_runs) / len(entries), 4) if entries else 0.0,

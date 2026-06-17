@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Literal, Optional, TypedDict
+from typing import Annotated, Any, Dict, List, Literal, Optional, TypedDict
 
 from pydantic import BaseModel, Field
 
@@ -155,6 +155,61 @@ class RunMetrics(BaseModel):
     grounding_failure_count: int = 0
 
 
+def merge_retry_state(left: Optional[RetryState], right: Optional[RetryState]) -> RetryState:
+    """Merge retry counts from parallel graph branches without double-counting shared history."""
+    if left is None:
+        return right or RetryState()
+    if right is None:
+        return left
+    merged = left.model_copy(deep=True)
+    for field in RetryState.model_fields:
+        setattr(merged, field, max(getattr(left, field, 0), getattr(right, field, 0)))
+    return merged
+
+
+def merge_run_metrics(left: Optional[RunMetrics], right: Optional[RunMetrics]) -> RunMetrics:
+    """Merge run metrics emitted by parallel graph branches."""
+    if left is None:
+        return right or RunMetrics()
+    if right is None:
+        return left
+    merged = left.model_copy(deep=True)
+    merged.started_at = left.started_at or right.started_at
+    merged.ended_at = max(left.ended_at, right.ended_at)
+    merged.end_to_end_ms = max(left.end_to_end_ms, right.end_to_end_ms)
+    merged.node_latency_ms.update(right.node_latency_ms)
+    for key, value in right.node_attempts.items():
+        merged.node_attempts[key] = max(merged.node_attempts.get(key, 0), value)
+
+    merged.evaluation_pass_count = max(left.evaluation_pass_count, right.evaluation_pass_count)
+    merged.evaluation_attempt_count = max(left.evaluation_attempt_count, right.evaluation_attempt_count)
+    merged.first_evaluation_pass = (
+        left.first_evaluation_pass
+        if left.first_evaluation_pass is not None
+        else right.first_evaluation_pass
+    )
+    merged.final_evaluation_pass = (
+        right.final_evaluation_pass
+        if right.final_evaluation_pass is not None
+        else left.final_evaluation_pass
+    )
+    merged.recovered_after_retry = left.recovered_after_retry or right.recovered_after_retry
+    merged.fallback_count = max(left.fallback_count, right.fallback_count)
+    merged.schema_failure_count = max(left.schema_failure_count, right.schema_failure_count)
+    merged.date_coverage_failure_count = max(left.date_coverage_failure_count, right.date_coverage_failure_count)
+    merged.budget_consistency_failure_count = max(
+        left.budget_consistency_failure_count,
+        right.budget_consistency_failure_count,
+    )
+    merged.grounding_failure_count = max(left.grounding_failure_count, right.grounding_failure_count)
+    return merged
+
+
+def merge_decision_trace(left: Optional[List[str]], right: Optional[List[str]]) -> List[str]:
+    """Append trace events from parallel branches in a stable, compact order."""
+    return list(left or []) + list(right or [])
+
+
 class TripGraphState(TypedDict, total=False):
     """Typed LangGraph state."""
 
@@ -170,9 +225,9 @@ class TripGraphState(TypedDict, total=False):
     draft_plan: Optional[TripPlan]
     evaluation_report: EvaluationReport
     evaluation_history: List[EvaluationReport]
-    retry_counts: RetryState
-    decision_trace: List[str]
-    metrics: RunMetrics
+    retry_counts: Annotated[RetryState, merge_retry_state]
+    decision_trace: Annotated[List[str], merge_decision_trace]
+    metrics: Annotated[RunMetrics, merge_run_metrics]
     final_plan: Optional[TripPlan]
     conversation_id: str
     memory_applied: bool

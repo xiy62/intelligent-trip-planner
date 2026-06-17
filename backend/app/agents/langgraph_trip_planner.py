@@ -118,6 +118,7 @@ class LangGraphTripPlanner:
         self.rag_mode = rag_mode
         self.rag_service = rag_service or get_rag_service()
         self.memory_service = memory_service or get_memory_service()
+        self.parallel_retrieval_enabled = True
         self.checkpointer = MemorySaver(
             serde=JsonPlusSerializer(allowed_msgpack_modules=ALLOWED_MSGPACK_MODULES)
         )
@@ -130,6 +131,9 @@ class LangGraphTripPlanner:
         builder.add_node("retrieve_hotels", self.retrieve_hotels)
         builder.add_node("retrieve_weather", self.retrieve_weather)
         builder.add_node("retrieve_rag_context", self.retrieve_rag_context)
+        builder.add_node("retry_retrieve_attractions", self.retrieve_attractions)
+        builder.add_node("retry_retrieve_hotels", self.retrieve_hotels)
+        builder.add_node("retry_retrieve_rag_context", self.retrieve_rag_context)
         builder.add_node("plan_itinerary", self.plan_itinerary)
         builder.add_node("evaluate_itinerary", self.evaluate_itinerary)
         builder.add_node("finalize_response", self.finalize_response)
@@ -137,10 +141,13 @@ class LangGraphTripPlanner:
 
         builder.add_edge(START, "prepare_request")
         builder.add_edge("prepare_request", "retrieve_attractions")
-        builder.add_edge("retrieve_attractions", "retrieve_hotels")
-        builder.add_edge("retrieve_hotels", "retrieve_weather")
-        builder.add_edge("retrieve_weather", "retrieve_rag_context")
-        builder.add_edge("retrieve_rag_context", "plan_itinerary")
+        builder.add_edge("prepare_request", "retrieve_hotels")
+        builder.add_edge("prepare_request", "retrieve_weather")
+        builder.add_edge("retrieve_attractions", "retrieve_rag_context")
+        builder.add_edge(
+            ["retrieve_hotels", "retrieve_weather", "retrieve_rag_context"],
+            "plan_itinerary",
+        )
         builder.add_edge("plan_itinerary", "evaluate_itinerary")
         builder.add_conditional_edges(
             "evaluate_itinerary",
@@ -148,11 +155,14 @@ class LangGraphTripPlanner:
             {
                 "finalize_response": "finalize_response",
                 "plan_itinerary": "plan_itinerary",
-                "retrieve_attractions": "retrieve_attractions",
-                "retrieve_hotels": "retrieve_hotels",
+                "retrieve_attractions": "retry_retrieve_attractions",
+                "retrieve_hotels": "retry_retrieve_hotels",
                 "fallback_response": "fallback_response",
             },
         )
+        builder.add_edge("retry_retrieve_attractions", "retry_retrieve_rag_context")
+        builder.add_edge("retry_retrieve_rag_context", "plan_itinerary")
+        builder.add_edge("retry_retrieve_hotels", "plan_itinerary")
         builder.add_edge("finalize_response", END)
         builder.add_edge("fallback_response", END)
         return builder.compile(checkpointer=self.checkpointer)
@@ -195,12 +205,16 @@ class LangGraphTripPlanner:
             "workflow": "langgraph_native",
             "checkpointer": self.checkpointer.__class__.__name__,
             "rag_mode": self.rag_mode,
+            "parallel_retrieval_enabled": self.parallel_retrieval_enabled,
             "nodes": [
                 "prepare_request",
                 "retrieve_attractions",
                 "retrieve_hotels",
                 "retrieve_weather",
                 "retrieve_rag_context",
+                "retry_retrieve_attractions",
+                "retry_retrieve_hotels",
+                "retry_retrieve_rag_context",
                 "plan_itinerary",
                 "evaluate_itinerary",
                 "finalize_response",
@@ -645,9 +659,7 @@ class LangGraphTripPlanner:
         return retry_counts
 
     def _append_trace(self, state: TripGraphState, message: str) -> List[str]:
-        trace = list(state.get("decision_trace", []))
-        trace.append(message)
-        return trace
+        return [message]
 
     def _normalize_entity_name(self, value: str) -> str:
         return normalize_entity_name(value)
