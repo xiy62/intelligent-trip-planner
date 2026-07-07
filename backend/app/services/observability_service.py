@@ -511,6 +511,8 @@ class ObservabilityService:
                     "title": chunk.title,
                     "source_url": metadata.get("source_url", ""),
                     "section": metadata.get("section", ""),
+                    "sections": metadata.get("sections", []),
+                    "packed_section_count": metadata.get("packed_section_count", 1),
                     "city": metadata.get("city", ""),
                     "theme": metadata.get("theme", ""),
                     "rag_backend": metadata.get("rag_backend", ""),

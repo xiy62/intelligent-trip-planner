@@ -10,7 +10,9 @@ from pathlib import Path
 from app.models.langgraph_state import RAGChunk
 from app.models.langgraph_state import EvaluationReport, EvaluationScores, RetryState, RunMetrics
 from app.models.schemas import TripRequest
+from app.services.rag_service import TravelRAGService
 from scripts import benchmark_trip_planners
+from scripts.benchmark_rag_ranking_ablation import normalize_claim_text
 from scripts.benchmark_trip_planners import (
     aggregate_results,
     compact_rag_sources,
@@ -142,7 +144,44 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
         self.assertEqual(len(cases), 1)
         self.assertEqual(cases[0].request.city, "北京")
         self.assertEqual(cases[0].expected_rag_doc_ids, ["beijing-history-core-001"])
+        self.assertEqual(cases[0].expected_rag_sections, [])
+        self.assertEqual(cases[0].expected_rag_claims, [])
         self.assertFalse(hasattr(cases[0].request, "expected_rag_doc_ids"))
+
+    def test_loader_parses_section_and_claim_labels(self):
+        payload = [
+            {
+                "city": "Chicago",
+                "start_date": "2026-06-01",
+                "end_date": "2026-06-02",
+                "travel_days": 2,
+                "transportation": "public transit",
+                "accommodation": "mid-range hotel",
+                "preferences": ["museums"],
+                "free_text_input": "Museum Campus by water taxi",
+                "expected_rag_doc_ids": ["chicago-chicago-001"],
+                "expected_rag_sections": [
+                    {"doc_id": "chicago-chicago-001", "section": "transport"}
+                ],
+                "expected_rag_claims": [
+                    {
+                        "claim_id": "water-taxi",
+                        "doc_id": "chicago-chicago-001",
+                        "section": "transport",
+                        "category": "transport",
+                        "evidence_quote": "You can get to the Chicago Museum Campus by Shoreline Sightseeing Water Taxi.",
+                    }
+                ],
+            }
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dataset = Path(tmpdir) / "dataset.json"
+            dataset.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            cases = load_benchmark_cases(dataset)
+
+        self.assertEqual(cases[0].expected_rag_sections[0]["section"], "transport")
+        self.assertEqual(cases[0].expected_rag_claims[0]["claim_id"], "water-taxi")
+        self.assertFalse(hasattr(cases[0].request, "expected_rag_claims"))
 
     def test_us_rag_benchmark_labels_reference_existing_corpus_docs(self):
         repo_root = Path(__file__).resolve().parents[1]
@@ -161,6 +200,41 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
         self.assertEqual(len(cases), 15)
         self.assertTrue(expected_doc_ids)
         self.assertTrue(expected_doc_ids.issubset(corpus_doc_ids))
+
+    def test_us_hard_rag_benchmark_labels_reference_existing_sections_and_quotes(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        dataset_path = repo_root / "benchmarks" / "trip_requests.us_rag_hard_benchmark.json"
+        service = TravelRAGService(knowledge_root=repo_root / "data" / "knowledge")
+        section_texts = {
+            (doc.doc_id, section): text
+            for doc in service.load_knowledge_docs()
+            if doc.country == "US"
+            for section, text in service._iter_document_sections(doc)
+        }
+        valid_sections = {"overview", "planning_tips", "transport", "seasonality"}
+
+        cases = load_benchmark_cases(dataset_path)
+        expected_doc_ids = {
+            doc_id for case in cases for doc_id in case.expected_rag_doc_ids
+        }
+
+        self.assertEqual(len(cases), 9)
+        self.assertTrue(expected_doc_ids)
+        self.assertTrue(all(case.expected_rag_sections for case in cases))
+        self.assertTrue(all(case.expected_rag_claims for case in cases))
+
+        for case in cases:
+            for label in case.expected_rag_sections:
+                key = (label["doc_id"], label["section"])
+                self.assertIn(label["section"], valid_sections)
+                self.assertIn(key, section_texts)
+            for claim in case.expected_rag_claims:
+                key = (claim["doc_id"], claim["section"])
+                self.assertIn(key, section_texts)
+                self.assertIn(
+                    normalize_claim_text(claim["evidence_quote"]),
+                    normalize_claim_text(section_texts[key]),
+                )
 
     def test_compact_rag_sources_serializes_chunk_metadata(self):
         state = {

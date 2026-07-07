@@ -38,12 +38,16 @@ class BenchmarkCase:
     request: TripRequest
     expected_rag_doc_ids: List[str] = field(default_factory=list)
     expected_rag_themes: List[str] = field(default_factory=list)
+    expected_rag_sections: List[Dict[str, str]] = field(default_factory=list)
+    expected_rag_claims: List[Dict[str, str]] = field(default_factory=list)
     benchmark_note: str = ""
 
     def metadata_dump(self) -> Dict[str, Any]:
         return {
             "expected_rag_doc_ids": self.expected_rag_doc_ids,
             "expected_rag_themes": self.expected_rag_themes,
+            "expected_rag_sections": self.expected_rag_sections,
+            "expected_rag_claims": self.expected_rag_claims,
             "benchmark_note": self.benchmark_note,
         }
 
@@ -58,6 +62,8 @@ def load_benchmark_cases(dataset_path: Path) -> List[BenchmarkCase]:
                 request=TripRequest(**request_payload),
                 expected_rag_doc_ids=list(item.get("expected_rag_doc_ids", [])),
                 expected_rag_themes=list(item.get("expected_rag_themes", [])),
+                expected_rag_sections=list(item.get("expected_rag_sections", [])),
+                expected_rag_claims=list(item.get("expected_rag_claims", [])),
                 benchmark_note=str(item.get("benchmark_note", "")),
             )
         )
@@ -93,6 +99,8 @@ def compact_rag_sources(state: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "title": chunk.title,
                 "source_url": metadata.get("source_url", ""),
                 "section": metadata.get("section", ""),
+                "sections": metadata.get("sections", []),
+                "packed_section_count": metadata.get("packed_section_count", 1),
                 "city": metadata.get("city", ""),
                 "theme": metadata.get("theme", ""),
                 "rag_backend": metadata.get("rag_backend", ""),
@@ -165,6 +173,8 @@ def plan_with_langgraph(
             "request": request.model_dump(),
             "expected_rag_doc_ids": list(benchmark_metadata.get("expected_rag_doc_ids", [])),
             "expected_rag_themes": list(benchmark_metadata.get("expected_rag_themes", [])),
+            "expected_rag_sections": list(benchmark_metadata.get("expected_rag_sections", [])),
+            "expected_rag_claims": list(benchmark_metadata.get("expected_rag_claims", [])),
             "benchmark_note": benchmark_metadata.get("benchmark_note", ""),
             "retrieved_rag_sources": [],
             "latency_ms": round((time.perf_counter() - started_at) * 1000.0, 3),
@@ -202,6 +212,8 @@ def plan_with_langgraph(
         "request": request.model_dump(),
         "expected_rag_doc_ids": list(benchmark_metadata.get("expected_rag_doc_ids", [])),
         "expected_rag_themes": list(benchmark_metadata.get("expected_rag_themes", [])),
+        "expected_rag_sections": list(benchmark_metadata.get("expected_rag_sections", [])),
+        "expected_rag_claims": list(benchmark_metadata.get("expected_rag_claims", [])),
         "benchmark_note": benchmark_metadata.get("benchmark_note", ""),
         "retrieved_rag_sources": compact_rag_sources(state),
         "latency_ms": round((metrics.end_to_end_ms if metrics else 0.0), 3),

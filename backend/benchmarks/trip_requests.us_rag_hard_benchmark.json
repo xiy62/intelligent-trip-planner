@@ -1,0 +1,299 @@
+[
+  {
+    "city": "New York",
+    "start_date": "2026-06-25",
+    "end_date": "2026-06-26",
+    "travel_days": 2,
+    "transportation": "subway and walking",
+    "accommodation": "family-friendly hotel",
+    "preferences": ["family", "arts", "parks", "rainy day"],
+    "free_text_input": "Plan a family-friendly Upper West Side day that still works if it rains, with museums, arts, and a Central Park break.",
+    "expected_rag_doc_ids": ["new-york-family-arts-parks-005"],
+    "expected_rag_themes": ["family", "arts", "parks"],
+    "expected_rag_sections": [
+      {"doc_id": "new-york-family-arts-parks-005", "section": "seasonality"},
+      {"doc_id": "new-york-family-arts-parks-005", "section": "transport"}
+    ],
+    "expected_rag_claims": [
+      {
+        "claim_id": "ny-family-rainy-museums",
+        "doc_id": "new-york-family-arts-parks-005",
+        "section": "seasonality",
+        "category": "weather_backup",
+        "evidence_quote": "Rainy days should prioritize museums and indoor arts stops."
+      },
+      {
+        "claim_id": "ny-family-upper-west-side-cluster",
+        "doc_id": "new-york-family-arts-parks-005",
+        "section": "transport",
+        "category": "transport",
+        "evidence_quote": "Use the Upper West Side as a same-day cluster for museums, parks, and arts stops."
+      }
+    ],
+    "benchmark_note": "Hard NYC case: requires the family document's seasonality and transport sections, not just overview matching."
+  },
+  {
+    "city": "New York",
+    "start_date": "2026-06-25",
+    "end_date": "2026-06-26",
+    "travel_days": 2,
+    "transportation": "subway and rideshare",
+    "accommodation": "boutique hotel",
+    "preferences": ["skyline", "nightlife", "photography"],
+    "free_text_input": "I want a night-view plan with one strong skyline stop, dinner nearby, and a simple safe route back to the hotel.",
+    "expected_rag_doc_ids": ["new-york-skyline-nightlife-004"],
+    "expected_rag_themes": ["skyline", "nightlife", "photography"],
+    "expected_rag_sections": [
+      {"doc_id": "new-york-skyline-nightlife-004", "section": "planning_tips"},
+      {"doc_id": "new-york-skyline-nightlife-004", "section": "transport"}
+    ],
+    "expected_rag_claims": [
+      {
+        "claim_id": "ny-skyline-one-primary-viewpoint",
+        "doc_id": "new-york-skyline-nightlife-004",
+        "section": "planning_tips",
+        "category": "pacing",
+        "evidence_quote": "For night-view requests, pick one primary observation or waterfront viewpoint rather than stacking several paid viewpoints."
+      },
+      {
+        "claim_id": "ny-skyline-direct-return",
+        "doc_id": "new-york-skyline-nightlife-004",
+        "section": "transport",
+        "category": "transport",
+        "evidence_quote": "End the day near a direct subway or rideshare route back to the hotel."
+      }
+    ],
+    "benchmark_note": "Hard NYC case: tests skyline planning and return-route evidence rather than generic nightlife terms."
+  },
+  {
+    "city": "New York",
+    "start_date": "2026-06-25",
+    "end_date": "2026-06-26",
+    "travel_days": 2,
+    "transportation": "subway and walking",
+    "accommodation": "mid-range hotel",
+    "preferences": ["food", "neighborhoods", "citywalk"],
+    "free_text_input": "Keep a Brooklyn food and neighborhood day compact, with waterfront time but no repeated borough hopping.",
+    "expected_rag_doc_ids": ["new-york-brooklyn-food-neighborhoods-003"],
+    "expected_rag_themes": ["food", "neighborhoods", "citywalk"],
+    "expected_rag_sections": [
+      {"doc_id": "new-york-brooklyn-food-neighborhoods-003", "section": "planning_tips"},
+      {"doc_id": "new-york-brooklyn-food-neighborhoods-003", "section": "transport"}
+    ],
+    "expected_rag_claims": [
+      {
+        "claim_id": "ny-brooklyn-compact-areas",
+        "doc_id": "new-york-brooklyn-food-neighborhoods-003",
+        "section": "planning_tips",
+        "category": "pacing",
+        "evidence_quote": "For food and neighborhood requests, prefer one or two compact Brooklyn areas over scattered citywide stops."
+      },
+      {
+        "claim_id": "ny-brooklyn-avoid-borough-crossing",
+        "doc_id": "new-york-brooklyn-food-neighborhoods-003",
+        "section": "transport",
+        "category": "transport",
+        "evidence_quote": "Group Brooklyn waterfront and neighborhood stops together instead of crossing repeatedly between boroughs."
+      }
+    ],
+    "benchmark_note": "Hard NYC case: targets anti-backtracking transport evidence for Brooklyn food routes."
+  },
+  {
+    "city": "San Francisco",
+    "start_date": "2026-06-25",
+    "end_date": "2026-06-26",
+    "travel_days": 2,
+    "transportation": "public transit and rideshare",
+    "accommodation": "mid-range hotel",
+    "preferences": ["bridge views", "outdoors", "photography", "weather flexibility"],
+    "free_text_input": "Plan Golden Gate Bridge and Presidio viewpoints with flexibility for fog and wind, avoiding repeated cross-city transit.",
+    "expected_rag_doc_ids": ["san-francisco-golden-gate-bridge-presidio-004"],
+    "expected_rag_themes": ["bridge views", "outdoors", "photography"],
+    "expected_rag_sections": [
+      {"doc_id": "san-francisco-golden-gate-bridge-presidio-004", "section": "seasonality"},
+      {"doc_id": "san-francisco-golden-gate-bridge-presidio-004", "section": "transport"}
+    ],
+    "expected_rag_claims": [
+      {
+        "claim_id": "sf-bridge-fog-flexibility",
+        "doc_id": "san-francisco-golden-gate-bridge-presidio-004",
+        "section": "seasonality",
+        "category": "weather",
+        "evidence_quote": "Fog can obscure bridge views, so keep flexible timing for viewpoint stops."
+      },
+      {
+        "claim_id": "sf-bridge-presidio-cluster",
+        "doc_id": "san-francisco-golden-gate-bridge-presidio-004",
+        "section": "transport",
+        "category": "transport",
+        "evidence_quote": "Group Presidio, Crissy Field, and bridge viewpoints to reduce cross-city transit."
+      }
+    ],
+    "benchmark_note": "Hard SF case: tests fog/wind and bridge-cluster evidence."
+  },
+  {
+    "city": "San Francisco",
+    "start_date": "2026-06-25",
+    "end_date": "2026-06-26",
+    "travel_days": 2,
+    "transportation": "public transit",
+    "accommodation": "budget hotel",
+    "preferences": ["parks", "museums", "relaxed pace", "rainy day"],
+    "free_text_input": "Create a relaxed Golden Gate Park plan that can shift indoors if it rains and does not overload the day.",
+    "expected_rag_doc_ids": ["san-francisco-golden-gate-park-museums-002"],
+    "expected_rag_themes": ["parks", "museums", "outdoors"],
+    "expected_rag_sections": [
+      {"doc_id": "san-francisco-golden-gate-park-museums-002", "section": "seasonality"},
+      {"doc_id": "san-francisco-golden-gate-park-museums-002", "section": "planning_tips"}
+    ],
+    "expected_rag_claims": [
+      {
+        "claim_id": "sf-ggp-rainy-museums",
+        "doc_id": "san-francisco-golden-gate-park-museums-002",
+        "section": "seasonality",
+        "category": "weather_backup",
+        "evidence_quote": "Rainy days should emphasize museums and shorten garden or park walks."
+      },
+      {
+        "claim_id": "sf-ggp-relaxed-one-museum",
+        "doc_id": "san-francisco-golden-gate-park-museums-002",
+        "section": "planning_tips",
+        "category": "pacing",
+        "evidence_quote": "For a relaxed San Francisco day, combine one major museum with one or two park stops instead of trying to cover the entire city."
+      }
+    ],
+    "benchmark_note": "Hard SF case: section labels require rainy-day and relaxed-pacing evidence."
+  },
+  {
+    "city": "San Francisco",
+    "start_date": "2026-06-25",
+    "end_date": "2026-06-26",
+    "travel_days": 2,
+    "transportation": "walking and public transit",
+    "accommodation": "boutique hotel",
+    "preferences": ["culture", "food", "citywalk", "hills"],
+    "free_text_input": "Make a Chinatown and North Beach food-and-culture walk, accounting for hills and avoiding another distant neighborhood afterward.",
+    "expected_rag_doc_ids": ["san-francisco-chinatown-north-beach-culture-005"],
+    "expected_rag_themes": ["culture", "food", "citywalk"],
+    "expected_rag_sections": [
+      {"doc_id": "san-francisco-chinatown-north-beach-culture-005", "section": "seasonality"},
+      {"doc_id": "san-francisco-chinatown-north-beach-culture-005", "section": "transport"}
+    ],
+    "expected_rag_claims": [
+      {
+        "claim_id": "sf-chinatown-rain-hills",
+        "doc_id": "san-francisco-chinatown-north-beach-culture-005",
+        "section": "seasonality",
+        "category": "weather",
+        "evidence_quote": "Steep streets can feel harder in rain or strong wind."
+      },
+      {
+        "claim_id": "sf-chinatown-compact-cluster",
+        "doc_id": "san-francisco-chinatown-north-beach-culture-005",
+        "section": "transport",
+        "category": "transport",
+        "evidence_quote": "Chinatown and North Beach work well as a compact walking cluster."
+      }
+    ],
+    "benchmark_note": "Hard SF case: tests hill/weather context and compact walking cluster evidence."
+  },
+  {
+    "city": "Chicago",
+    "start_date": "2026-06-25",
+    "end_date": "2026-06-26",
+    "travel_days": 2,
+    "transportation": "public transit and water taxi",
+    "accommodation": "family-friendly hotel",
+    "preferences": ["museums", "lakefront", "culture", "water taxi"],
+    "free_text_input": "Plan a Museum Campus day with one or two major museums, a short lakefront break, and an optional water taxi approach.",
+    "expected_rag_doc_ids": ["chicago-museum-campus-culture-003", "chicago-chicago-001"],
+    "expected_rag_themes": ["museums", "culture", "lakefront"],
+    "expected_rag_sections": [
+      {"doc_id": "chicago-museum-campus-culture-003", "section": "planning_tips"},
+      {"doc_id": "chicago-chicago-001", "section": "transport"}
+    ],
+    "expected_rag_claims": [
+      {
+        "claim_id": "chi-museum-one-or-two",
+        "doc_id": "chicago-museum-campus-culture-003",
+        "section": "planning_tips",
+        "category": "pacing",
+        "evidence_quote": "For museum-heavy Chicago days, choose one or two major museums instead of trying to complete all Museum Campus venues."
+      },
+      {
+        "claim_id": "chi-museum-water-taxi",
+        "doc_id": "chicago-chicago-001",
+        "section": "transport",
+        "category": "transport",
+        "evidence_quote": "You can get to the Chicago Museum Campus by Shoreline Sightseeing Water Taxi."
+      }
+    ],
+    "benchmark_note": "Hard Chicago case: multi-document evidence combines curated Museum Campus pacing with newly ingested water-taxi advice."
+  },
+  {
+    "city": "Chicago",
+    "start_date": "2026-06-25",
+    "end_date": "2026-06-26",
+    "travel_days": 2,
+    "transportation": "rideshare and walking",
+    "accommodation": "boutique hotel",
+    "preferences": ["food", "neighborhoods", "nightlife", "simple return"],
+    "free_text_input": "Build a West Loop and Fulton Market food-nightlife evening with simple transportation back after dinner.",
+    "expected_rag_doc_ids": ["chicago-west-loop-food-neighborhoods-004"],
+    "expected_rag_themes": ["food", "neighborhoods", "nightlife"],
+    "expected_rag_sections": [
+      {"doc_id": "chicago-west-loop-food-neighborhoods-004", "section": "planning_tips"},
+      {"doc_id": "chicago-west-loop-food-neighborhoods-004", "section": "transport"}
+    ],
+    "expected_rag_claims": [
+      {
+        "claim_id": "chi-west-loop-dining-anchor",
+        "doc_id": "chicago-west-loop-food-neighborhoods-004",
+        "section": "planning_tips",
+        "category": "food",
+        "evidence_quote": "For food requests, make West Loop or Fulton Market the dining anchor and build nearby evening activities around it."
+      },
+      {
+        "claim_id": "chi-west-loop-return-trip",
+        "doc_id": "chicago-west-loop-food-neighborhoods-004",
+        "section": "transport",
+        "category": "transport",
+        "evidence_quote": "Use rideshare or transit planning for the return trip after dinner."
+      }
+    ],
+    "benchmark_note": "Hard Chicago case: tests nightlife return-routing and food-anchor evidence."
+  },
+  {
+    "city": "Chicago",
+    "start_date": "2026-06-25",
+    "end_date": "2026-06-26",
+    "travel_days": 2,
+    "transportation": "walking and public transit",
+    "accommodation": "mid-range hotel",
+    "preferences": ["lakefront", "parks", "outdoors", "indoor backups"],
+    "free_text_input": "Give me lakefront parks and outdoor time, but keep indoor backups and avoid long exposed walks if weather is cold or windy.",
+    "expected_rag_doc_ids": ["chicago-lakefront-parks-outdoors-005"],
+    "expected_rag_themes": ["lakefront", "parks", "outdoors"],
+    "expected_rag_sections": [
+      {"doc_id": "chicago-lakefront-parks-outdoors-005", "section": "seasonality"},
+      {"doc_id": "chicago-lakefront-parks-outdoors-005", "section": "planning_tips"}
+    ],
+    "expected_rag_claims": [
+      {
+        "claim_id": "chi-lakefront-winter-indoor",
+        "doc_id": "chicago-lakefront-parks-outdoors-005",
+        "section": "seasonality",
+        "category": "weather_backup",
+        "evidence_quote": "Winter wind can make lakefront walking uncomfortable, so add indoor alternatives nearby."
+      },
+      {
+        "claim_id": "chi-lakefront-scenic-connector",
+        "doc_id": "chicago-lakefront-parks-outdoors-005",
+        "section": "planning_tips",
+        "category": "pacing",
+        "evidence_quote": "For outdoors and parks preferences, use the lakefront as a scenic connector rather than an isolated stop."
+      }
+    ],
+    "benchmark_note": "Hard Chicago case: targets weather-exposure and planning-tip evidence for lakefront routes."
+  }
+]

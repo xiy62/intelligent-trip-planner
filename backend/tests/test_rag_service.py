@@ -177,3 +177,88 @@ class RAGServiceTests(unittest.TestCase):
         self.assertTrue(all("rerank_score" in metadata for _, metadata in selected))
         self.assertTrue(all("vector_rank" in metadata for _, metadata in selected))
         self.assertEqual([metadata["dedup_rank"] for _, metadata in selected], [1, 2, 3])
+
+    def test_rerank_packs_multiple_sections_from_selected_document(self):
+        service = TravelRAGService(embedding_function=FakeEmbeddings())
+        request = TripRequest(
+            city="Chicago",
+            start_date="2026-07-01",
+            end_date="2026-07-02",
+            travel_days=2,
+            transportation="rideshare and walking",
+            accommodation="boutique hotel",
+            preferences=["food", "nightlife"],
+            free_text_input="Keep West Loop dinner and return route simple.",
+        )
+        docs = [
+            Document(
+                page_content="West Loop food overview.",
+                metadata={
+                    "chunk_id": "west-loop-overview",
+                    "doc_id": "west-loop",
+                    "city": "Chicago",
+                    "theme": "food,nightlife",
+                    "poi_names": "West Loop,Fulton Market",
+                    "language": "en",
+                    "section": "overview",
+                    "title": "West Loop",
+                },
+            ),
+            Document(
+                page_content="Use rideshare or transit planning for the return trip after dinner.",
+                metadata={
+                    "chunk_id": "west-loop-transport",
+                    "doc_id": "west-loop",
+                    "city": "Chicago",
+                    "theme": "food,nightlife",
+                    "poi_names": "West Loop,Fulton Market",
+                    "language": "en",
+                    "section": "transport",
+                    "title": "West Loop",
+                },
+            ),
+            Document(
+                page_content="For food requests, make West Loop or Fulton Market the dining anchor.",
+                metadata={
+                    "chunk_id": "west-loop-planning",
+                    "doc_id": "west-loop",
+                    "city": "Chicago",
+                    "theme": "food,nightlife",
+                    "poi_names": "West Loop,Fulton Market",
+                    "language": "en",
+                    "section": "planning_tips",
+                    "title": "West Loop",
+                },
+            ),
+            Document(
+                page_content="Chicago river architecture overview.",
+                metadata={
+                    "chunk_id": "river-overview",
+                    "doc_id": "river",
+                    "city": "Chicago",
+                    "theme": "architecture",
+                    "poi_names": "Chicago Riverwalk",
+                    "language": "en",
+                    "section": "overview",
+                    "title": "River",
+                },
+            ),
+        ]
+
+        selected = service._rerank_and_dedup_docs(
+            request=request,
+            docs=docs,
+            attraction_candidates=[],
+            k=2,
+        )
+
+        self.assertEqual(len(selected), 2)
+        first_doc, first_metadata = selected[0]
+        self.assertEqual(first_metadata["doc_id"], "west-loop")
+        self.assertEqual(first_metadata["packed_section_count"], 3)
+        self.assertEqual(
+            set(first_metadata["sections"]),
+            {"overview", "transport", "planning_tips"},
+        )
+        self.assertIn("return trip after dinner", first_doc.page_content)
+        self.assertIn("dining anchor", first_doc.page_content)

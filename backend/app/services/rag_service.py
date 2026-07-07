@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from types import SimpleNamespace
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -39,6 +40,9 @@ RAG_STOPWORDS = {
     "with",
     "without",
 }
+
+MAX_PACKED_SECTIONS_PER_DOC = 4
+MAX_PACKED_CONTEXT_CHARS_PER_DOC = 6000
 
 
 DEFAULT_LOCAL_KNOWLEDGE = [
@@ -242,37 +246,126 @@ class TravelRAGService:
             scored_docs.append((score, vector_rank, doc, metadata))
 
         scored_docs.sort(key=lambda item: (-item[0], item[1]))
-        selected: List[tuple[Any, Dict[str, Any]]] = []
-        selected_doc_ids = set()
-        selected_chunk_ids = set()
+        return self._pack_ranked_docs(scored_docs, k=k)
 
-        for _, _, doc, metadata in scored_docs:
-            doc_id = str(metadata.get("doc_id", ""))
-            chunk_id = str(metadata.get("chunk_id", ""))
-            if doc_id and doc_id in selected_doc_ids:
+    def _pack_ranked_docs(
+        self,
+        scored_docs: List[tuple[float, int, Any, Dict[str, Any]]],
+        *,
+        k: int,
+    ) -> List[tuple[Any, Dict[str, Any]]]:
+        grouped: Dict[str, List[tuple[float, int, Any, Dict[str, Any]]]] = {}
+        for score, vector_rank, doc, metadata in scored_docs:
+            group_key = self._doc_group_key(metadata, vector_rank)
+            grouped.setdefault(group_key, []).append((score, vector_rank, doc, metadata))
+
+        selected_groups: List[tuple[float, int, str]] = []
+        seen_groups = set()
+        for score, vector_rank, _, metadata in scored_docs:
+            group_key = self._doc_group_key(metadata, vector_rank)
+            if group_key in seen_groups:
                 continue
-            selected.append((doc, metadata))
-            if doc_id:
-                selected_doc_ids.add(doc_id)
-            if chunk_id:
-                selected_chunk_ids.add(chunk_id)
-            if len(selected) >= k:
+            seen_groups.add(group_key)
+            selected_groups.append((score, vector_rank, group_key))
+            if len(selected_groups) >= k:
                 break
 
-        if len(selected) < k:
-            for _, _, doc, metadata in scored_docs:
-                chunk_id = str(metadata.get("chunk_id", ""))
-                if chunk_id and chunk_id in selected_chunk_ids:
-                    continue
-                selected.append((doc, metadata))
-                if chunk_id:
-                    selected_chunk_ids.add(chunk_id)
-                if len(selected) >= k:
-                    break
+        selected: List[tuple[Any, Dict[str, Any]]] = []
+        for _, _, group_key in selected_groups:
+            packed = self._pack_doc_group(grouped[group_key])
+            if packed is not None:
+                selected.append(packed)
 
         for dedup_rank, (_, metadata) in enumerate(selected, start=1):
             metadata["dedup_rank"] = dedup_rank
         return selected
+
+    def _doc_group_key(self, metadata: Dict[str, Any], vector_rank: int) -> str:
+        doc_id = str(metadata.get("doc_id", ""))
+        if doc_id:
+            return f"doc:{doc_id}"
+        chunk_id = str(metadata.get("chunk_id", ""))
+        if chunk_id:
+            return f"chunk:{chunk_id}"
+        return f"anonymous:{vector_rank}"
+
+    def _pack_doc_group(
+        self,
+        group_entries: List[tuple[float, int, Any, Dict[str, Any]]],
+    ) -> tuple[Any, Dict[str, Any]] | None:
+        if not group_entries:
+            return None
+
+        ordered = sorted(group_entries, key=lambda item: (-item[0], item[1]))
+        packed_entries: List[tuple[float, int, Any, Dict[str, Any]]] = []
+        seen_chunk_ids = set()
+        total_chars = 0
+
+        for score, vector_rank, doc, metadata in ordered:
+            chunk_id = str(metadata.get("chunk_id", ""))
+            if chunk_id and chunk_id in seen_chunk_ids:
+                continue
+            section_text = self._format_packed_section(doc, metadata)
+            projected_chars = total_chars + len(section_text)
+            if (
+                packed_entries
+                and projected_chars > MAX_PACKED_CONTEXT_CHARS_PER_DOC
+            ):
+                continue
+            packed_entries.append((score, vector_rank, doc, metadata))
+            total_chars += len(section_text)
+            if chunk_id:
+                seen_chunk_ids.add(chunk_id)
+            if len(packed_entries) >= MAX_PACKED_SECTIONS_PER_DOC:
+                break
+
+        primary_score, primary_vector_rank, primary_doc, primary_metadata = packed_entries[0]
+        packed_metadata = dict(primary_metadata)
+        sections = [
+            str(metadata.get("section", ""))
+            for _, _, _, metadata in packed_entries
+            if metadata.get("section")
+        ]
+        chunk_ids = [
+            str(metadata.get("chunk_id", ""))
+            for _, _, _, metadata in packed_entries
+            if metadata.get("chunk_id")
+        ]
+        packed_text = "\n\n".join(
+            self._format_packed_section(doc, metadata)
+            for _, _, doc, metadata in packed_entries
+        )
+
+        if len(packed_entries) > 1:
+            doc_id = str(packed_metadata.get("doc_id", "doc"))
+            packed_metadata["chunk_id"] = f"{doc_id}-evidence-packet"
+        packed_metadata["section"] = sections[0] if sections else packed_metadata.get("section", "")
+        packed_metadata["sections"] = sections
+        packed_metadata["packed_section_count"] = len(packed_entries)
+        packed_metadata["packed_chunk_ids"] = chunk_ids
+        packed_metadata["packed_vector_ranks"] = [
+            vector_rank for _, vector_rank, _, _ in packed_entries
+        ]
+        packed_metadata["packed_rerank_scores"] = [
+            round(score, 4) for score, _, _, _ in packed_entries
+        ]
+        packed_metadata["rerank_score"] = round(primary_score, 4)
+        packed_metadata["vector_rank"] = primary_vector_rank
+
+        return self._new_document_like(primary_doc, packed_text, packed_metadata), packed_metadata
+
+    def _format_packed_section(self, doc: Any, metadata: Dict[str, Any]) -> str:
+        section = str(metadata.get("section", "")).strip()
+        label = section or "section"
+        return f"### {label}\n{str(doc.page_content).strip()}"
+
+    def _new_document_like(self, source_doc: Any, page_content: str, metadata: Dict[str, Any]) -> Any:
+        try:
+            from langchain_core.documents import Document
+
+            return Document(page_content=page_content, metadata=metadata)
+        except Exception:
+            return SimpleNamespace(page_content=page_content, metadata=metadata)
 
     def _score_rag_doc(
         self,
