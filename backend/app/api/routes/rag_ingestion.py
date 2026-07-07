@@ -7,11 +7,12 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile
 from langchain_core.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, ValidationError
 
 from ...prompts.rag_ingestion import build_rag_prefill_prompt
+from ..dependencies import require_admin_token
 from ...services.rag_ingestion import (
     DEFAULT_DRAFT_ROOT,
     DEFAULT_KNOWLEDGE_ROOT,
@@ -42,7 +43,11 @@ from ...services.llm_service import get_llm
 from ...services.rag_service import get_rag_service
 from ...services.web_fetch_service import URLSafetyError, WebFetchError, get_web_fetch_service
 
-router = APIRouter(prefix="/rag-ingestion", tags=["RAG Ingestion"])
+router = APIRouter(
+    prefix="/rag-ingestion",
+    tags=["RAG Ingestion"],
+    dependencies=[Depends(require_admin_token)],
+)
 logger = logging.getLogger(__name__)
 
 

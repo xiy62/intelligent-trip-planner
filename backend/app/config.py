@@ -14,7 +14,9 @@ class Settings(BaseSettings):
 
     app_name: str = "Intelligent Trip Planner"
     app_version: str = "1.0.0"
+    app_env: str = "local"
     debug: bool = False
+    admin_api_token: str = ""
 
     host: str = "0.0.0.0"
     port: int = 8000
@@ -94,11 +96,13 @@ def print_config():
 
     print(f"Application: {settings.app_name}")
     print(f"Version: {settings.app_version}")
+    print(f"Environment: {settings.app_env}")
     print(f"Server: {settings.host}:{settings.port}")
     print(f"Map provider: {settings.map_provider}")
     print(f"Weather provider: {settings.weather_provider}")
     print(f"RAG mode: {settings.rag_mode}")
     print(f"Google Maps API key: {'configured' if settings.google_maps_api_key else 'not configured'}")
+    print(f"Admin API token: {'configured' if settings.admin_api_token else 'not configured'}")
     print(f"LLM API key: {'configured' if llm_api_key else 'not configured'}")
     print(f"LLM base URL: {llm_base_url}")
     print(f"LLM model: {llm_model}")

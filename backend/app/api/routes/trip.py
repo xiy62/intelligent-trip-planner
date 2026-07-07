@@ -1,7 +1,8 @@
 """Trip-planning API routes."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from ..dependencies import require_admin_token
 from ...agents.langgraph_trip_planner import get_trip_planner_agent
 from ...models.schemas import MemoryClearRequest, MemoryClearResponse, TripPlanResponse, TripRequest
 from ...services.memory_service import get_memory_service
@@ -94,7 +95,7 @@ async def clear_memory(request: MemoryClearRequest):
     summary="Inspect anonymous preference memory",
     description="Return stored preference metadata for local debugging.",
 )
-async def get_memory_profile(profile_id: str):
+async def get_memory_profile(profile_id: str, _admin: None = Depends(require_admin_token)):
     """Return anonymous profile memory for local debugging."""
     try:
         memory_service = get_memory_service()

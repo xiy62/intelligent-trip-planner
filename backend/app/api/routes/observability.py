@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from ..dependencies import require_admin_token
 from ...services.observability_service import get_observability_service
 
 router = APIRouter(prefix="/observability", tags=["Observability"])
@@ -81,7 +82,10 @@ async def get_observability_run_detail(run_id: str):
     summary="Delete persisted planner runs",
     description="Local development cleanup endpoint. Optionally filter by source.",
 )
-async def delete_observability_runs(source: Optional[str] = Query(default=None)):
+async def delete_observability_runs(
+    source: Optional[str] = Query(default=None),
+    _admin: None = Depends(require_admin_token),
+):
     """Delete persisted observability runs."""
     try:
         deleted = get_observability_service().delete_runs(source=source)
