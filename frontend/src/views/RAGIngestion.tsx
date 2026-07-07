@@ -11,6 +11,7 @@ import {
   Modal,
   Row,
   Select,
+  Segmented,
   Space,
   Statistic,
   Table,
@@ -25,6 +26,7 @@ import type { ColumnsType } from 'antd/es/table'
 import {
   aiPrefillRagDraft,
   approveRagDraft,
+  createRagDraftFromUrl,
   getRagDraft,
   getRagIngestionJob,
   listRagDrafts,
@@ -59,11 +61,15 @@ const emptyUpload = {
   district: '',
   language: 'en',
   best_for: [] as string[],
-  recommended_duration: ''
+  recommended_duration: '',
+  css_selector: ''
 }
 
 function statusColor(status: string) {
   if (status === 'approved') return 'green'
+  if (status === 'accepted') return 'green'
+  if (status === 'review_required') return 'gold'
+  if (status === 'rejected') return 'red'
   if (status === 'failed') return 'red'
   if (status === 'running') return 'blue'
   if (status === 'succeeded') return 'green'
@@ -88,23 +94,6 @@ function normalizedDraft(base: RAGDraft, values: Partial<RAGDraft>): RAGDraft {
   }
 }
 
-function cleanExtractedTextForContent(text: string, maxChars?: number) {
-  const cleaned = (text || '')
-    .replace(/\r/g, '\n')
-    .replace(/[ \t]+/g, ' ')
-    .replace(/\n{3,}/g, '\n\n')
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line && !/^https?:\/\//i.test(line) && !/^\d+\s*\/\s*\d+$/.test(line))
-    .join('\n')
-    .trim()
-
-  if (!maxChars || cleaned.length <= maxChars) {
-    return cleaned
-  }
-  return cleaned.slice(0, maxChars).trim()
-}
-
 export default function RAGIngestion() {
   const [uploadForm] = Form.useForm()
   const [draftForm] = Form.useForm<RAGDraft>()
@@ -112,6 +101,7 @@ export default function RAGIngestion() {
   const [selectedDetail, setSelectedDetail] = useState<RAGDraftDetail | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [fileList, setFileList] = useState<UploadFile[]>([])
+  const [sourceMode, setSourceMode] = useState<'file' | 'url'>('file')
   const [loadingDrafts, setLoadingDrafts] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -139,6 +129,15 @@ export default function RAGIngestion() {
     () => promotedDrafts.length,
     [promotedDrafts]
   )
+  const prefillReasonCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const item of aiPrefill?.suggestions || []) {
+      if (item.status !== 'rejected') continue
+      const reason = item.reason || 'unknown'
+      counts[reason] = (counts[reason] || 0) + 1
+    }
+    return counts
+  }, [aiPrefill])
 
   async function loadDrafts() {
     setLoadingDrafts(true)
@@ -168,27 +167,52 @@ export default function RAGIngestion() {
     return () => window.clearInterval(timer)
   }, [job])
 
-  async function handleUpload(values: typeof emptyUpload) {
-    if (!fileList[0]?.originFileObj) {
+  async function handleSourceSubmit(values: typeof emptyUpload) {
+    if (sourceMode === 'file' && !fileList[0]?.originFileObj) {
       message.warning('Choose a PDF, Markdown, or text file first')
       return
     }
     setUploading(true)
     try {
-      const formData = new FormData()
-      formData.append('file', fileList[0].originFileObj)
-      Object.entries(values).forEach(([key, value]) => {
-        formData.append(key, Array.isArray(value) ? value.join(',') : String(value ?? ''))
-      })
-      const detail = await uploadRagSource(formData)
+      let detail: RAGDraftDetail
+      if (sourceMode === 'file') {
+        const sourceFile = fileList[0]?.originFileObj
+        if (!sourceFile) {
+          message.warning('Choose a PDF, Markdown, or text file first')
+          return
+        }
+        const formData = new FormData()
+        formData.append('file', sourceFile)
+        Object.entries(values).forEach(([key, value]) => {
+          if (key === 'css_selector') return
+          formData.append(key, Array.isArray(value) ? value.join(',') : String(value ?? ''))
+        })
+        detail = await uploadRagSource(formData)
+      } else {
+        detail = await createRagDraftFromUrl({
+          source_id: values.source_id,
+          country: values.country,
+          city: values.city,
+          source_url: values.source_url,
+          source_type: values.source_type,
+          title: values.title,
+          theme: values.theme,
+          poi_names: values.poi_names,
+          district: values.district,
+          language: values.language,
+          best_for: values.best_for,
+          recommended_duration: values.recommended_duration,
+          css_selector: values.css_selector
+        })
+      }
       setFileList([])
       uploadForm.resetFields()
       uploadForm.setFieldsValue(emptyUpload)
       await loadDrafts()
       await openDraft(detail.draft_id)
-      message.success('Draft generated from uploaded source')
+      message.success('Draft generated from source')
     } catch (error: any) {
-      message.error(error.response?.data?.detail || error.message || 'Upload failed')
+      message.error(error.response?.data?.detail || error.message || 'Source ingestion failed')
     } finally {
       setUploading(false)
     }
@@ -259,20 +283,6 @@ export default function RAGIngestion() {
     const payload = buildCurrentDraftPayload()
     setPreviewJson(JSON.stringify(payload, null, 2))
     setPreviewOpen(true)
-  }
-
-  function fillContentFromExtractedText(maxChars?: number) {
-    if (!selectedDetail?.extracted_text) {
-      message.warning('No extracted text is available for this draft')
-      return
-    }
-    const content = cleanExtractedTextForContent(selectedDetail.extracted_text, maxChars)
-    draftForm.setFieldValue('content', content)
-    message.success(
-      maxChars
-        ? `Knowledge content filled with the first ${content.length.toLocaleString()} cleaned characters`
-        : `Knowledge content filled with ${content.length.toLocaleString()} cleaned characters`
-    )
   }
 
   async function applyAiPrefill() {
@@ -424,14 +434,24 @@ export default function RAGIngestion() {
       <Row gutter={[18, 18]}>
         <Col xs={24} xl={9}>
           <Card title="Upload source" className="rag-card">
-            <Alert
-              type="info"
-              showIcon
-              className="rag-alert"
-              message="Supported files: PDF, Markdown, and plain text."
-              description="The uploaded file is extracted into draft knowledge only. Nothing enters the production RAG corpus until a reviewer approves and promotes it."
+                <Alert
+                  type="info"
+                  showIcon
+                  className="rag-alert"
+                  message="Supported sources: PDF, Markdown, text, or one submitted webpage URL."
+                  description="A source is extracted into draft knowledge only. Nothing enters the production RAG corpus until a reviewer approves and promotes it."
+                />
+            <Segmented
+              block
+              className="rag-source-mode"
+              value={sourceMode}
+              onChange={(value) => setSourceMode(value as 'file' | 'url')}
+              options={[
+                { label: 'Upload file', value: 'file' },
+                { label: 'Enter URL', value: 'url' }
+              ]}
             />
-            <Form form={uploadForm} layout="vertical" initialValues={emptyUpload} onFinish={handleUpload}>
+            <Form form={uploadForm} layout="vertical" initialValues={emptyUpload} onFinish={handleSourceSubmit}>
               <Form.Item
                 name="source_id"
                 label="Source ID"
@@ -454,9 +474,22 @@ export default function RAGIngestion() {
               <Form.Item name="title" label="Title" rules={[{ required: true }]}>
                 <Input placeholder="Official Central Park visitor guide" />
               </Form.Item>
-              <Form.Item name="source_url" label="Source URL" rules={[{ required: true, type: 'url' }]}>
+              <Form.Item
+                name="source_url"
+                label={sourceMode === 'url' ? 'Webpage URL' : 'Source URL'}
+                rules={[{ required: true, type: 'url' }]}
+              >
                 <Input placeholder="https://..." />
               </Form.Item>
+              {sourceMode === 'url' && (
+                <Form.Item
+                  name="css_selector"
+                  label="CSS selector (optional)"
+                  extra="Advanced: limit extraction to one matching page region, such as main or article."
+                >
+                  <Input placeholder="main, article, #content" />
+                </Form.Item>
+              )}
               <Row gutter={12}>
                 <Col span={12}>
                   <Form.Item name="source_type" label="Source type" rules={[{ required: true }]}>
@@ -490,19 +523,21 @@ export default function RAGIngestion() {
                   </Form.Item>
                 </Col>
               </Row>
-              <Form.Item label="Source file" required>
-                <Upload
-                  accept=".pdf,.md,.markdown,.txt"
-                  maxCount={1}
-                  fileList={fileList}
-                  beforeUpload={() => false}
-                  onChange={({ fileList }) => setFileList(fileList)}
-                >
-                  <Button icon={<UploadOutlined />}>Choose file</Button>
-                </Upload>
-              </Form.Item>
+              {sourceMode === 'file' && (
+                <Form.Item label="Source file" required>
+                  <Upload
+                    accept=".pdf,.md,.markdown,.txt"
+                    maxCount={1}
+                    fileList={fileList}
+                    beforeUpload={() => false}
+                    onChange={({ fileList }) => setFileList(fileList)}
+                  >
+                    <Button icon={<UploadOutlined />}>Choose file</Button>
+                  </Upload>
+                </Form.Item>
+              )}
               <Button type="primary" htmlType="submit" loading={uploading} block>
-                Generate draft
+                {sourceMode === 'url' ? 'Fetch URL and generate draft' : 'Generate draft'}
               </Button>
             </Form>
           </Card>
@@ -567,10 +602,11 @@ export default function RAGIngestion() {
         title={selectedDetail?.title || 'Review draft'}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        width={820}
+        width="min(1120px, 96vw)"
+        className="rag-draft-drawer"
         destroyOnClose={false}
         extra={
-          <Space>
+          <Space wrap>
             <Button onClick={applyAiPrefill} loading={prefilling} disabled={!selectedDetail}>
               AI Prefill Fields
             </Button>
@@ -589,15 +625,19 @@ export default function RAGIngestion() {
         {selectedDetail && (
           <div className="draft-editor-grid">
             <Card size="small" title="Draft metadata">
-              <Descriptions size="small" column={1}>
-                <Descriptions.Item label="Doc ID">{selectedDetail.doc_id}</Descriptions.Item>
+                <Descriptions size="small" column={1}>
+                  <Descriptions.Item label="Doc ID">{selectedDetail.doc_id}</Descriptions.Item>
                 <Descriptions.Item label="Corpus">
                   <Tag color={selectedDetail.promoted ? 'green' : 'default'}>
                     {selectedDetail.promoted ? 'promoted' : 'not promoted'}
                   </Tag>
                 </Descriptions.Item>
-                <Descriptions.Item label="Path">{selectedDetail.updated_path}</Descriptions.Item>
-                <Descriptions.Item label="Fetched">{selectedDetail.fetched_at}</Descriptions.Item>
+                <Descriptions.Item label="Path">
+                  <Text className="breakable-text">{selectedDetail.updated_path}</Text>
+                </Descriptions.Item>
+                <Descriptions.Item label="Fetched">
+                  <Text className="breakable-text">{selectedDetail.fetched_at}</Text>
+                </Descriptions.Item>
               </Descriptions>
             </Card>
 
@@ -606,38 +646,68 @@ export default function RAGIngestion() {
                 size="small"
                 title="AI Evidence"
                 extra={
-                  <Text type="secondary">
-                    Used {aiPrefill.used_char_count.toLocaleString()} / {aiPrefill.source_char_count.toLocaleString()} chars
-                  </Text>
-                }
-              >
+	                  <Text type="secondary">
+	                    Used {aiPrefill.used_char_count.toLocaleString()} / {aiPrefill.source_char_count.toLocaleString()} chars
+	                  </Text>
+	                }
+	              >
                 <Alert
                   className="rag-alert"
                   type="warning"
                   showIcon
                   message="Review before saving"
-                  description="AI suggestions are only applied to the unsaved form state. They are not saved, approved, promoted, or indexed until you explicitly complete those steps."
-                />
-                {aiPrefill.warnings.length > 0 && (
-                  <div className="ai-prefill-section">
-                    <Text strong>Warnings</Text>
+	                  description="AI suggestions are only applied to the unsaved form state. They are not saved, approved, promoted, or indexed until you explicitly complete those steps."
+	                />
+	                <Space wrap className="ai-prefill-section">
+	                  <Tag color="green">Accepted {aiPrefill.accepted_suggestion_count}</Tag>
+	                  <Tag color="gold">Review {aiPrefill.review_required_suggestion_count}</Tag>
+	                  <Tag color="red">Rejected {aiPrefill.rejected_suggestion_count}</Tag>
+	                  <Tag color="blue">
+	                    Sections {aiPrefill.selected_section_count}/{aiPrefill.section_count}
+	                  </Tag>
+	                </Space>
+	                {Object.keys(prefillReasonCounts).length > 0 && (
+	                  <div className="ai-prefill-section">
+	                    <Text strong>Rejected reasons</Text>
+	                    <Space wrap className="reason-tag-row">
+	                      {Object.entries(prefillReasonCounts).map(([reason, count]) => (
+	                        <Tag color="red" key={reason}>{reason}: {count}</Tag>
+	                      ))}
+	                    </Space>
+	                  </div>
+	                )}
+	                {aiPrefill.warnings.length > 0 && (
+	                  <div className="ai-prefill-section">
+	                    <Text strong>Warnings</Text>
                     <ul>
                       {aiPrefill.warnings.map((warning, index) => (
                         <li key={`${warning}-${index}`}>{warning}</li>
                       ))}
-                    </ul>
-                  </div>
-                )}
-                {aiPrefill.field_evidence.length > 0 ? (
-                  <div className="ai-evidence-list">
-                    {aiPrefill.field_evidence.map((item, index) => (
-                      <div className="ai-evidence-item" key={`${item.field}-${index}`}>
-                        <Tag color="teal">{item.field}</Tag>
-                        <Text strong>{item.suggestion}</Text>
-                        <Paragraph className="ai-evidence-quote">{item.evidence}</Paragraph>
-                      </div>
-                    ))}
-                  </div>
+	                    </ul>
+	                  </div>
+	                )}
+	                {aiPrefill.suggestions.length > 0 ? (
+	                  <div className="ai-evidence-list">
+	                    {aiPrefill.suggestions.map((item, index) => (
+	                      <div className="ai-evidence-item" key={`${item.field}-${index}`}>
+	                        <Space wrap>
+	                          <Tag color="teal">{item.field}</Tag>
+	                          <Tag color={statusColor(item.status)}>{item.status}</Tag>
+	                          {item.time_sensitive && <Tag color="orange">time-sensitive</Tag>}
+	                          {item.section_heading && <Tag>{item.section_heading}</Tag>}
+	                        </Space>
+	                        <Paragraph>
+	                          <Text strong>{item.value}</Text>
+	                        </Paragraph>
+	                        <Paragraph className="ai-evidence-quote">{item.source_quote}</Paragraph>
+	                        {item.reason && (
+                            <Tag color={item.status === 'rejected' ? 'red' : 'default'}>
+                              {item.reason}
+                            </Tag>
+                          )}
+	                      </div>
+	                    ))}
+	                  </div>
                 ) : (
                   <Text type="secondary">No field-level evidence returned.</Text>
                 )}
@@ -649,12 +719,12 @@ export default function RAGIngestion() {
                 <Input disabled />
               </Form.Item>
               <Row gutter={12}>
-                <Col span={12}>
+                <Col xs={24} md={12}>
                   <Form.Item name="country" label="Country" rules={[{ required: true }]}>
                     <Input />
                   </Form.Item>
                 </Col>
-                <Col span={12}>
+                <Col xs={24} md={12}>
                   <Form.Item name="city" label="City" rules={[{ required: true }]}>
                     <Input />
                   </Form.Item>
@@ -667,24 +737,24 @@ export default function RAGIngestion() {
                 <Input />
               </Form.Item>
               <Row gutter={12}>
-                <Col span={12}>
+                <Col xs={24} md={12}>
                   <Form.Item name="source_type" label="Source type" rules={[{ required: true }]}>
                     <Input />
                   </Form.Item>
                 </Col>
-                <Col span={12}>
+                <Col xs={24} md={12}>
                   <Form.Item name="language" label="Language" rules={[{ required: true }]}>
                     <Input />
                   </Form.Item>
                 </Col>
               </Row>
               <Row gutter={12}>
-                <Col span={12}>
+                <Col xs={24} md={12}>
                   <Form.Item name="district" label="District">
                     <Input />
                   </Form.Item>
                 </Col>
-                <Col span={12}>
+                <Col xs={24} md={12}>
                   <Form.Item name="recommended_duration" label="Recommended duration">
                     <Input />
                   </Form.Item>
@@ -716,19 +786,13 @@ export default function RAGIngestion() {
               >
                 <TextArea rows={10} />
               </Form.Item>
-              <Space className="content-fill-button" wrap>
-                <Button onClick={() => fillContentFromExtractedText(8000)}>
-                  Fill first 8k chars
-                </Button>
-                <Button onClick={() => fillContentFromExtractedText()}>
-                  Fill full extracted text
-                </Button>
+              <Space className="content-length-note" wrap>
                 <Text type="secondary">
                   Current content: {watchedContent.length.toLocaleString()} chars
                 </Text>
               </Space>
               <Row gutter={12}>
-                <Col span={12}>
+                <Col xs={24} md={12}>
                   <Form.Item name="review_status" label="Review status">
                     <Select
                       disabled
@@ -740,7 +804,7 @@ export default function RAGIngestion() {
                     />
                   </Form.Item>
                 </Col>
-                <Col span={12}>
+                <Col xs={24} md={12}>
                   <Form.Item name="reviewer" label="Reviewer">
                     <Input placeholder="local-admin" />
                   </Form.Item>

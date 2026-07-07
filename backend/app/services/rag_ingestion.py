@@ -93,6 +93,9 @@ NOISE_LINE_PATTERNS = [
     re.compile(r"^\d+\s*/\s*\d+$"),
     re.compile(r"^\d{4}/\d{1,2}/\d{1,2}\s+\d{1,2}:\d{2}$"),
     re.compile(r"^skip to main content$", re.I),
+    re.compile(r"^skip navigation$", re.I),
+    re.compile(r"^visitors guide$", re.I),
+    re.compile(r"^book your trip$", re.I),
     re.compile(r"^now in .+$", re.I),
     re.compile(r"^things to do$", re.I),
     re.compile(r"^eat\s*&\s*drink$", re.I),
@@ -100,6 +103,50 @@ NOISE_LINE_PATTERNS = [
     re.compile(r"^maps\s*&\s*guides$", re.I),
     re.compile(r"^business in .+$", re.I),
 ]
+
+LOW_VALUE_CONTENT_PATTERNS = [
+    re.compile(r"\bcookie(s)?\b.*\b(accept|settings|policy)\b", re.I),
+    re.compile(r"\bprivacy policy\b|\bterms (of use|and conditions)\b", re.I),
+    re.compile(r"\bnewsletter\b|\bsign up\b|\bsubscribe\b", re.I),
+    re.compile(r"\bfollow us\b|\bshare this\b|\bsocial media\b", re.I),
+    re.compile(r"\bsponsored\b|\badvertisement\b|\bpaid partnership\b", re.I),
+    re.compile(r"\ball rights reserved\b|\bcopyright\b", re.I),
+    re.compile(r"\btable of contents\b", re.I),
+    re.compile(r"\bread more\b|\brelated articles\b|\byou may also like\b", re.I),
+    re.compile(r"\bprime early deals\b|\bprime day deals\b|\bsave \d+%|\bexpedia\b", re.I),
+]
+
+PROMOTIONAL_PATTERNS = [
+    re.compile(r"\b(unforgettable|world[- ]class|must[- ]see|hidden gem|iconic experience)\b", re.I),
+    re.compile(r"\bbook now\b|\bclick here\b|\blimited time\b", re.I),
+]
+
+USEFUL_SHORT_FACT_PATTERNS = [
+    re.compile(r"\bclosed\s+\w+", re.I),
+    re.compile(r"\breservations?\s+(required|recommended)\b", re.I),
+    re.compile(r"\bwheelchair accessible\b", re.I),
+    re.compile(r"\ballow\s+\w+\s+(hour|hours|minutes)\b", re.I),
+    re.compile(r"\b\d+\s*(hours?|minutes?)\b", re.I),
+]
+
+TIME_SENSITIVE_PATTERNS = [
+    re.compile(r"\b(open|closed|hours?|daily|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b", re.I),
+    re.compile(r"[$€£¥]\s*\d+|\b(price|prices|ticket|admission|fee|free)\b", re.I),
+    re.compile(r"\b(schedule|timetable|depart(s|ure)?|reservation|required|temporary|restriction|visa)\b", re.I),
+    re.compile(r"\b\d{4}[-/]\d{1,2}[-/]\d{1,2}\b|\b\d{1,2}:\d{2}\b", re.I),
+]
+
+PREFILL_LIST_FIELDS = {
+    "theme",
+    "poi_names",
+    "best_for",
+    "seasonality",
+    "transport_advice",
+    "planning_tips",
+}
+
+PREFILL_SCALAR_FIELDS = {"content", "recommended_duration"}
+PREFILL_ALLOWED_FIELDS = PREFILL_LIST_FIELDS | PREFILL_SCALAR_FIELDS
 
 
 class SourceManifestEntry(BaseModel):
@@ -168,18 +215,61 @@ class RAGPrefillEvidence(BaseModel):
     evidence: str
 
 
-class RAGPrefillSuggestion(BaseModel):
-    """Structured LLM output for reviewable RAG draft suggestions."""
+class RAGSourceSection(BaseModel):
+    """A deterministic source section passed to the AI prefill prompt."""
 
-    content: str
-    theme: List[str] = Field(default_factory=list)
-    poi_names: List[str] = Field(default_factory=list)
-    best_for: List[str] = Field(default_factory=list)
-    recommended_duration: str = ""
-    seasonality: List[str] = Field(default_factory=list)
-    transport_advice: List[str] = Field(default_factory=list)
-    planning_tips: List[str] = Field(default_factory=list)
-    field_evidence: List[RAGPrefillEvidence] = Field(default_factory=list)
+    section_id: str
+    heading: str = ""
+    text: str
+    start_offset: int
+    end_offset: int
+
+
+class RAGSectionDecision(BaseModel):
+    """Inspectable deterministic relevance decision for one source section."""
+
+    section_id: str
+    heading: str = ""
+    selected: bool
+    score: int
+    reasons: List[str] = Field(default_factory=list)
+
+
+class RAGPrefillSuggestionItem(BaseModel):
+    """One evidence-backed LLM suggestion for a draft field."""
+
+    field: str
+    value: str
+    source_quote: str
+    section_id: str
+    section_heading: str = ""
+    time_sensitive: bool = False
+    confidence: Optional[float] = None
+
+
+class RAGPrefillSuggestion(BaseModel):
+    """Structured LLM output for evidence-backed RAG draft suggestions."""
+
+    suggestions: List[RAGPrefillSuggestionItem] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+
+
+class RAGValidatedSuggestion(RAGPrefillSuggestionItem):
+    """A suggestion after deterministic quote and quality validation."""
+
+    status: str = "review_required"
+    reason: str = ""
+
+
+class RAGPrefillSourcePacket(BaseModel):
+    """Prepared source packet and deterministic section decisions for AI prefill."""
+
+    source_packet: str
+    source_char_count: int
+    used_char_count: int
+    sections: List[RAGSourceSection] = Field(default_factory=list)
+    selected_sections: List[RAGSourceSection] = Field(default_factory=list)
+    section_decisions: List[RAGSectionDecision] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
 
 
@@ -342,6 +432,24 @@ def write_uploaded_source(
     return target_path
 
 
+def write_raw_source_text(
+    *,
+    filename: str,
+    text: str,
+    country: str,
+    city: str,
+    source_id: str,
+    upload_root: Path = DEFAULT_UPLOAD_ROOT,
+) -> Path:
+    """Write a text-based raw source artifact using upload path conventions."""
+    suffix = Path(filename).suffix.lower() or ".html"
+    target_dir = upload_root / country_slug(country) / city_slug(city)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target_path = target_dir / f"{slugify(source_id)}{suffix}"
+    target_path.write_text(text or "", encoding="utf-8")
+    return target_path
+
+
 def write_extracted_text(
     *,
     extracted_text: str,
@@ -366,7 +474,7 @@ def build_draft_document(
     fetched_at: Optional[str] = None,
 ) -> DraftKnowledgeDocument:
     now = fetched_at or datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-    content = summarize_content(extracted_text)
+    content = summarize_content(clean_source_text(extracted_text))
     return DraftKnowledgeDocument(
         doc_id=make_doc_id(entry),
         country=entry.country,
@@ -410,67 +518,114 @@ def build_ai_prefill_source_packet(
     draft: DraftKnowledgeDocument,
     extracted_text: str,
     max_chars: int = AI_PREFILL_SOURCE_CHAR_LIMIT,
-) -> tuple[str, int, int, List[str]]:
-    """Return cleaned source text compact enough for an LLM prefill prompt."""
+) -> RAGPrefillSourcePacket:
+    """Return selected source sections compact enough for an LLM prefill prompt."""
     source_char_count = len(extracted_text or "")
-    paragraphs = clean_source_paragraphs(extracted_text)
+    cleaned_text = clean_source_text(extracted_text)
+    sections = split_markdown_sections(cleaned_text)
     warnings: List[str] = []
 
-    if not paragraphs:
-        return "", source_char_count, 0, ["No usable source paragraphs remained after cleaning."]
+    if not sections:
+        return RAGPrefillSourcePacket(
+            source_packet="",
+            source_char_count=source_char_count,
+            used_char_count=0,
+            warnings=["No usable source sections remained after cleaning."],
+        )
 
-    cleaned_text = "\n\n".join(paragraphs)
-    if len(cleaned_text) <= max_chars:
-        return cleaned_text, source_char_count, len(cleaned_text), warnings
-
-    selected = select_relevant_paragraphs(draft=draft, paragraphs=paragraphs, max_chars=max_chars)
-    packet = "\n\n".join(selected).strip()
-    warnings.append(
-        f"Source text was compacted from {len(cleaned_text)} cleaned characters to {len(packet)} characters."
+    selected_sections, decisions = select_relevant_sections(
+        draft=draft,
+        sections=sections,
+        max_chars=max_chars,
     )
-    return packet, source_char_count, len(packet), warnings
+
+    if not selected_sections:
+        return RAGPrefillSourcePacket(
+            source_packet="",
+            source_char_count=source_char_count,
+            used_char_count=0,
+            sections=sections,
+            section_decisions=decisions,
+            warnings=["No relevant source sections remained after filtering."],
+        )
+
+    if sum(len(section.text) for section in sections) > sum(len(section.text) for section in selected_sections):
+        warnings.append(
+            f"Selected {len(selected_sections)} of {len(sections)} source sections for AI prefill."
+        )
+
+    packet = "\n\n".join(
+        f"[{section.section_id}] {section.heading or 'Untitled section'}\n{section.text.strip()}"
+        for section in selected_sections
+    )
+    return RAGPrefillSourcePacket(
+        source_packet=packet,
+        source_char_count=source_char_count,
+        used_char_count=len(packet),
+        sections=sections,
+        selected_sections=selected_sections,
+        section_decisions=decisions,
+        warnings=warnings,
+    )
 
 
-def clean_source_paragraphs(text: str) -> List[str]:
-    """Remove common PDF/web boilerplate while preserving reviewable source paragraphs."""
+def clean_source_text(text: str) -> str:
+    """Remove common PDF/web boilerplate while preserving useful Markdown structure."""
     text = unescape(text or "").replace("\r", "\n")
     raw_lines = text.splitlines()
-    paragraphs: List[str] = []
-    current: List[str] = []
-    seen_paragraphs = set()
+    cleaned_lines: List[str] = []
     seen_lines: dict[str, int] = {}
-
-    def flush() -> None:
-        if not current:
-            return
-        paragraph = re.sub(r"\s+", " ", " ".join(current)).strip()
-        current.clear()
-        if len(paragraph) < 25:
-            return
-        key = paragraph.lower()
-        if key in seen_paragraphs:
-            return
-        seen_paragraphs.add(key)
-        paragraphs.append(paragraph)
 
     for raw_line in raw_lines:
         line = re.sub(r"\s+", " ", raw_line).strip()
         if not line:
-            flush()
+            if cleaned_lines and cleaned_lines[-1] != "":
+                cleaned_lines.append("")
+            continue
+        line = strip_markdown_inline_noise(line)
+        if not line:
             continue
         if is_noise_line(line):
-            flush()
+            continue
+        if is_low_value_text(line) and not is_useful_short_fact(line):
             continue
         line_key = line.lower()
         seen_lines[line_key] = seen_lines.get(line_key, 0) + 1
         if seen_lines[line_key] > 2:
             continue
-        current.append(line)
-    flush()
-    return paragraphs
+        if (
+            len(line) < 25
+            and not is_heading_line(line)
+            and not is_useful_short_fact(line)
+            and not contains_cjk(line)
+        ):
+            continue
+        cleaned_lines.append(line)
+
+    cleaned = "\n".join(cleaned_lines)
+    paragraphs = []
+    seen_paragraphs = set()
+    for paragraph in re.split(r"\n{2,}", cleaned):
+        normalized = re.sub(r"\s+", " ", paragraph).strip()
+        if not normalized:
+            continue
+        key = normalized.lower()
+        if key in seen_paragraphs:
+            continue
+        seen_paragraphs.add(key)
+        paragraphs.append(paragraph.strip())
+    return "\n\n".join(paragraphs)
+
+
+def clean_source_paragraphs(text: str) -> List[str]:
+    """Compatibility wrapper returning cleaned paragraphs."""
+    cleaned = clean_source_text(text)
+    return [paragraph.strip() for paragraph in re.split(r"\n{2,}", cleaned) if paragraph.strip()]
 
 
 def is_noise_line(line: str) -> bool:
+    if re.fullmatch(r"!?\[[^\]]*\]\([^)]+\)", line):
+        return True
     if line in {".", "|", "•"}:
         return True
     if len(line) <= 2:
@@ -478,40 +633,184 @@ def is_noise_line(line: str) -> bool:
     return any(pattern.search(line) for pattern in NOISE_LINE_PATTERNS)
 
 
-def select_relevant_paragraphs(
+def is_heading_line(line: str) -> bool:
+    return bool(re.match(r"^#{1,6}\s+\S+", line))
+
+
+def is_low_value_text(text: str) -> bool:
+    return any(pattern.search(text or "") for pattern in LOW_VALUE_CONTENT_PATTERNS)
+
+
+def is_promotional_text(text: str) -> bool:
+    return any(pattern.search(text or "") for pattern in PROMOTIONAL_PATTERNS)
+
+
+def is_useful_short_fact(text: str) -> bool:
+    return any(pattern.search(text or "") for pattern in USEFUL_SHORT_FACT_PATTERNS)
+
+
+def contains_cjk(text: str) -> bool:
+    return bool(re.search(r"[\u3400-\u9fff]", text or ""))
+
+
+def strip_markdown_inline_noise(line: str) -> str:
+    """Drop media-only Markdown and keep link text for evidence matching."""
+    value = line or ""
+    value = re.sub(r"!\[[^\]]*\]\([^)]+\)", "", value)
+    value = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", value)
+    value = re.sub(r"</?[^>]+>", " ", value)
+    value = re.sub(r"[*_`]+", "", value)
+    value = re.sub(r"\s+", " ", value)
+    return value.strip()
+
+
+def split_markdown_sections(text: str, max_section_chars: int = 3500) -> List[RAGSourceSection]:
+    """Split Markdown into heading-aware source sections with offsets."""
+    text = (text or "").strip()
+    if not text:
+        return []
+
+    heading_matches = list(re.finditer(r"(?m)^(#{1,6})\s+(.+?)\s*$", text))
+    raw_sections: List[tuple[str, str, int, int]] = []
+    if heading_matches:
+        for index, match in enumerate(heading_matches):
+            start = match.start()
+            end = heading_matches[index + 1].start() if index + 1 < len(heading_matches) else len(text)
+            heading = match.group(2).strip()
+            raw_sections.append((heading, text[start:end].strip(), start, end))
+        if heading_matches[0].start() > 0:
+            prefix = text[: heading_matches[0].start()].strip()
+            if prefix:
+                raw_sections.insert(0, ("Overview", prefix, 0, heading_matches[0].start()))
+    else:
+        offset = 0
+        for paragraph in re.split(r"\n{2,}", text):
+            start = text.find(paragraph, offset)
+            end = start + len(paragraph)
+            offset = end
+            raw_sections.append(("Overview", paragraph.strip(), start, end))
+
+    sections: List[RAGSourceSection] = []
+    for heading, body, start, end in raw_sections:
+        if not body.strip():
+            continue
+        chunks = split_oversized_section(body, max_section_chars=max_section_chars)
+        running_start = start
+        for chunk in chunks:
+            chunk_start = text.find(chunk, running_start)
+            if chunk_start < 0:
+                chunk_start = running_start
+            chunk_end = chunk_start + len(chunk)
+            sections.append(
+                RAGSourceSection(
+                    section_id=f"section-{len(sections) + 1:03d}",
+                    heading=heading,
+                    text=chunk.strip(),
+                    start_offset=chunk_start,
+                    end_offset=chunk_end,
+                )
+            )
+            running_start = chunk_end
+    return sections
+
+
+def split_oversized_section(text: str, max_section_chars: int) -> List[str]:
+    if len(text) <= max_section_chars:
+        return [text]
+    chunks: List[str] = []
+    current: List[str] = []
+    current_len = 0
+    for paragraph in re.split(r"\n{2,}", text):
+        if current and current_len + len(paragraph) > max_section_chars:
+            chunks.append("\n\n".join(current))
+            current = []
+            current_len = 0
+        current.append(paragraph)
+        current_len += len(paragraph) + 2
+    if current:
+        chunks.append("\n\n".join(current))
+    return chunks
+
+
+def select_relevant_sections(
     *,
     draft: DraftKnowledgeDocument,
-    paragraphs: List[str],
+    sections: List[RAGSourceSection],
     max_chars: int,
-) -> List[str]:
+) -> tuple[List[RAGSourceSection], List[RAGSectionDecision]]:
     terms = metadata_terms(draft)
-    selected_indexes = set()
-    scored = []
-    for index, paragraph in enumerate(paragraphs):
-        paragraph_terms = set(tokenize_for_prefill(paragraph))
-        score = len(paragraph_terms & terms)
-        score += min(4, len(paragraph_terms & TRAVEL_RELEVANCE_TERMS))
-        if index < 3:
-            score += 2
-        scored.append((score, index, paragraph))
+    scored: List[tuple[int, int, RAGSourceSection, list[str]]] = []
+    for index, section in enumerate(sections):
+        score, reasons = score_source_section(draft=draft, section=section, metadata_terms=terms)
+        scored.append((score, index, section, reasons))
 
-    for _, index, _ in sorted(scored, key=lambda item: (-item[0], item[1])):
-        selected_indexes.add(index)
-        candidate = "\n\n".join(paragraphs[i] for i in sorted(selected_indexes))
-        if len(candidate) >= max_chars:
-            break
-
-    selected: List[str] = []
+    selected: List[RAGSourceSection] = []
+    selected_ids = set()
     total = 0
-    for index in sorted(selected_indexes):
-        paragraph = paragraphs[index]
-        if total + len(paragraph) + 2 > max_chars and selected:
+    for score, _, section, _ in sorted(scored, key=lambda item: (-item[0], item[1])):
+        if score < 2 and not is_useful_short_fact(section.text):
             continue
-        selected.append(paragraph)
-        total += len(paragraph) + 2
+        if total + len(section.text) > max_chars and selected:
+            continue
+        selected.append(section)
+        selected_ids.add(section.section_id)
+        total += len(section.text) + len(section.heading) + 16
         if total >= max_chars:
             break
-    return selected
+
+    selected.sort(key=lambda section: section.start_offset)
+    decisions = [
+        RAGSectionDecision(
+            section_id=section.section_id,
+            heading=section.heading,
+            selected=section.section_id in selected_ids,
+            score=score,
+            reasons=reasons,
+        )
+        for score, _, section, reasons in scored
+    ]
+    return selected, decisions
+
+
+def score_source_section(
+    *,
+    draft: DraftKnowledgeDocument,
+    section: RAGSourceSection,
+    metadata_terms: set[str],
+) -> tuple[int, List[str]]:
+    text = f"{section.heading} {section.text}"
+    terms = set(tokenize_for_prefill(text))
+    score = 0
+    reasons: List[str] = []
+
+    overlap = terms & metadata_terms
+    if overlap:
+        score += min(8, len(overlap))
+        reasons.append(f"metadata_overlap:{','.join(sorted(overlap)[:6])}")
+    travel_overlap = terms & TRAVEL_RELEVANCE_TERMS
+    if travel_overlap:
+        score += min(6, len(travel_overlap))
+        reasons.append(f"travel_terms:{','.join(sorted(travel_overlap)[:6])}")
+    if draft.city and draft.city.lower() in text.lower():
+        score += 4
+        reasons.append("city_match")
+    if any(poi.lower() in text.lower() for poi in draft.poi_names if poi):
+        score += 4
+        reasons.append("poi_match")
+    if is_useful_short_fact(text):
+        score += 3
+        reasons.append("useful_short_fact")
+    if is_low_value_text(text):
+        score -= 5
+        reasons.append("low_value_pattern")
+    if is_promotional_text(text):
+        score -= 3
+        reasons.append("promotional_pattern")
+    if len(section.text) < 40 and not is_useful_short_fact(section.text):
+        score -= 2
+        reasons.append("too_short")
+
+    return score, reasons
 
 
 def metadata_terms(draft: DraftKnowledgeDocument) -> set[str]:
@@ -532,33 +831,215 @@ def tokenize_for_prefill(text: str) -> List[str]:
     return re.findall(r"[a-zA-Z][a-zA-Z'-]{2,}", (text or "").lower())
 
 
+def validate_prefill_suggestions(
+    *,
+    draft: DraftKnowledgeDocument,
+    suggestion: RAGPrefillSuggestion,
+    selected_sections: List[RAGSourceSection],
+) -> List[RAGValidatedSuggestion]:
+    """Validate model-provided quotes and classify suggestions."""
+    sections = {section.section_id: section for section in selected_sections}
+    seen = set()
+    validated: List[RAGValidatedSuggestion] = []
+    for item in suggestion.suggestions:
+        field = item.field.strip()
+        values = split_prefill_list_values(field, item.value)
+        source_quote = item.source_quote.strip()
+        if not values:
+            values = [""]
+
+        for value in values:
+            status = "accepted"
+            reason = "validated"
+            section = sections.get(item.section_id)
+
+            if field not in PREFILL_ALLOWED_FIELDS:
+                status, reason = "rejected", "unsupported_field"
+            elif not value:
+                status, reason = "rejected", "empty_value"
+            elif not source_quote:
+                status, reason = "rejected", "missing_source_quote"
+            elif is_low_value_text(value) or is_promotional_text(value):
+                status, reason = "rejected", "low_value_or_promotional"
+            elif conflicts_with_city(value, draft.city) or conflicts_with_city(source_quote, draft.city):
+                status, reason = "rejected", "city_conflict"
+            elif section is None:
+                status, reason = "rejected", "unknown_section"
+            elif not quote_in_section(source_quote, section.text):
+                status, reason = "rejected", "source_quote_not_found"
+            elif field in PREFILL_LIST_FIELDS and not list_value_supported_by_evidence(
+                field=field,
+                value=value,
+                source_quote=source_quote,
+                section_text=section.text,
+            ):
+                status, reason = "rejected", "list_value_not_supported"
+
+            duplicate_key = (field.lower(), normalize_for_quote_match(value))
+            if duplicate_key in seen and status == "accepted":
+                status, reason = "rejected", "duplicate_suggestion"
+            seen.add(duplicate_key)
+
+            time_sensitive = item.time_sensitive or is_time_sensitive_text(f"{value} {source_quote}")
+            validated.append(
+                RAGValidatedSuggestion(
+                    field=field,
+                    value=value,
+                    source_quote=source_quote,
+                    section_id=item.section_id,
+                    section_heading=item.section_heading
+                    or sections.get(item.section_id, RAGSourceSection(section_id="", text="", start_offset=0, end_offset=0)).heading,
+                    time_sensitive=time_sensitive,
+                    confidence=item.confidence,
+                    status=status,
+                    reason=reason,
+                )
+            )
+    return validated
+
+
+def split_prefill_list_values(field: str, raw_value: str) -> List[str]:
+    value = (raw_value or "").strip()
+    if not value:
+        return []
+    if field not in PREFILL_LIST_FIELDS:
+        return [value]
+    if field not in {"theme", "poi_names", "best_for"}:
+        return [value]
+
+    normalized = re.sub(r"^[\s\-*•]+", "", value)
+    parts = [
+        part.strip(" \t\r\n-•")
+        for part in re.split(r"\s*(?:;|\n|\r|\u2022|\s+\|\s+)\s*", normalized)
+        if part.strip(" \t\r\n-•")
+    ]
+
+    if len(parts) == 1 and field in {"theme", "best_for"} and "," in value:
+        comma_parts = [part.strip() for part in value.split(",") if part.strip()]
+        if 1 < len(comma_parts) <= 8 and all(len(part.split()) <= 6 for part in comma_parts):
+            parts = comma_parts
+
+    cleaned: List[str] = []
+    seen = set()
+    for part in parts:
+        part = re.sub(r"^(and|or)\s+", "", part, flags=re.I)
+        part = re.sub(r"\s+", " ", part).strip(" .")
+        if not part:
+            continue
+        key = normalize_for_quote_match(part)
+        if key in seen:
+            continue
+        seen.add(key)
+        cleaned.append(part)
+    return cleaned
+
+
+def list_value_supported_by_evidence(
+    *,
+    field: str,
+    value: str,
+    source_quote: str,
+    section_text: str,
+) -> bool:
+    if field in {"seasonality", "transport_advice", "planning_tips"}:
+        return True
+
+    normalized_value = normalize_for_quote_match(value)
+    evidence = normalize_for_quote_match(f"{source_quote}\n{section_text}")
+    if not normalized_value:
+        return False
+    if normalized_value in evidence:
+        return True
+
+    value_tokens = distinctive_tokens(normalized_value)
+    if not value_tokens:
+        return False
+    evidence_tokens = set(distinctive_tokens(evidence))
+
+    if field == "poi_names":
+        return len(value_tokens) >= 2 and sum(1 for token in value_tokens if token in evidence_tokens) == len(value_tokens)
+
+    overlap = sum(1 for token in value_tokens if token in evidence_tokens)
+    return overlap / len(value_tokens) >= 0.5
+
+
+def distinctive_tokens(value: str) -> List[str]:
+    weak = {
+        "and",
+        "the",
+        "for",
+        "with",
+        "from",
+        "travelers",
+        "visitors",
+        "visitor",
+        "travel",
+        "chicago",
+        "new",
+        "york",
+    }
+    tokens = []
+    for token in re.findall(r"[a-z0-9]+", value.lower()):
+        if len(token) <= 2 or token in weak:
+            continue
+        if token.endswith("ies") and len(token) > 4:
+            token = f"{token[:-3]}y"
+        elif token.endswith("s") and len(token) > 4:
+            token = token[:-1]
+        tokens.append(token)
+    return tokens
+
+
+def apply_prefill_suggestions(
+    *,
+    draft: DraftKnowledgeDocument,
+    suggestions: Iterable[RAGValidatedSuggestion],
+) -> DraftKnowledgeDocument:
+    """Merge accepted suggestions into an unsaved draft without approval changes."""
+    payload = draft.model_dump()
+    for suggestion in suggestions:
+        if suggestion.status != "accepted":
+            continue
+        field = suggestion.field
+        value = suggestion.value.strip()
+        if field in PREFILL_LIST_FIELDS:
+            payload[field] = merge_text_lists(payload.get(field, []), [value])
+        elif field == "recommended_duration":
+            if not payload.get(field):
+                payload[field] = value
+        elif field == "content":
+            existing = str(payload.get("content", "") or "").strip()
+            if existing and normalize_for_quote_match(value) not in normalize_for_quote_match(existing):
+                payload["content"] = f"{existing}\n\n{value}"
+            elif not existing:
+                payload["content"] = value
+    payload["review_status"] = draft.review_status
+    payload["reviewer"] = draft.reviewer
+    payload["review_notes"] = draft.review_notes
+    return DraftKnowledgeDocument(**payload)
+
+
 def apply_prefill_suggestion(
     *,
     draft: DraftKnowledgeDocument,
     suggestion: RAGPrefillSuggestion,
 ) -> DraftKnowledgeDocument:
-    """Merge LLM suggestions into a draft without changing approval metadata."""
-    payload = draft.model_dump()
-    for field in [
-        "content",
-        "theme",
-        "poi_names",
-        "best_for",
-        "recommended_duration",
-        "seasonality",
-        "transport_advice",
-        "planning_tips",
-    ]:
-        value = getattr(suggestion, field)
-        if isinstance(value, list):
-            merged = merge_text_lists(payload.get(field, []), value)
-            payload[field] = merged
-        elif value:
-            payload[field] = value.strip()
-    payload["review_status"] = draft.review_status
-    payload["reviewer"] = draft.reviewer
-    payload["review_notes"] = draft.review_notes
-    return DraftKnowledgeDocument(**payload)
+    """Backward-compatible wrapper for callers that still pass raw suggestions."""
+    validated = [
+        RAGValidatedSuggestion(
+            field=item.field,
+            value=item.value,
+            source_quote=item.source_quote,
+            section_id=item.section_id,
+            section_heading=item.section_heading,
+            time_sensitive=item.time_sensitive,
+            confidence=item.confidence,
+            status="accepted",
+            reason="legacy_wrapper",
+        )
+        for item in suggestion.suggestions
+    ]
+    return apply_prefill_suggestions(draft=draft, suggestions=validated)
 
 
 def merge_text_lists(existing: Iterable[str], suggested: Iterable[str]) -> List[str]:
@@ -572,6 +1053,72 @@ def merge_text_lists(existing: Iterable[str], suggested: Iterable[str]) -> List[
         seen.add(key)
         merged.append(item)
     return merged
+
+
+def normalize_for_quote_match(value: str) -> str:
+    plain = markdown_to_plain_match_text(value)
+    plain = re.sub(r"[^\w\s'-]+", " ", plain, flags=re.UNICODE)
+    return re.sub(r"\s+", " ", plain.strip()).lower()
+
+
+def quote_in_section(quote: str, section_text: str) -> bool:
+    normalized_quote = normalize_for_quote_match(quote)
+    normalized_section = normalize_for_quote_match(section_text)
+    if not normalized_quote:
+        return False
+    if normalized_quote in normalized_section:
+        return True
+    return approximate_quote_in_section(normalized_quote, normalized_section)
+
+
+def markdown_to_plain_match_text(value: str) -> str:
+    text = value or ""
+    text = re.sub(r"!\[[^\]]*\]\([^)]+\)", " ", text)
+    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+    text = re.sub(r"^#{1,6}\s+", " ", text, flags=re.M)
+    text = re.sub(r"[*_`>]+", " ", text)
+    text = re.sub(r"</?[^>]+>", " ", text)
+    return unescape(text)
+
+
+def approximate_quote_in_section(normalized_quote: str, normalized_section: str) -> bool:
+    quote_tokens = [token for token in normalized_quote.split() if len(token) > 2]
+    if len(quote_tokens) < 6:
+        return False
+    section_tokens = normalized_section.split()
+    section_token_set = set(section_tokens)
+    covered = sum(1 for token in quote_tokens if token in section_token_set)
+    if covered / len(quote_tokens) < 0.78:
+        return False
+
+    # Preserve some ordering signal so unrelated bags of common travel words do not pass.
+    search_start = 0
+    ordered_hits = 0
+    for token in quote_tokens:
+        try:
+            index = section_tokens.index(token, search_start)
+        except ValueError:
+            continue
+        ordered_hits += 1
+        search_start = index + 1
+    return ordered_hits / len(quote_tokens) >= 0.55
+
+
+def is_time_sensitive_text(text: str) -> bool:
+    return any(pattern.search(text or "") for pattern in TIME_SENSITIVE_PATTERNS)
+
+
+def conflicts_with_city(text: str, city: str) -> bool:
+    if not city:
+        return False
+    known_cities = set(CITY_SLUGS.keys())
+    normalized = (text or "").lower()
+    for known_city in known_cities:
+        if known_city.lower() == city.lower():
+            continue
+        if known_city.lower() in normalized:
+            return True
+    return False
 
 
 def read_draft(path: Path) -> DraftKnowledgeDocument:

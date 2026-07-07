@@ -11,6 +11,7 @@ import type {
   RAGIngestionJob,
   RAGPrefillResponse,
   RAGPromoteResult,
+  RAGUrlIngestionRequest,
   TripFormData,
   TripPlanResponse
 } from '@/types'
@@ -90,6 +91,14 @@ export async function uploadRagSource(formData: FormData): Promise<RAGDraftDetai
     '/api/rag-ingestion/uploads',
     formData,
     { headers: { 'Content-Type': 'multipart/form-data' } }
+  )
+  return response.data.data
+}
+
+export async function createRagDraftFromUrl(payload: RAGUrlIngestionRequest): Promise<RAGDraftDetail> {
+  const response = await apiClient.post<{ success: boolean; data: RAGDraftDetail }>(
+    '/api/rag-ingestion/urls',
+    payload
   )
   return response.data.data
 }

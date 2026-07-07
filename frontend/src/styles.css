@@ -486,9 +486,45 @@ a {
 .draft-editor-grid {
   display: grid;
   gap: 16px;
+  min-width: 0;
 }
 
-.content-fill-button {
+.rag-draft-drawer .ant-drawer-header,
+.rag-draft-drawer .ant-drawer-body {
+  min-width: 0;
+}
+
+.rag-draft-drawer .ant-drawer-body {
+  overflow-x: hidden;
+}
+
+.rag-draft-drawer .ant-drawer-extra {
+  min-width: 0;
+}
+
+.rag-draft-drawer .ant-form,
+.rag-draft-drawer .ant-row,
+.rag-draft-drawer .ant-col,
+.rag-draft-drawer .ant-card,
+.rag-draft-drawer .ant-card-body,
+.rag-draft-drawer .ant-form-item,
+.rag-draft-drawer .ant-select,
+.rag-draft-drawer .ant-input,
+.rag-draft-drawer textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.breakable-text,
+.rag-draft-drawer .ant-descriptions-item-content,
+.ai-evidence-item,
+.ai-evidence-item .ant-typography,
+.ai-evidence-quote {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.content-length-note {
   margin: -8px 0 14px;
 }
 
@@ -501,14 +537,21 @@ a {
   padding-left: 20px;
 }
 
+.reason-tag-row {
+  display: flex;
+  margin-top: 8px;
+}
+
 .ai-evidence-list {
   display: grid;
   gap: 12px;
+  min-width: 0;
 }
 
 .ai-evidence-item {
   display: grid;
   gap: 7px;
+  min-width: 0;
   padding: 12px;
   border: 1px solid #dbe8e0;
   border-radius: 16px;
@@ -523,10 +566,12 @@ a {
 .extracted-text-preview,
 .json-preview {
   max-height: 440px;
+  max-width: 100%;
   overflow: auto;
   padding: 16px;
   border-radius: 18px;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   word-break: break-word;
   background: #0f172a;
   color: #e2e8f0;

@@ -252,12 +252,46 @@ export interface RAGPrefillEvidence {
   evidence: string
 }
 
+export interface RAGPrefillSuggestion {
+  field: string
+  value: string
+  source_quote: string
+  section_id: string
+  section_heading: string
+  time_sensitive: boolean
+  confidence?: number | null
+  status: 'accepted' | 'review_required' | 'rejected'
+  reason: string
+}
+
 export interface RAGPrefillResponse {
   suggested_draft: RAGDraft
-  field_evidence: RAGPrefillEvidence[]
+  suggestions: RAGPrefillSuggestion[]
   warnings: string[]
   source_char_count: number
   used_char_count: number
+  section_count: number
+  selected_section_count: number
+  discarded_section_count: number
+  accepted_suggestion_count: number
+  review_required_suggestion_count: number
+  rejected_suggestion_count: number
+}
+
+export interface RAGUrlIngestionRequest {
+  source_id: string
+  country: string
+  city: string
+  source_url: string
+  source_type: string
+  title: string
+  theme: string[]
+  poi_names: string[]
+  district: string
+  language: string
+  best_for: string[]
+  recommended_duration: string
+  css_selector?: string
 }
 
 export interface RAGPromoteResult {

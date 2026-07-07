@@ -1,5 +1,115 @@
 [
   {
+    "doc_id": "chicago-chicago-001",
+    "country": "US",
+    "city": "Chicago",
+    "district": "",
+    "theme": [
+      "first-time visitors",
+      "lakefront attractions",
+      "family-friendly attractions",
+      "neighborhoods",
+      "water activities",
+      "dining"
+    ],
+    "poi_names": [
+      "Millennium Park Campus",
+      "Cloud Gate",
+      "Crown Fountain",
+      "Jay Pritzker Pavilion",
+      "Lurie Garden",
+      "Art Institute of Chicago",
+      "Chicago Cultural Center",
+      "Maggie Daley Park",
+      "Navy Pier",
+      "Centennial Wheel",
+      "Chicago Shakespeare Theater",
+      "Offshore Rooftop",
+      "Chicago Children’s Museum",
+      "Chicago Riverwalk",
+      "Art on theMART",
+      "Chicago Museum Campus",
+      "Field Museum",
+      "Shedd Aquarium",
+      "Adler Planetarium",
+      "Skydeck at Willis Tower",
+      "TILT at 360 CHICAGO",
+      "Bronzeville",
+      "Chinatown",
+      "Logan Square",
+      "Pilsen",
+      "Lincoln Park",
+      "Garfield Park",
+      "Broadway In Chicago",
+      "The Second City"
+    ],
+    "best_for": [
+      "first-time visitors",
+      "families"
+    ],
+    "recommended_duration": "",
+    "seasonality": [
+      "Chicago Theatre Week is held in February."
+    ],
+    "transport_advice": [
+      "You can get to the Chicago Museum Campus by Shoreline Sightseeing Water Taxi."
+    ],
+    "planning_tips": [
+      "You can get half-priced theatre tickets from Hot Tix.",
+      "Chicago Restaurant Week takes place in January and February.",
+      "Taste of Chicago takes place in September.",
+      "Chicago Gourmet takes place in September."
+    ],
+    "source_type": "official_tourism_portal",
+    "source_url": "https://www.choosechicago.com/articles/bucket-list/first-time-visitors-guide-to-chicago/",
+    "language": "en",
+    "last_verified_at": "2026-06-18",
+    "title": "first-time-visitors-guide-to-chicago",
+    "content": "# First-time visitor’s guide to Chicago First time in Chicago? This guide’s for you. Chicago is a harmonious blend of opposites — bustling big city steeped in Midwestern charm, towering skyscrapers framed by miles of tranquil beaches, a city in a garden (Chicago’s motto, in fact). In other words, everybody feels right at home in Chicago. To make the most of your inaugural visit, add these attractions, experiences, and events to your itinerary. ## Visit the Millennium Park Campus Millennium Park Campus is classic Chicago, with a long list of iconic things to see and do. Pay a visit to one of the city’s most famous public artworks, Cloud Gate, aka “The Bean.” Splash around in Crown Fountain, a shallow pool flanked by two 50-foot towers where the faces of Chicago locals spout water from pouting lips. Dine on the outdoor patio in the shadow of The Bean in the summer, or ice skate on the plaza in the winter. Hear free live music, go to summer festivals, and see films screened under the stars at the Jay Pritzker Pavilion. Wander Lurie Garden and meet birds, bees, and butterflies. Nearby, visit the Art Institute of Chicago, ranked one of the top museums in the world by TripAdvisor users."
+  },
+  {
+    "doc_id": "chicago-lakefront-parks-outdoors-005",
+    "country": "US",
+    "city": "Chicago",
+    "district": "Lakefront and Downtown Parks",
+    "theme": [
+      "lakefront",
+      "parks",
+      "outdoors"
+    ],
+    "poi_names": [
+      "Lakefront Trail",
+      "Grant Park",
+      "Maggie Daley Park",
+      "Navy Pier"
+    ],
+    "best_for": [
+      "outdoor travelers",
+      "family-friendly pacing",
+      "scenic walking routes"
+    ],
+    "recommended_duration": "half_day",
+    "seasonality": [
+      "Winter wind can make lakefront walking uncomfortable, so add indoor alternatives nearby.",
+      "Summer and fall support longer outdoor walks along the lakefront."
+    ],
+    "transport_advice": [
+      "Group lakefront parks and downtown outdoor stops by walking segments when weather is favorable.",
+      "Avoid long lakefront walks when the request asks for a relaxed pace in cold or windy weather."
+    ],
+    "planning_tips": [
+      "For outdoors and parks preferences, use the lakefront as a scenic connector rather than an isolated stop.",
+      "Pair Grant Park or Maggie Daley Park with nearby museum, Loop, or food stops depending on weather.",
+      "Keep Navy Pier optional for users who want classic sightseeing but avoid forcing it into every lakefront route."
+    ],
+    "source_type": "official_tourism_portal",
+    "source_url": "https://www.choosechicago.com/articles/parks-outdoors/",
+    "language": "en",
+    "last_verified_at": "2026-06-16",
+    "title": "Chicago Lakefront, Parks, and Outdoor Planning Notes",
+    "content": "Chicago lakefront itineraries should balance parks, scenic walking, weather exposure, and nearby indoor alternatives. Lakefront and downtown park stops work best when they support pacing rather than create a long weather-dependent route."
+  },
+  {
     "doc_id": "chicago-millennium-park-loop-001",
     "country": "US",
     "city": "Chicago",
@@ -40,48 +150,6 @@
     "last_verified_at": "2026-06-16",
     "title": "Chicago Loop and Millennium Park Planning Notes",
     "content": "Choose Chicago presents the city through visitor interests such as first-time visits, architecture, food, parks, museums, and major downtown attractions. Millennium Park and nearby Loop cultural stops form a compact cluster for realistic first-time itineraries."
-  },
-  {
-    "doc_id": "chicago-river-architecture-food-002",
-    "country": "US",
-    "city": "Chicago",
-    "district": "River North and Downtown",
-    "theme": [
-      "architecture",
-      "food",
-      "citywalk"
-    ],
-    "poi_names": [
-      "Chicago Riverwalk",
-      "Magnificent Mile",
-      "River North",
-      "Chicago Architecture Center"
-    ],
-    "best_for": [
-      "architecture-focused travelers",
-      "food-focused travelers",
-      "walkable downtown routes"
-    ],
-    "recommended_duration": "half_day_to_full_day",
-    "seasonality": [
-      "Wind and cold can make winter riverfront walks less comfortable, so add indoor alternatives.",
-      "Warm-weather days can support longer riverwalk and architecture-focused routes."
-    ],
-    "transport_advice": [
-      "The Riverwalk, River North, and Magnificent Mile can be grouped to reduce backtracking.",
-      "Public transit works well downtown, but walking time should include weather and crowd buffers."
-    ],
-    "planning_tips": [
-      "For architecture preferences, keep the day centered around the riverfront and downtown rather than scattering stops across the city.",
-      "Place lunch or dinner in River North or nearby downtown neighborhoods after architecture-focused walking.",
-      "Use indoor cultural stops as backup when wind, rain, or cold makes outdoor walking less appealing."
-    ],
-    "source_type": "official_tourism_portal",
-    "source_url": "https://www.choosechicago.com/articles/parks-outdoors/millennium-park-campus/",
-    "language": "en",
-    "last_verified_at": "2026-06-16",
-    "title": "Chicago River, Architecture, and Food Planning Notes",
-    "content": "Chicago itineraries often work best when architecture, riverfront walking, downtown food, and nearby cultural stops are grouped into a compact route. This supports stronger route coherence than mixing downtown with distant neighborhoods in the same short itinerary."
   },
   {
     "doc_id": "chicago-museum-campus-culture-003",
@@ -126,6 +194,48 @@
     "content": "Choose Chicago presents museums, culture, lakefront activities, and family-friendly attractions as major visitor themes. Museum Campus itineraries should account for long indoor visit durations and avoid stacking too many major museums into a single day."
   },
   {
+    "doc_id": "chicago-river-architecture-food-002",
+    "country": "US",
+    "city": "Chicago",
+    "district": "River North and Downtown",
+    "theme": [
+      "architecture",
+      "food",
+      "citywalk"
+    ],
+    "poi_names": [
+      "Chicago Riverwalk",
+      "Magnificent Mile",
+      "River North",
+      "Chicago Architecture Center"
+    ],
+    "best_for": [
+      "architecture-focused travelers",
+      "food-focused travelers",
+      "walkable downtown routes"
+    ],
+    "recommended_duration": "half_day_to_full_day",
+    "seasonality": [
+      "Wind and cold can make winter riverfront walks less comfortable, so add indoor alternatives.",
+      "Warm-weather days can support longer riverwalk and architecture-focused routes."
+    ],
+    "transport_advice": [
+      "The Riverwalk, River North, and Magnificent Mile can be grouped to reduce backtracking.",
+      "Public transit works well downtown, but walking time should include weather and crowd buffers."
+    ],
+    "planning_tips": [
+      "For architecture preferences, keep the day centered around the riverfront and downtown rather than scattering stops across the city.",
+      "Place lunch or dinner in River North or nearby downtown neighborhoods after architecture-focused walking.",
+      "Use indoor cultural stops as backup when wind, rain, or cold makes outdoor walking less appealing."
+    ],
+    "source_type": "official_tourism_portal",
+    "source_url": "https://www.choosechicago.com/articles/parks-outdoors/millennium-park-campus/",
+    "language": "en",
+    "last_verified_at": "2026-06-16",
+    "title": "Chicago River, Architecture, and Food Planning Notes",
+    "content": "Chicago itineraries often work best when architecture, riverfront walking, downtown food, and nearby cultural stops are grouped into a compact route. This supports stronger route coherence than mixing downtown with distant neighborhoods in the same short itinerary."
+  },
+  {
     "doc_id": "chicago-west-loop-food-neighborhoods-004",
     "country": "US",
     "city": "Chicago",
@@ -166,47 +276,5 @@
     "last_verified_at": "2026-06-16",
     "title": "Chicago West Loop Food and Neighborhood Planning Notes",
     "content": "Chicago's West Loop and Fulton Market are useful planning anchors for food-focused and nightlife-oriented itineraries. The main itinerary design goal is to keep evening dining, neighborhood walking, and return transportation compact."
-  },
-  {
-    "doc_id": "chicago-lakefront-parks-outdoors-005",
-    "country": "US",
-    "city": "Chicago",
-    "district": "Lakefront and Downtown Parks",
-    "theme": [
-      "lakefront",
-      "parks",
-      "outdoors"
-    ],
-    "poi_names": [
-      "Lakefront Trail",
-      "Grant Park",
-      "Maggie Daley Park",
-      "Navy Pier"
-    ],
-    "best_for": [
-      "outdoor travelers",
-      "family-friendly pacing",
-      "scenic walking routes"
-    ],
-    "recommended_duration": "half_day",
-    "seasonality": [
-      "Winter wind can make lakefront walking uncomfortable, so add indoor alternatives nearby.",
-      "Summer and fall support longer outdoor walks along the lakefront."
-    ],
-    "transport_advice": [
-      "Group lakefront parks and downtown outdoor stops by walking segments when weather is favorable.",
-      "Avoid long lakefront walks when the request asks for a relaxed pace in cold or windy weather."
-    ],
-    "planning_tips": [
-      "For outdoors and parks preferences, use the lakefront as a scenic connector rather than an isolated stop.",
-      "Pair Grant Park or Maggie Daley Park with nearby museum, Loop, or food stops depending on weather.",
-      "Keep Navy Pier optional for users who want classic sightseeing but avoid forcing it into every lakefront route."
-    ],
-    "source_type": "official_tourism_portal",
-    "source_url": "https://www.choosechicago.com/articles/parks-outdoors/",
-    "language": "en",
-    "last_verified_at": "2026-06-16",
-    "title": "Chicago Lakefront, Parks, and Outdoor Planning Notes",
-    "content": "Chicago lakefront itineraries should balance parks, scenic walking, weather exposure, and nearby indoor alternatives. Lakefront and downtown park stops work best when they support pacing rather than create a long weather-dependent route."
   }
 ]

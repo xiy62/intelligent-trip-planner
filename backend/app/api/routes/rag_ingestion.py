@@ -18,7 +18,7 @@ from ...services.rag_ingestion import (
     DraftKnowledgeDocument,
     RAGPrefillSuggestion,
     SourceManifestEntry,
-    apply_prefill_suggestion,
+    apply_prefill_suggestions,
     build_ai_prefill_source_packet,
     build_draft_document,
     city_slug,
@@ -32,12 +32,15 @@ from ...services.rag_ingestion import (
     promote_approved_drafts,
     read_draft,
     slugify,
+    validate_prefill_suggestions,
     write_draft,
     write_extracted_text,
+    write_raw_source_text,
     write_uploaded_source,
 )
 from ...services.llm_service import get_llm
 from ...services.rag_service import get_rag_service
+from ...services.web_fetch_service import URLSafetyError, WebFetchError, get_web_fetch_service
 
 router = APIRouter(prefix="/rag-ingestion", tags=["RAG Ingestion"])
 logger = logging.getLogger(__name__)
@@ -51,6 +54,22 @@ class RAGApproveRequest(BaseModel):
 class RAGPromoteRequest(BaseModel):
     country: str = "US"
     overwrite: bool = False
+
+
+class RAGUrlIngestionRequest(BaseModel):
+    source_id: str
+    country: str = "US"
+    city: str
+    source_url: str
+    source_type: str = "official_tourism_portal"
+    title: str
+    theme: list[str] = []
+    poi_names: list[str] = []
+    district: str = ""
+    language: str = "en"
+    best_for: list[str] = []
+    recommended_duration: str = ""
+    css_selector: str = ""
 
 
 def draft_summary(path: Path, draft: DraftKnowledgeDocument) -> dict:
@@ -154,6 +173,84 @@ async def upload_rag_source(
         raise HTTPException(status_code=500, detail=f"Upload ingestion failed: {exc}") from exc
 
 
+@router.post("/urls", summary="Fetch one URL and create a reviewable RAG draft")
+async def ingest_rag_url(request: RAGUrlIngestionRequest):
+    """Create a draft from one explicitly submitted webpage URL."""
+    started = time.perf_counter()
+    try:
+        entry = SourceManifestEntry(
+            source_id=request.source_id,
+            country=request.country,
+            city=request.city,
+            source_url=request.source_url,
+            source_type=request.source_type,
+            title=request.title,
+            theme=request.theme,
+            poi_names=request.poi_names,
+            district=request.district,
+            language=request.language,
+            best_for=request.best_for,
+            recommended_duration=request.recommended_duration,
+        )
+        fetch_result = get_web_fetch_service().fetch(
+            str(entry.source_url),
+            css_selector=request.css_selector.strip(),
+        )
+        source_path = write_raw_source_text(
+            filename=f"{slugify(entry.source_id)}.html",
+            text=fetch_result.raw_html,
+            country=entry.country,
+            city=entry.city,
+            source_id=entry.source_id,
+        )
+        extracted_path = write_extracted_text(
+            extracted_text=fetch_result.extracted_markdown,
+            country=entry.country,
+            city=entry.city,
+            source_id=entry.source_id,
+        )
+        draft = build_draft_document(
+            entry=entry,
+            extracted_text=fetch_result.extracted_markdown,
+            raw_html_path=source_path,
+            raw_text_path=extracted_path,
+            fetched_at=fetch_result.fetched_at.isoformat(),
+        )
+        path = draft_path_for(
+            draft_root=DEFAULT_DRAFT_ROOT,
+            country=draft.country,
+            city=draft.city,
+            doc_id=draft.doc_id,
+        )
+        write_draft(path, draft)
+        elapsed_ms = (time.perf_counter() - started) * 1000
+        logger.info(
+            "RAG URL ingestion draft created source_id=%s requested_url=%s final_url=%s "
+            "fetch_mode=%s duration_ms=%.1f raw_html_size=%s markdown_size=%s warnings=%s",
+            entry.source_id,
+            fetch_result.requested_url,
+            fetch_result.final_url,
+            fetch_result.fetch_mode,
+            elapsed_ms,
+            len(fetch_result.raw_html.encode("utf-8")),
+            len(fetch_result.extracted_markdown.encode("utf-8")),
+            len(fetch_result.warnings),
+        )
+        return {
+            "success": True,
+            "data": {
+                **draft_detail(path),
+                "fetch": fetch_result.model_dump(mode="json", exclude={"raw_html", "extracted_markdown"}),
+            },
+        }
+    except (ValueError, RuntimeError, ValidationError, URLSafetyError, WebFetchError) as exc:
+        logger.warning("RAG URL ingestion rejected: %s", exc)
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Unexpected RAG URL ingestion failure")
+        raise HTTPException(status_code=500, detail=f"URL ingestion failed: {exc}") from exc
+
+
 @router.get("/drafts", summary="List reviewable RAG drafts")
 async def list_rag_drafts(
     country: Optional[str] = Query(default=None),
@@ -238,36 +335,60 @@ async def ai_prefill_rag_draft(draft_id: str):
         if not extracted_text.strip():
             raise ValueError("Extracted text is empty")
 
-        source_packet, source_char_count, used_char_count, warnings = build_ai_prefill_source_packet(
+        source_packet = build_ai_prefill_source_packet(
             draft=draft,
             extracted_text=extracted_text,
         )
-        if not source_packet.strip():
+        if not source_packet.source_packet.strip():
             raise ValueError("No usable source text remained after cleaning")
 
         parser = PydanticOutputParser(pydantic_object=RAGPrefillSuggestion)
-        prompt = build_rag_prefill_prompt(draft=draft, source_packet=source_packet, parser=parser)
+        prompt = build_rag_prefill_prompt(draft=draft, source_packet=source_packet.source_packet, parser=parser)
         response = get_llm().invoke(prompt)
         content = getattr(response, "content", response)
         suggestion = parser.parse(str(content))
-        suggested_draft = apply_prefill_suggestion(draft=draft, suggestion=suggestion)
-        evidence = [
-            {
-                "field": item.field,
-                "suggestion": item.suggestion[:300],
-                "evidence": item.evidence[:500],
-            }
-            for item in suggestion.field_evidence
-        ]
+        validated = validate_prefill_suggestions(
+            draft=draft,
+            suggestion=suggestion,
+            selected_sections=source_packet.selected_sections,
+        )
+        suggested_draft = apply_prefill_suggestions(draft=draft, suggestions=validated)
+        accepted_count = sum(1 for item in validated if item.status == "accepted")
+        review_required_count = sum(1 for item in validated if item.status == "review_required")
+        rejected_count = sum(1 for item in validated if item.status == "rejected")
+        time_sensitive_count = sum(1 for item in validated if item.time_sensitive and item.status == "accepted")
+        logger.info(
+            "RAG AI prefill processed draft_id=%s source_chars=%s sections=%s selected=%s "
+            "discarded=%s accepted=%s review_required=%s rejected=%s",
+            draft_id,
+            source_packet.source_char_count,
+            len(source_packet.sections),
+            len(source_packet.selected_sections),
+            len(source_packet.sections) - len(source_packet.selected_sections),
+            accepted_count,
+            review_required_count,
+            rejected_count,
+        )
+        time_sensitive_warning = (
+            [f"{time_sensitive_count} accepted suggestion(s) contain time-sensitive source-backed information."]
+            if time_sensitive_count
+            else []
+        )
 
         return {
             "success": True,
             "data": {
                 "suggested_draft": suggested_draft.model_dump(),
-                "field_evidence": evidence,
-                "warnings": [*warnings, *suggestion.warnings],
-                "source_char_count": source_char_count,
-                "used_char_count": used_char_count,
+                "suggestions": [item.model_dump() for item in validated],
+                "warnings": [*source_packet.warnings, *suggestion.warnings, *time_sensitive_warning],
+                "source_char_count": source_packet.source_char_count,
+                "used_char_count": source_packet.used_char_count,
+                "section_count": len(source_packet.sections),
+                "selected_section_count": len(source_packet.selected_sections),
+                "discarded_section_count": len(source_packet.sections) - len(source_packet.selected_sections),
+                "accepted_suggestion_count": accepted_count,
+                "review_required_suggestion_count": review_required_count,
+                "rejected_suggestion_count": rejected_count,
             },
         }
     except FileNotFoundError as exc:
