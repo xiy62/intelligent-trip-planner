@@ -4,10 +4,15 @@ from __future__ import annotations
 
 import unittest
 
-from app.agents.trip_plan_evaluation import evaluate_trip_plan, haversine_km
+from app.agents.trip_plan_evaluation import (
+    evaluate_trip_plan,
+    haversine_km,
+    is_concrete_meal_recommendation,
+)
 from app.models.langgraph_state import (
     AttractionCandidate,
     HotelCandidate,
+    MealCandidate,
     RAGChunk,
     RetryState,
 )
@@ -241,6 +246,122 @@ class TripPlanEvaluationQualityTests(unittest.TestCase):
         self.assertIn("retrieval_grounding_attractions", report.hard_failures)
         self.assertLess(report.scores.attribution_coverage_score, 1.0)
         self.assertTrue(any(link.evidence_type == "none" for link in report.evidence_links))
+
+    def test_concrete_restaurant_with_matching_candidate_is_grounded(self):
+        plan = build_plan()
+        plan.days[0].meals[0] = Meal(
+            type="lunch",
+            name="Katz's Delicatessen",
+            address="205 E Houston St, New York, NY",
+            description="Classic deli lunch",
+            estimated_cost=40,
+        )
+        plan.budget.total_meals = sum(meal.estimated_cost for day in plan.days for meal in day.meals)
+        plan.budget.total = (
+            plan.budget.total_attractions
+            + plan.budget.total_hotels
+            + plan.budget.total_meals
+            + plan.budget.total_transportation
+        )
+
+        report = evaluate(
+            plan,
+            candidate_meals=[
+                MealCandidate(
+                    name="Katz's Delicatessen",
+                    address="205 E Houston St, New York, NY",
+                    source_id="poi-katz",
+                )
+            ],
+        )
+
+        self.assertTrue(is_concrete_meal_recommendation(plan.days[0].meals[0]))
+        self.assertTrue(report.passed)
+        self.assertNotIn("retrieval_grounding_meals", report.hard_failures)
+        meal_links = [link for link in report.evidence_links if link.entity_type == "meal"]
+        self.assertEqual(len(meal_links), 1)
+        self.assertEqual(meal_links[0].evidence_type, "candidate_meal")
+        self.assertEqual(meal_links[0].evidence_id, "poi-katz")
+
+    def test_concrete_restaurant_without_evidence_fails_and_retries_meal_retrieval(self):
+        plan = build_plan()
+        plan.days[0].meals[0] = Meal(
+            type="dinner",
+            name="Imaginary Supper Club",
+            address="123 Fictional Ave, New York, NY",
+            description="Unsupported named restaurant",
+            estimated_cost=75,
+        )
+        plan.budget.total_meals = sum(meal.estimated_cost for day in plan.days for meal in day.meals)
+        plan.budget.total = (
+            plan.budget.total_attractions
+            + plan.budget.total_hotels
+            + plan.budget.total_meals
+            + plan.budget.total_transportation
+        )
+
+        report = evaluate(plan)
+
+        self.assertFalse(report.passed)
+        self.assertIn("retrieval_grounding_meals", report.hard_failures)
+        self.assertEqual(report.next_action, "retrieve_meals")
+        self.assertTrue(
+            any(
+                item.entity_type == "meal" and item.name == "Imaginary Supper Club"
+                for item in report.unsupported_entities
+            )
+        )
+
+    def test_concrete_restaurant_retry_exhaustion_falls_back(self):
+        plan = build_plan()
+        plan.days[0].meals[0] = Meal(
+            type="dinner",
+            name="Imaginary Supper Club",
+            address="123 Fictional Ave, New York, NY",
+            description="Unsupported named restaurant",
+            estimated_cost=75,
+        )
+        plan.budget.total_meals = sum(meal.estimated_cost for day in plan.days for meal in day.meals)
+        plan.budget.total = (
+            plan.budget.total_attractions
+            + plan.budget.total_hotels
+            + plan.budget.total_meals
+            + plan.budget.total_transportation
+        )
+
+        report = evaluate(
+            plan,
+            retry_counts=RetryState(retrieve_meals=3),
+            max_retries=2,
+        )
+
+        self.assertFalse(report.passed)
+        self.assertIn("retrieval_grounding_meals", report.hard_failures)
+        self.assertEqual(report.next_action, "fallback_response")
+
+    def test_generic_meal_suggestion_does_not_hard_fail_grounding(self):
+        plan = build_plan()
+        plan.days[0].meals[0] = Meal(
+            type="lunch",
+            name="local cafe near the museum",
+            address="near The Metropolitan Museum of Art",
+            description="Flexible food stop",
+            estimated_cost=35,
+        )
+        plan.budget.total_meals = sum(meal.estimated_cost for day in plan.days for meal in day.meals)
+        plan.budget.total = (
+            plan.budget.total_attractions
+            + plan.budget.total_hotels
+            + plan.budget.total_meals
+            + plan.budget.total_transportation
+        )
+
+        report = evaluate(plan)
+
+        self.assertFalse(is_concrete_meal_recommendation(plan.days[0].meals[0]))
+        self.assertTrue(report.passed)
+        self.assertNotIn("retrieval_grounding_meals", report.hard_failures)
+        self.assertFalse(any(link.entity_type == "meal" for link in report.evidence_links))
 
     def test_empty_day_attractions_fail_content_completeness_and_retry_planner(self):
         plan = build_plan()

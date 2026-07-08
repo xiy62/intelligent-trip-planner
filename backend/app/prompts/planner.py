@@ -39,11 +39,15 @@ def build_retry_feedback(
 
     attraction_names = [candidate.name for candidate in planner_inputs.attraction_candidates]
     hotel_names = [candidate.name for candidate in planner_inputs.hotel_candidates]
+    meal_names = [candidate.name for candidate in planner_inputs.meal_candidates]
     unsupported_attractions = [
         item.name for item in report.unsupported_entities if item.entity_type == "attraction"
     ]
     unsupported_hotels = [
         item.name for item in report.unsupported_entities if item.entity_type == "hotel"
+    ]
+    unsupported_meals = [
+        item.name for item in report.unsupported_entities if item.entity_type == "meal"
     ]
 
     feedback_lines = [
@@ -59,6 +63,10 @@ def build_retry_feedback(
         feedback_lines.append(
             f"- These hotels were unsupported in the previous draft and must not be reused: {', '.join(unsupported_hotels)}"
         )
+    if unsupported_meals:
+        feedback_lines.append(
+            f"- These concrete restaurant recommendations were unsupported in the previous draft and must not be reused: {', '.join(unsupported_meals)}"
+        )
     if attraction_names:
         feedback_lines.append(
             f"- Attractions must be selected only from these candidates, using exact names: {', '.join(attraction_names)}"
@@ -66,6 +74,10 @@ def build_retry_feedback(
     if hotel_names:
         feedback_lines.append(
             f"- Hotels must be selected only from these candidates, using exact names: {', '.join(hotel_names)}"
+        )
+    if meal_names:
+        feedback_lines.append(
+            f"- Named restaurants must be selected only from these candidates, using exact names and addresses: {', '.join(meal_names)}"
         )
     if "budget_consistency" in report.hard_failures or "budget_total_not_fully_aligned" in report.warnings:
         feedback_lines.append(
@@ -90,6 +102,7 @@ def build_planner_prompt(
     attractions_text: str,
     weather_text: str,
     hotels_text: str,
+    meals_text: str,
     rag_text: str,
     retry_feedback: str = "",
     format_instructions: str = "",
@@ -113,6 +126,9 @@ def build_planner_prompt(
 
 **Hotel candidates:**
 {hotels_text}
+
+**Restaurant candidates for concrete named meals:**
+{meals_text}
 
 **Travel knowledge reference:**
 {rag_text}

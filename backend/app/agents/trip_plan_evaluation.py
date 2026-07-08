@@ -12,11 +12,28 @@ from ..models.langgraph_state import (
     EvaluationReport,
     EvaluationScores,
     HotelCandidate,
+    MealCandidate,
     RAGChunk,
     RetryState,
     UnsupportedEntity,
 )
-from ..models.schemas import Location, TripPlan, TripRequest
+from ..models.schemas import Location, Meal, TripPlan, TripRequest
+
+
+GENERIC_MEAL_NAME_TERMS = (
+    "local cafe",
+    "local restaurant",
+    "near the",
+    "nearby",
+    "neighborhood",
+    "street food",
+    "food hall",
+    "food market",
+    "market lunch",
+    "market dinner",
+    "museum cafe",
+    "hotel breakfast",
+)
 
 
 def normalize_entity_name(value: str) -> str:
@@ -64,12 +81,30 @@ def entity_matches(name: str, candidate_names: List[str], rag_text: str) -> bool
     return normalized in normalize_entity_name(rag_text)
 
 
+def is_concrete_meal_recommendation(meal: Meal) -> bool:
+    """Return whether a meal is a concrete restaurant claim that requires evidence."""
+    name = (meal.name or "").strip()
+    address = (meal.address or "").strip()
+    if not name or not address:
+        return False
+
+    normalized_name = name.lower()
+    generic_labels = {"breakfast", "lunch", "dinner", "snack", meal.type.strip().lower()}
+    if normalized_name in generic_labels:
+        return False
+    if any(term in normalized_name for term in GENERIC_MEAL_NAME_TERMS):
+        return False
+    if normalized_name in {"cafe", "restaurant", "bar", "bakery"}:
+        return False
+    return True
+
+
 def match_entity_to_evidence(
     *,
     entity_type: str,
     entity_name: str,
     day_index: Optional[int],
-    candidates: List[AttractionCandidate] | List[HotelCandidate],
+    candidates: List[AttractionCandidate] | List[HotelCandidate] | List[MealCandidate],
     rag_chunks: List[RAGChunk],
 ) -> EvidenceLink:
     """Return the strongest deterministic evidence link for an itinerary entity."""
@@ -83,9 +118,11 @@ def match_entity_to_evidence(
             match_reason="empty entity name",
         )
 
-    candidate_evidence_type = (
-        "candidate_attraction" if entity_type == "attraction" else "candidate_hotel"
-    )
+    candidate_evidence_type = {
+        "attraction": "candidate_attraction",
+        "hotel": "candidate_hotel",
+        "meal": "candidate_meal",
+    }.get(entity_type, "none")
     for candidate in candidates:
         candidate_normalized = normalize_entity_name(candidate.name)
         if not candidate_normalized:
@@ -349,6 +386,7 @@ def evaluate_trip_plan(
     rag_chunks: List[RAGChunk],
     retry_counts: RetryState,
     max_retries: int,
+    candidate_meals: Optional[List[MealCandidate]] = None,
     quality_retry_enabled: bool = False,
     min_pacing_score: float = 0.75,
     min_route_coherence_score: float = 0.75,
@@ -460,6 +498,8 @@ def evaluate_trip_plan(
 
     attraction_names = [normalize_entity_name(candidate.name) for candidate in candidate_attractions]
     hotel_names = [normalize_entity_name(candidate.name) for candidate in candidate_hotels]
+    meal_candidates = candidate_meals or []
+    meal_names = [normalize_entity_name(candidate.name) for candidate in meal_candidates]
     rag_text = " ".join(chunk.content for chunk in rag_chunks)
 
     total_entities = 0
@@ -505,6 +545,28 @@ def evaluate_trip_plan(
                         reason="not found in retrieved hotel candidates or rag context",
                     )
                 )
+        for meal in day.meals:
+            if not is_concrete_meal_recommendation(meal):
+                continue
+            total_entities += 1
+            evidence_link = match_entity_to_evidence(
+                entity_type="meal",
+                entity_name=meal.name,
+                day_index=day.day_index,
+                candidates=meal_candidates,
+                rag_chunks=rag_chunks,
+            )
+            evidence_links.append(evidence_link)
+            if entity_matches(meal.name, meal_names, rag_text):
+                grounded_entities += 1
+            else:
+                unsupported_entities.append(
+                    UnsupportedEntity(
+                        entity_type="meal",
+                        name=meal.name,
+                        reason="concrete restaurant recommendation with address was not found in retrieved meal candidates or rag context",
+                    )
+                )
     if total_entities:
         scores.grounding_score = grounded_entities / total_entities
     else:
@@ -521,6 +583,8 @@ def evaluate_trip_plan(
         hard_failures.append("retrieval_grounding_attractions")
     if any(item.entity_type == "hotel" for item in unsupported_entities):
         hard_failures.append("retrieval_grounding_hotels")
+    if any(item.entity_type == "meal" for item in unsupported_entities):
+        hard_failures.append("retrieval_grounding_meals")
 
     scores.pacing_score, pacing_warnings = evaluate_pacing_quality(draft_plan)
     scores.route_coherence_score, route_warnings = evaluate_route_coherence(draft_plan, request)
@@ -565,6 +629,8 @@ def evaluate_trip_plan(
             next_action = next_action_with_retry_budget(retry_counts, "retrieve_attractions", max_retries)
         elif "retrieval_grounding_hotels" in hard_failures:
             next_action = next_action_with_retry_budget(retry_counts, "retrieve_hotels", max_retries)
+        elif "retrieval_grounding_meals" in hard_failures:
+            next_action = next_action_with_retry_budget(retry_counts, "retrieve_meals", max_retries)
         else:
             next_action = next_action_with_retry_budget(retry_counts, "plan_itinerary", max_retries)
     elif quality_retry_enabled and strict_quality_reasons:

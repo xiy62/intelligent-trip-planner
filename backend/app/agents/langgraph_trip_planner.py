@@ -17,6 +17,7 @@ from ..models.langgraph_state import (
     AttractionCandidate,
     EvaluationReport,
     HotelCandidate,
+    MealCandidate,
     PlannerInputBundle,
     RAGChunk,
     RequestContext,
@@ -61,6 +62,21 @@ NON_ATTRACTION_NAME_TERMS = {
     "travel, inc",
 }
 
+MEAL_PREFERENCE_HINTS = {
+    "food",
+    "restaurant",
+    "restaurants",
+    "cafe",
+    "coffee",
+    "dining",
+    "dinner",
+    "lunch",
+    "breakfast",
+    "street food",
+    "food hall",
+    "market",
+}
+
 ATTRACTION_PLACE_TYPE_HINTS = {
     "amusement_park",
     "aquarium",
@@ -83,6 +99,7 @@ ALLOWED_MSGPACK_MODULES = [
     ("app.models.langgraph_state", "RequestContext"),
     ("app.models.langgraph_state", "AttractionCandidate"),
     ("app.models.langgraph_state", "HotelCandidate"),
+    ("app.models.langgraph_state", "MealCandidate"),
     ("app.models.langgraph_state", "RAGChunk"),
     ("app.models.langgraph_state", "PlannerInputBundle"),
     ("app.models.langgraph_state", "EvaluationReport"),
@@ -129,10 +146,12 @@ class LangGraphTripPlanner:
         builder.add_node("prepare_request", self.prepare_request)
         builder.add_node("retrieve_attractions", self.retrieve_attractions)
         builder.add_node("retrieve_hotels", self.retrieve_hotels)
+        builder.add_node("retrieve_meals", self.retrieve_meals)
         builder.add_node("retrieve_weather", self.retrieve_weather)
         builder.add_node("retrieve_rag_context", self.retrieve_rag_context)
         builder.add_node("retry_retrieve_attractions", self.retrieve_attractions)
         builder.add_node("retry_retrieve_hotels", self.retrieve_hotels)
+        builder.add_node("retry_retrieve_meals", self.retrieve_meals)
         builder.add_node("retry_retrieve_rag_context", self.retrieve_rag_context)
         builder.add_node("plan_itinerary", self.plan_itinerary)
         builder.add_node("evaluate_itinerary", self.evaluate_itinerary)
@@ -142,10 +161,11 @@ class LangGraphTripPlanner:
         builder.add_edge(START, "prepare_request")
         builder.add_edge("prepare_request", "retrieve_attractions")
         builder.add_edge("prepare_request", "retrieve_hotels")
+        builder.add_edge("prepare_request", "retrieve_meals")
         builder.add_edge("prepare_request", "retrieve_weather")
         builder.add_edge("retrieve_attractions", "retrieve_rag_context")
         builder.add_edge(
-            ["retrieve_hotels", "retrieve_weather", "retrieve_rag_context"],
+            ["retrieve_hotels", "retrieve_meals", "retrieve_weather", "retrieve_rag_context"],
             "plan_itinerary",
         )
         builder.add_edge("plan_itinerary", "evaluate_itinerary")
@@ -157,12 +177,14 @@ class LangGraphTripPlanner:
                 "plan_itinerary": "plan_itinerary",
                 "retrieve_attractions": "retry_retrieve_attractions",
                 "retrieve_hotels": "retry_retrieve_hotels",
+                "retrieve_meals": "retry_retrieve_meals",
                 "fallback_response": "fallback_response",
             },
         )
         builder.add_edge("retry_retrieve_attractions", "retry_retrieve_rag_context")
         builder.add_edge("retry_retrieve_rag_context", "plan_itinerary")
         builder.add_edge("retry_retrieve_hotels", "plan_itinerary")
+        builder.add_edge("retry_retrieve_meals", "plan_itinerary")
         builder.add_edge("finalize_response", END)
         builder.add_edge("fallback_response", END)
         return builder.compile(checkpointer=self.checkpointer)
@@ -211,10 +233,12 @@ class LangGraphTripPlanner:
                 "prepare_request",
                 "retrieve_attractions",
                 "retrieve_hotels",
+                "retrieve_meals",
                 "retrieve_weather",
                 "retrieve_rag_context",
                 "retry_retrieve_attractions",
                 "retry_retrieve_hotels",
+                "retry_retrieve_meals",
                 "retry_retrieve_rag_context",
                 "plan_itinerary",
                 "evaluate_itinerary",
@@ -348,6 +372,46 @@ class LangGraphTripPlanner:
             "decision_trace": trace,
         }
 
+    def retrieve_meals(self, state: TripGraphState) -> TripGraphState:
+        start = time.perf_counter()
+        request = state["request"]
+        candidates: List[MealCandidate] = []
+        seen = set()
+        for term in self._build_meal_search_terms(request):
+            for item in self.search_poi_tool.invoke(
+                {
+                    "keywords": term,
+                    "city": request.city,
+                    "citylimit": True,
+                    "page_size": 5,
+                    "country_code": request.country_code,
+                }
+            ):
+                candidate = MealCandidate(
+                    name=str(item.get("name", "")),
+                    address=str(item.get("address", "")),
+                    source="google_maps",
+                    source_id=str(item.get("id", "")),
+                    raw_text=json.dumps(item, ensure_ascii=False),
+                )
+                normalized = self._normalize_entity_name(candidate.name)
+                if not normalized or normalized in seen:
+                    continue
+                seen.add(normalized)
+                candidates.append(candidate)
+        candidates = candidates[:6]
+        metrics = self._record_node_metrics(state, "retrieve_meals", start)
+        trace = self._append_trace(
+            state,
+            f"retrieve_meals: collected {len(candidates)} candidates",
+        )
+        return {
+            "candidate_meals": candidates,
+            "retry_counts": self._increment_retry_count(state, "retrieve_meals"),
+            "metrics": metrics,
+            "decision_trace": trace,
+        }
+
     def retrieve_weather(self, state: TripGraphState) -> TripGraphState:
         start = time.perf_counter()
         request = state["request"]
@@ -398,6 +462,7 @@ class LangGraphTripPlanner:
             request_context=state["request_context"],
             attraction_candidates=list(state.get("candidate_attractions", [])),
             hotel_candidates=list(state.get("candidate_hotels", [])),
+            meal_candidates=list(state.get("candidate_meals", [])),
             weather_info=list(state.get("weather_info", [])),
             rag_chunks=list(state.get("rag_chunks", [])),
         )
@@ -507,6 +572,7 @@ class LangGraphTripPlanner:
             draft_plan=state.get("draft_plan"),
             candidate_attractions=list(state.get("candidate_attractions", [])),
             candidate_hotels=list(state.get("candidate_hotels", [])),
+            candidate_meals=list(state.get("candidate_meals", [])),
             rag_chunks=list(state.get("rag_chunks", [])),
             retry_counts=state.get("retry_counts") or RetryState(),
             max_retries=self.max_retries,
@@ -557,6 +623,7 @@ class LangGraphTripPlanner:
         request = state["request"]
         attractions_text = self._serialize_attraction_candidates(planner_inputs.attraction_candidates)
         hotels_text = self._serialize_hotel_candidates(planner_inputs.hotel_candidates)
+        meals_text = self._serialize_meal_candidates(planner_inputs.meal_candidates)
         weather_text = self.weather_service.format_weather_for_planner(
             request.city, planner_inputs.weather_info
         )
@@ -571,6 +638,7 @@ class LangGraphTripPlanner:
             attractions_text=attractions_text,
             weather_text=weather_text,
             hotels_text=hotels_text,
+            meals_text=meals_text,
             rag_text=rag_text,
             retry_feedback=retry_feedback,
             memory_context=state.get("memory_summary", ""),
@@ -645,6 +713,29 @@ class LangGraphTripPlanner:
             f"- {candidate.name} | Address: {candidate.address or 'unknown'}"
             for candidate in candidates
         )
+
+    def _serialize_meal_candidates(self, candidates: List[MealCandidate]) -> str:
+        if not candidates:
+            return "No restaurant candidates were retrieved. Use generic meal suggestions instead of inventing named restaurants."
+        return "\n".join(
+            f"- {candidate.name} | Address: {candidate.address or 'unknown'}"
+            for candidate in candidates
+        )
+
+    def _build_meal_search_terms(self, request: TripRequest) -> List[str]:
+        terms: List[str] = []
+        normalized_preferences = [str(preference).strip().lower() for preference in request.preferences]
+        for preference in normalized_preferences:
+            if any(hint in preference for hint in MEAL_PREFERENCE_HINTS):
+                terms.append(f"{preference} restaurants")
+                break
+        terms.extend(["restaurants", "local dining"])
+        deduped: List[str] = []
+        for term in terms:
+            normalized = term.strip().lower()
+            if normalized and normalized not in deduped:
+                deduped.append(normalized)
+        return deduped[:3]
 
     def _serialize_rag_chunks(self, chunks: List[RAGChunk]) -> str:
         return "\n".join(f"- {chunk.title}: {chunk.content}" for chunk in chunks)
@@ -793,6 +884,9 @@ class LangGraphTripPlanner:
         hotel_metadata = self._candidate_metadata_by_name(
             list(state.get("candidate_hotels", []))
         )
+        meal_metadata = self._candidate_metadata_by_name(
+            list(state.get("candidate_meals", []))
+        )
 
         for day in trip_plan.days:
             for attraction in day.attractions:
@@ -817,6 +911,16 @@ class LangGraphTripPlanner:
                     day.hotel.image_url = day.hotel.image_url or metadata.get("image_url")
                     if not day.hotel.rating and metadata.get("rating") is not None:
                         day.hotel.rating = str(metadata.get("rating"))
+            for meal in day.meals:
+                metadata = meal_metadata.get(self._normalize_entity_name(meal.name))
+                if not metadata:
+                    continue
+                meal.poi_id = meal.poi_id or str(metadata.get("id") or "")
+                meal.maps_url = meal.maps_url or metadata.get("maps_url")
+                meal.website_url = meal.website_url or metadata.get("website_url")
+                meal.image_url = meal.image_url or metadata.get("image_url")
+                if not meal.address and metadata.get("address"):
+                    meal.address = metadata.get("address")
         return trip_plan
 
     def _candidate_metadata_by_name(self, candidates: List[Any]) -> Dict[str, Dict[str, Any]]:

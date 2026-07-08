@@ -176,9 +176,10 @@ def parse_candidate_response(response: str):
 class FakeSearchTool:
     name = "map_search_poi"
 
-    def __init__(self, attraction_responses, hotel_responses):
+    def __init__(self, attraction_responses, hotel_responses, meal_responses=None):
         self.attraction_rounds = [parse_candidate_response(item) for item in attraction_responses]
         self.hotel_items = parse_candidate_response(hotel_responses[0])
+        self.meal_items = parse_candidate_response(meal_responses[0]) if meal_responses else []
         self.attraction_calls = 0
         self.calls = []
 
@@ -187,14 +188,16 @@ class FakeSearchTool:
         keyword = payload["keywords"].lower()
         if "hotel" in keyword or "inn" in keyword:
             return list(self.hotel_items)
+        if any(term in keyword for term in ("restaurant", "dining", "food", "cafe", "lunch", "dinner", "breakfast")):
+            return list(self.meal_items)
         round_index = min(self.attraction_calls // 3, len(self.attraction_rounds) - 1)
         self.attraction_calls += 1
         return list(self.attraction_rounds[round_index])
 
 
 class FakeMapService:
-    def __init__(self, attraction_responses, hotel_responses):
-        self.tool = FakeSearchTool(attraction_responses, hotel_responses)
+    def __init__(self, attraction_responses, hotel_responses, meal_responses=None):
+        self.tool = FakeSearchTool(attraction_responses, hotel_responses, meal_responses)
 
     def get_langchain_tools(self):
         return [self.tool]
@@ -252,8 +255,8 @@ class FakeWeatherService:
 
 
 class FakeNativeRuntime:
-    def __init__(self, attraction_responses, hotel_responses, planner_responses):
-        self.map_service = FakeMapService(attraction_responses, hotel_responses)
+    def __init__(self, attraction_responses, hotel_responses, planner_responses, meal_responses=None):
+        self.map_service = FakeMapService(attraction_responses, hotel_responses, meal_responses)
         self.llm = FakeLLM(planner_responses)
         self.weather_service = FakeWeatherService()
 
@@ -273,6 +276,7 @@ ATTRACTIONS_ALL = (
     "4. Chelsea Market - Address: 75 9th Ave, New York, NY"
 )
 HOTELS_ALL = "1. Pod Times Square - Address: 400 W 42nd St, New York, NY"
+MEALS_ALL = "1. Katz's Delicatessen - Address: 205 E Houston St, New York, NY"
 
 
 class LangGraphTripPlannerTests(unittest.TestCase):
@@ -302,6 +306,7 @@ class LangGraphTripPlannerTests(unittest.TestCase):
                 AttractionCandidate(name="Chelsea Market", source_id="poi-market"),
             ],
             "candidate_hotels": [HotelCandidate(name="Pod Times Square", source_id="poi-hotel")],
+            "candidate_meals": [],
             "rag_chunks": [],
             "retry_counts": RetryState(plan_itinerary=1),
         }
@@ -328,6 +333,34 @@ class LangGraphTripPlannerTests(unittest.TestCase):
         snapshot = planner.get_state_snapshot(thread_id)
         self.assertEqual(snapshot.values["final_plan"].city, "New York")
         self.assertEqual(snapshot.values["metrics"].evaluation_pass_count, 1)
+
+    def test_meal_retrieval_grounding_and_metadata_enrichment(self):
+        plan_json = build_valid_plan_json().replace(
+            '{"type": "lunch", "name": "Museum cafe", "estimated_cost": 35}',
+            (
+                '{"type": "lunch", "name": "Katz\'s Delicatessen", '
+                '"address": "205 E Houston St, New York, NY", "estimated_cost": 40}'
+            ),
+        )
+        runtime = FakeNativeRuntime(
+            attraction_responses=[ATTRACTIONS_ALL],
+            hotel_responses=[HOTELS_ALL],
+            meal_responses=[MEALS_ALL],
+            planner_responses=[plan_json],
+        )
+        planner = runtime.build_planner()
+        state = planner.invoke_graph(build_request())
+
+        report = state["evaluation_report"]
+        meal = state["final_plan"].days[0].meals[1]
+
+        self.assertTrue(report.passed)
+        self.assertIn("candidate_meals", state)
+        self.assertEqual(state["candidate_meals"][0].name, "Katz's Delicatessen")
+        self.assertEqual(meal.poi_id, "fake-0-katzs-delicatessen")
+        self.assertEqual(meal.maps_url, "https://maps.example.com/katzs-delicatessen")
+        self.assertTrue(any(link.entity_type == "meal" and link.evidence_type == "candidate_meal" for link in report.evidence_links))
+        self.assertIn("Restaurant candidates", runtime.llm.calls[0])
 
     def test_default_quality_warnings_do_not_retry_langgraph_evaluation(self):
         original_quality_retry_enabled = settings.quality_retry_enabled
@@ -492,6 +525,7 @@ class LangGraphTripPlannerTests(unittest.TestCase):
 
         planner.retrieve_attractions({"request": request})
         planner.retrieve_hotels({"request": request})
+        planner.retrieve_meals({"request": request})
 
         self.assertTrue(runtime.map_service.tool.calls)
         self.assertTrue(

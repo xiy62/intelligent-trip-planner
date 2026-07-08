@@ -47,6 +47,17 @@ class HotelCandidate(BaseModel):
     raw_text: str = ""
 
 
+class MealCandidate(BaseModel):
+    """Structured restaurant or meal candidate from retrieval."""
+
+    name: str
+    address: str = ""
+    location: Optional[Location] = None
+    source: str = "google_maps"
+    source_id: str = ""
+    raw_text: str = ""
+
+
 class RAGChunk(BaseModel):
     """Retrieved travel knowledge chunk."""
 
@@ -63,6 +74,7 @@ class PlannerInputBundle(BaseModel):
     request_context: RequestContext
     attraction_candidates: List[AttractionCandidate] = Field(default_factory=list)
     hotel_candidates: List[HotelCandidate] = Field(default_factory=list)
+    meal_candidates: List[MealCandidate] = Field(default_factory=list)
     weather_info: List[WeatherInfo] = Field(default_factory=list)
     rag_chunks: List[RAGChunk] = Field(default_factory=list)
 
@@ -83,7 +95,7 @@ class EvaluationScores(BaseModel):
 class UnsupportedEntity(BaseModel):
     """Entity that could not be grounded to retrieval evidence."""
 
-    entity_type: Literal["attraction", "hotel", "claim"]
+    entity_type: Literal["attraction", "hotel", "meal", "claim"]
     name: str
     reason: str = ""
 
@@ -91,10 +103,16 @@ class UnsupportedEntity(BaseModel):
 class EvidenceLink(BaseModel):
     """Mapping from a generated itinerary entity to retrieval or RAG evidence."""
 
-    entity_type: Literal["attraction", "hotel", "claim"]
+    entity_type: Literal["attraction", "hotel", "meal", "claim"]
     entity_name: str
     day_index: Optional[int] = None
-    evidence_type: Literal["candidate_attraction", "candidate_hotel", "rag_chunk", "none"]
+    evidence_type: Literal[
+        "candidate_attraction",
+        "candidate_hotel",
+        "candidate_meal",
+        "rag_chunk",
+        "none",
+    ]
     evidence_id: str = ""
     source_title: str = ""
     source_url: str = ""
@@ -118,6 +136,7 @@ class EvaluationReport(BaseModel):
         "plan_itinerary",
         "retrieve_attractions",
         "retrieve_hotels",
+        "retrieve_meals",
         "fallback_response",
     ] = "plan_itinerary"
 
@@ -128,6 +147,7 @@ class RetryState(BaseModel):
     prepare_request: int = 0
     retrieve_attractions: int = 0
     retrieve_hotels: int = 0
+    retrieve_meals: int = 0
     retrieve_weather: int = 0
     retrieve_rag_context: int = 0
     plan_itinerary: int = 0
@@ -222,6 +242,7 @@ class TripGraphState(TypedDict, total=False):
     request_context: RequestContext
     candidate_attractions: List[AttractionCandidate]
     candidate_hotels: List[HotelCandidate]
+    candidate_meals: List[MealCandidate]
     weather_info: List[WeatherInfo]
     rag_chunks: List[RAGChunk]
     planner_inputs: PlannerInputBundle
