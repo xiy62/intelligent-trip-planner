@@ -236,3 +236,4 @@ class TripGraphState(TypedDict, total=False):
     memory_applied: bool
     memory_summary: str
     memory_profile: Dict[str, Any]
+    memory_conflicts: List[Dict[str, Any]]

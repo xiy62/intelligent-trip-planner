@@ -189,6 +189,7 @@ class LangGraphTripPlanner:
             "memory_applied": False,
             "memory_summary": "",
             "memory_profile": {},
+            "memory_conflicts": [],
         }
         config = {"configurable": {"thread_id": conversation_id}}
         return self.graph.invoke(initial_state, config=config)
@@ -227,7 +228,10 @@ class LangGraphTripPlanner:
         request = state["request"]
         travel_dates = self._get_travel_dates(request.start_date, request.travel_days)
         memory_profile = self.memory_service.get_profile_snapshot(request.profile_id)
-        memory_summary = self.memory_service.build_memory_context_from_profile(memory_profile)
+        memory_summary, memory_conflicts = self.memory_service.build_memory_context_for_request(
+            memory_profile,
+            request,
+        )
         memory_applied = bool(memory_summary)
         request_context = RequestContext(
             city=request.city,
@@ -245,6 +249,8 @@ class LangGraphTripPlanner:
         trace_message = "prepare_request: normalized request and travel dates"
         if memory_applied:
             trace_message += " with anonymous profile memory"
+        if memory_conflicts:
+            trace_message += f" and {len(memory_conflicts)} memory conflict(s) resolved by current request"
         trace = self._append_trace(state, trace_message)
         return {
             "travel_dates": travel_dates,
@@ -252,6 +258,7 @@ class LangGraphTripPlanner:
             "memory_applied": memory_applied,
             "memory_summary": memory_summary,
             "memory_profile": memory_profile or {},
+            "memory_conflicts": memory_conflicts,
             "retry_counts": self._increment_retry_count(state, "prepare_request"),
             "metrics": metrics,
             "decision_trace": trace,

@@ -183,11 +183,35 @@ class TripPlanApiTests(RoutePatchMixin, unittest.TestCase):
                         "accommodation": "Mid-range hotel",
                         "preferences": ["Museums"],
                         "recent_cities": ["New York"],
+                        "preference_metadata": {
+                            "transportation": [
+                                {
+                                    "value": "Public transit",
+                                    "count": 2,
+                                    "last_seen_at": 2.0,
+                                    "source_type": "explicit_request",
+                                }
+                            ],
+                            "accommodation": [],
+                            "preferences": [],
+                        },
                         "trip_count": 1,
                         "last_summary": "Recorded one successful trip.",
                         "created_at": 1.0,
                         "updated_at": 2.0,
                     },
+                    "memory_conflicts": [
+                        {
+                            "field": "accommodation",
+                            "remembered_value": "Budget hotel",
+                            "current_value": "Mid-range hotel",
+                            "resolution": "current_request_used",
+                            "count": 1,
+                            "last_seen_at": 1.0,
+                            "source_type": "explicit_request",
+                            "explanation": "Previous accommodation was overridden by the current request.",
+                        }
+                    ],
                 }
 
         class FakeObservabilityService:
@@ -211,6 +235,9 @@ class TripPlanApiTests(RoutePatchMixin, unittest.TestCase):
         self.assertTrue(body["memory_applied"])
         self.assertEqual(body["memory_summary"], "Historical memory was applied.")
         self.assertEqual(body["memory_profile"]["profile_id"], "profile_12345678")
+        self.assertEqual(body["memory_profile"]["preference_metadata"]["transportation"][0]["count"], 2)
+        self.assertEqual(body["memory_conflicts"][0]["field"], "accommodation")
+        self.assertEqual(body["memory_conflicts"][0]["resolution"], "current_request_used")
         self.assertEqual(body["data"]["city"], "New York")
         self.assertEqual(len(body["data"]["days"]), 2)
         self.assertEqual(captured_request.city, "New York")

@@ -430,12 +430,20 @@ class LangGraphTripPlannerTests(unittest.TestCase):
 
             self.assertTrue(state["memory_applied"])
             self.assertIn("Museums", state["memory_summary"])
+            self.assertEqual(len(state["memory_conflicts"]), 1)
+            self.assertEqual(state["memory_conflicts"][0]["field"], "accommodation")
+            self.assertEqual(state["memory_conflicts"][0]["remembered_value"], "Budget hotel")
+            self.assertEqual(state["memory_conflicts"][0]["current_value"], "Luxury hotel")
+            self.assertIn("current request is used", state["memory_conflicts"][0]["explanation"])
+            self.assertIn("Memory/current-request conflict note", state["memory_summary"])
             self.assertEqual(state["memory_profile"]["accommodation"], "Budget hotel")
+            self.assertEqual(state["memory_profile"]["preference_metadata"]["accommodation"][0]["value"], "Budget hotel")
             self.assertIn("New York", state["memory_profile"]["recent_cities"])
             self.assertEqual(state["conversation_id"], "second-conversation")
             planner_prompt = runtime.llm.calls[0]
             self.assertIn("Anonymous preference memory", planner_prompt)
             self.assertIn("current request", planner_prompt)
+            self.assertIn("highest priority", planner_prompt)
             self.assertIn("Accommodation preference: Luxury hotel", planner_prompt)
 
     def test_current_request_alignment_guardrail_overrides_memory_conflict(self):
@@ -473,6 +481,8 @@ class LangGraphTripPlannerTests(unittest.TestCase):
 
             self.assertTrue(state["evaluation_report"].passed)
             self.assertEqual(state["retry_counts"].plan_itinerary, 1)
+            self.assertEqual(state["memory_conflicts"][0]["field"], "accommodation")
+            self.assertEqual(state["memory_conflicts"][0]["resolution"], "current_request_used")
             self.assertEqual(state["final_plan"].days[0].accommodation, "Luxury hotel")
             self.assertEqual(state["final_plan"].days[1].accommodation, "Luxury hotel")
             self.assertEqual(memory_service.get_profile(profile_id)["accommodation"], "Luxury hotel")

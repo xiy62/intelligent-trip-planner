@@ -94,10 +94,29 @@ export interface MemoryProfile {
   accommodation: string
   preferences: string[]
   recent_cities: string[]
+  preference_metadata?: Record<string, MemoryPreferenceMetadata[]>
   trip_count: number
   last_summary: string
   created_at?: number
   updated_at?: number
+}
+
+export interface MemoryPreferenceMetadata {
+  value: string
+  count: number
+  last_seen_at?: number
+  source_type: string
+}
+
+export interface MemoryConflictExplanation {
+  field: string
+  remembered_value: string
+  current_value: string
+  resolution: string
+  count: number
+  last_seen_at?: number
+  source_type: string
+  explanation: string
 }
 
 export interface TripFormData {
@@ -121,6 +140,7 @@ export interface TripPlanResponse {
   memory_applied?: boolean
   memory_summary?: string
   memory_profile?: MemoryProfile
+  memory_conflicts?: MemoryConflictExplanation[]
 }
 
 export interface MemoryClearResponse {

@@ -44,6 +44,7 @@ async def plan_trip(request: TripRequest):
             memory_applied=bool(state.get("memory_applied")),
             memory_summary=state.get("memory_summary") or None,
             memory_profile=state.get("memory_profile") or None,
+            memory_conflicts=list(state.get("memory_conflicts") or []),
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Trip planning failed: {exc}") from exc

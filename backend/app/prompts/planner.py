@@ -97,7 +97,7 @@ def build_planner_prompt(
 ) -> str:
     prompt = f"""Generate a {request.travel_days}-day itinerary for {request.city} using the information below.
 
-**Basic information:**
+**Current request (highest priority, authoritative):**
 - City: {request.city}
 - Dates: {request.start_date} to {request.end_date}
 - Travel days: {request.travel_days}
@@ -117,10 +117,10 @@ def build_planner_prompt(
 **Travel knowledge reference:**
 {rag_text}
 
-**Anonymous preference memory:**
+**Anonymous preference memory (soft context, lower priority than the current request):**
 {memory_context or 'none'}
 
-Memory rule: historical preferences are soft constraints only. If memory conflicts with this request's city, dates, transportation, accommodation, preferences, or free-text requirements, follow the current request.
+Memory rule: use historical preferences only to personalize unspecified or ambiguous choices. Do not copy old preferences just because they appear in memory. If memory conflicts with this request's city, dates, transportation, accommodation, preferences, or free-text requirements, follow the current request.
 
 **Output rules:**
 {TRIP_JSON_RULES}

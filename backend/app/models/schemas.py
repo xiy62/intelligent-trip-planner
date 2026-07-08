@@ -2,7 +2,7 @@
 
 from datetime import datetime
 import re
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -235,6 +235,26 @@ class TripPlan(BaseModel):
     budget: Optional[Budget] = Field(default=None, description="Budget information")
 
 
+class MemoryPreferenceMetadata(BaseModel):
+    """Frequency metadata for one remembered preference value."""
+    value: str = Field(..., description="Remembered preference value")
+    count: int = Field(default=1, description="Number of successful plans where this value appeared")
+    last_seen_at: Optional[float] = Field(default=None, description="Unix timestamp for latest successful observation")
+    source_type: str = Field(default="explicit_request", description="Where the preference came from")
+
+
+class MemoryConflictExplanation(BaseModel):
+    """Explanation for a memory/current-request conflict."""
+    field: str = Field(..., description="Request field with a memory conflict")
+    remembered_value: str = Field(..., description="Value from anonymous profile memory")
+    current_value: str = Field(..., description="Explicit value from the current request")
+    resolution: str = Field(default="current_request_used", description="How the conflict was resolved")
+    count: int = Field(default=0, description="Observed count for the remembered value")
+    last_seen_at: Optional[float] = Field(default=None, description="Latest timestamp for the remembered value")
+    source_type: str = Field(default="explicit_request", description="Source type for the remembered value")
+    explanation: str = Field(..., description="Human-readable conflict explanation")
+
+
 class MemoryProfile(BaseModel):
     """Anonymous preference-memory summary."""
     profile_id: str = Field(..., description="Anonymous preference-memory profile ID")
@@ -242,6 +262,10 @@ class MemoryProfile(BaseModel):
     accommodation: str = Field(default="", description="Previously preferred accommodation")
     preferences: List[str] = Field(default_factory=list, description="Historical preference labels")
     recent_cities: List[str] = Field(default_factory=list, description="Recently planned destinations")
+    preference_metadata: Dict[str, List[MemoryPreferenceMetadata]] = Field(
+        default_factory=dict,
+        description="Frequency and recency metadata for remembered preference values",
+    )
     trip_count: int = Field(default=0, description="Number of successful memory writes")
     last_summary: str = Field(default="", description="Latest memory summary")
     created_at: Optional[float] = Field(default=None, description="Created timestamp")
@@ -257,6 +281,10 @@ class TripPlanResponse(BaseModel):
     memory_applied: bool = Field(default=False, description="Whether historical preference memory was applied")
     memory_summary: Optional[str] = Field(default=None, description="Historical preference summary applied to this request")
     memory_profile: Optional[MemoryProfile] = Field(default=None, description="Structured anonymous preference memory")
+    memory_conflicts: List[MemoryConflictExplanation] = Field(
+        default_factory=list,
+        description="Explicit explanations when current request overrides historical memory",
+    )
 
 
 class MemoryClearRequest(BaseModel):
