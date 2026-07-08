@@ -1,163 +1,318 @@
 [
   {
-    "city": "北京",
-    "start_date": "2026-06-01",
-    "end_date": "2026-06-03",
-    "travel_days": 3,
-    "transportation": "公共交通",
-    "accommodation": "经济型酒店",
-    "preferences": ["历史文化", "经典路线"],
-    "free_text_input": "希望以故宫和中轴线为主，节奏不要太赶",
-    "expected_rag_doc_ids": ["beijing-history-core-001"],
-    "expected_rag_themes": ["历史文化", "经典路线"],
-    "forbidden_rag_doc_ids": ["shanghai-food-night-002"],
-    "benchmark_note": "北京历史文化和中轴线请求应召回故宫/中轴线知识"
-  },
-  {
-    "city": "北京",
-    "start_date": "2026-06-05",
-    "end_date": "2026-06-06",
+    "city": "New York",
+    "start_date": "2026-07-01",
+    "end_date": "2026-07-02",
     "travel_days": 2,
-    "transportation": "地铁",
-    "accommodation": "中档酒店",
-    "preferences": ["美食", "城市漫步"],
-    "free_text_input": "想体验胡同和夜间步行氛围",
-    "expected_rag_doc_ids": ["beijing-hutong-food-002"],
-    "expected_rag_themes": ["美食", "城市漫步"],
-    "forbidden_rag_doc_ids": ["hangzhou-westlake-001"],
-    "benchmark_note": "北京美食和胡同 citywalk 请求应召回胡同/夜间美食知识"
+    "transportation": "subway and walking",
+    "accommodation": "mid-range hotel",
+    "preferences": [
+      "museums",
+      "landmarks",
+      "culture"
+    ],
+    "free_text_input": "Build a Manhattan culture route with major museums, Central Park breaks, and classic landmarks without too much backtracking.",
+    "expected_rag_doc_ids": [
+      "nyc-museums-landmarks-001"
+    ],
+    "expected_rag_themes": [
+      "museums",
+      "landmarks",
+      "culture"
+    ],
+    "forbidden_rag_doc_ids": [
+      "la-beaches-coast-002",
+      "chicago-food-neighborhoods-003"
+    ],
+    "benchmark_note": "New York museum and landmark request should retrieve the NYC culture document, not unrelated beach or Chicago food guidance."
   },
   {
-    "city": "北京",
-    "start_date": "2026-06-09",
-    "end_date": "2026-06-10",
-    "travel_days": 2,
-    "transportation": "打车",
-    "accommodation": "精品酒店",
-    "preferences": ["自然风光", "拍照"],
-    "free_text_input": "想安排一个轻松一些的长城或公园行程",
-    "expected_rag_doc_ids": ["beijing-outdoor-003"],
-    "expected_rag_themes": ["自然风光", "拍照"],
-    "benchmark_note": "北京自然风光请求应召回长城/园林户外知识"
-  },
-  {
-    "city": "上海",
-    "start_date": "2026-06-12",
-    "end_date": "2026-06-14",
-    "travel_days": 3,
-    "transportation": "地铁",
-    "accommodation": "中档酒店",
-    "preferences": ["美食", "城市漫步"],
-    "free_text_input": "想体验本地小吃、外滩和夜景",
-    "expected_rag_doc_ids": ["shanghai-citywalk-core-001", "shanghai-food-night-002"],
-    "expected_rag_themes": ["美食", "城市漫步", "夜景"],
-    "forbidden_rag_doc_ids": ["beijing-history-core-001"],
-    "benchmark_note": "上海小吃、外滩和夜景请求应召回 citywalk 与美食夜景知识"
-  },
-  {
-    "city": "上海",
-    "start_date": "2026-06-16",
-    "end_date": "2026-06-18",
-    "travel_days": 3,
-    "transportation": "公共交通",
-    "accommodation": "经济型酒店",
-    "preferences": ["历史文化", "经典路线"],
-    "free_text_input": "希望兼顾老城和现代地标，不要跨区太频繁",
-    "expected_rag_doc_ids": ["shanghai-citywalk-core-001"],
-    "expected_rag_themes": ["历史文化", "经典路线", "城市漫步"],
-    "benchmark_note": "上海老城与现代地标请求应召回核心 citywalk 知识"
-  },
-  {
-    "city": "上海",
-    "start_date": "2026-06-20",
-    "end_date": "2026-06-21",
-    "travel_days": 2,
-    "transportation": "打车",
-    "accommodation": "精品酒店",
-    "preferences": ["拍照", "夜景"],
-    "free_text_input": "优先安排滨江和夜景体验",
-    "expected_rag_doc_ids": ["shanghai-photo-modern-003"],
-    "expected_rag_themes": ["拍照", "夜景"],
-    "benchmark_note": "上海滨江夜景请求应召回拍照和现代地标知识"
-  },
-  {
-    "city": "杭州",
-    "start_date": "2026-06-22",
-    "end_date": "2026-06-24",
-    "travel_days": 3,
-    "transportation": "打车",
-    "accommodation": "精品酒店",
-    "preferences": ["自然风光", "拍照"],
-    "free_text_input": "希望西湖和山寺类景点搭配，不要赶路",
-    "expected_rag_doc_ids": ["hangzhou-westlake-001", "hangzhou-lingyin-002"],
-    "expected_rag_themes": ["自然风光", "拍照"],
-    "forbidden_rag_doc_ids": ["guangzhou-river-night-002"],
-    "benchmark_note": "杭州西湖和山寺请求应召回西湖与灵隐知识"
-  },
-  {
-    "city": "杭州",
-    "start_date": "2026-06-26",
-    "end_date": "2026-06-27",
-    "travel_days": 2,
-    "transportation": "公共交通",
-    "accommodation": "经济型酒店",
-    "preferences": ["历史文化", "城市漫步"],
-    "free_text_input": "想安排西湖周边和老街的轻松路线",
-    "expected_rag_doc_ids": ["hangzhou-westlake-001"],
-    "expected_rag_themes": ["历史文化", "城市漫步"],
-    "benchmark_note": "杭州西湖周边轻松路线应召回西湖核心知识"
-  },
-  {
-    "city": "杭州",
-    "start_date": "2026-06-29",
-    "end_date": "2026-06-30",
-    "travel_days": 2,
-    "transportation": "地铁",
-    "accommodation": "中档酒店",
-    "preferences": ["美食", "经典路线"],
-    "free_text_input": "希望有茶文化和本地餐饮体验",
-    "expected_rag_doc_ids": ["hangzhou-tea-food-003"],
-    "expected_rag_themes": ["美食", "茶文化"],
-    "benchmark_note": "杭州茶文化和本地餐饮请求应召回茶文化美食知识"
-  },
-  {
-    "city": "广州",
-    "start_date": "2026-07-02",
+    "city": "New York",
+    "start_date": "2026-07-03",
     "end_date": "2026-07-04",
-    "travel_days": 3,
-    "transportation": "地铁",
-    "accommodation": "中档酒店",
-    "preferences": ["美食", "城市漫步"],
-    "free_text_input": "想重点体验老城区和本地餐饮",
-    "expected_rag_doc_ids": ["guangzhou-oldtown-food-001"],
-    "expected_rag_themes": ["美食", "城市漫步"],
-    "forbidden_rag_doc_ids": ["shanghai-photo-modern-003"],
-    "benchmark_note": "广州老城区和本地餐饮请求应召回老城美食知识"
-  },
-  {
-    "city": "广州",
-    "start_date": "2026-07-06",
-    "end_date": "2026-07-07",
     "travel_days": 2,
-    "transportation": "公共交通",
-    "accommodation": "经济型酒店",
-    "preferences": ["历史文化", "经典路线"],
-    "free_text_input": "希望安排骑楼、沙面和珠江沿线",
-    "expected_rag_doc_ids": ["guangzhou-history-003", "guangzhou-river-night-002"],
-    "expected_rag_themes": ["历史文化", "经典路线"],
-    "benchmark_note": "广州骑楼、沙面和珠江请求应召回历史文化与珠江知识"
+    "transportation": "subway",
+    "accommodation": "boutique hotel",
+    "preferences": [
+      "food",
+      "neighborhoods",
+      "citywalk"
+    ],
+    "free_text_input": "Focus on Chinatown, the Lower East Side, or Brooklyn food neighborhoods with a walkable pace.",
+    "expected_rag_doc_ids": [
+      "nyc-food-neighborhoods-002"
+    ],
+    "expected_rag_themes": [
+      "food",
+      "neighborhoods",
+      "citywalk"
+    ],
+    "forbidden_rag_doc_ids": [
+      "sf-parks-views-002"
+    ],
+    "benchmark_note": "New York food neighborhood request should retrieve the NYC food document, not San Francisco outdoor view planning."
   },
   {
-    "city": "广州",
+    "city": "New York",
+    "start_date": "2026-07-05",
+    "end_date": "2026-07-06",
+    "travel_days": 2,
+    "transportation": "public transit and ferry",
+    "accommodation": "mid-range hotel",
+    "preferences": [
+      "parks",
+      "waterfront",
+      "views"
+    ],
+    "free_text_input": "I want scenic parks, waterfront walking, and one skyline or ferry view with weather flexibility.",
+    "expected_rag_doc_ids": [
+      "nyc-parks-views-003"
+    ],
+    "expected_rag_themes": [
+      "parks",
+      "waterfront",
+      "views"
+    ],
+    "forbidden_rag_doc_ids": [
+      "chicago-food-neighborhoods-003"
+    ],
+    "benchmark_note": "New York parks and skyline request should retrieve the NYC scenic document, not Chicago food-neighborhood planning."
+  },
+  {
+    "city": "Los Angeles",
+    "start_date": "2026-07-07",
+    "end_date": "2026-07-08",
+    "travel_days": 2,
+    "transportation": "rideshare and driving",
+    "accommodation": "West Hollywood hotel",
+    "preferences": [
+      "hollywood",
+      "museums",
+      "culture"
+    ],
+    "free_text_input": "Plan Hollywood, film culture, and one or two museums with realistic traffic buffers.",
+    "expected_rag_doc_ids": [
+      "la-hollywood-museums-001"
+    ],
+    "expected_rag_themes": [
+      "hollywood",
+      "museums",
+      "culture"
+    ],
+    "forbidden_rag_doc_ids": [
+      "nyc-food-neighborhoods-002",
+      "sf-food-neighborhoods-003"
+    ],
+    "benchmark_note": "Los Angeles Hollywood museum request should retrieve LA culture guidance, not East Coast or SF food-neighborhood documents."
+  },
+  {
+    "city": "Los Angeles",
     "start_date": "2026-07-09",
     "end_date": "2026-07-10",
     "travel_days": 2,
-    "transportation": "打车",
-    "accommodation": "精品酒店",
-    "preferences": ["夜景", "拍照"],
-    "free_text_input": "优先珠江夜游和城市景观",
-    "expected_rag_doc_ids": ["guangzhou-river-night-002"],
-    "expected_rag_themes": ["夜景", "拍照"],
-    "benchmark_note": "广州珠江夜游请求应召回珠江夜景知识"
+    "transportation": "driving",
+    "accommodation": "Santa Monica hotel",
+    "preferences": [
+      "beaches",
+      "coast",
+      "outdoors"
+    ],
+    "free_text_input": "Keep the plan along Santa Monica, Venice, or Malibu with sunset flexibility and not too much inland driving.",
+    "expected_rag_doc_ids": [
+      "la-beaches-coast-002"
+    ],
+    "expected_rag_themes": [
+      "beaches",
+      "coast",
+      "outdoors"
+    ],
+    "forbidden_rag_doc_ids": [
+      "chicago-architecture-river-001",
+      "nyc-museums-landmarks-001"
+    ],
+    "benchmark_note": "Los Angeles coastal request should retrieve the LA beach/coast document, not Chicago architecture or NYC museum guidance."
+  },
+  {
+    "city": "Los Angeles",
+    "start_date": "2026-07-11",
+    "end_date": "2026-07-12",
+    "travel_days": 2,
+    "transportation": "Metro and rideshare",
+    "accommodation": "Downtown LA hotel",
+    "preferences": [
+      "food",
+      "neighborhoods",
+      "citywalk"
+    ],
+    "free_text_input": "Build a focused food itinerary around Koreatown, Thai Town, Downtown, or the Arts District without crossing the whole city.",
+    "expected_rag_doc_ids": [
+      "la-food-neighborhoods-003"
+    ],
+    "expected_rag_themes": [
+      "food",
+      "neighborhoods",
+      "citywalk"
+    ],
+    "forbidden_rag_doc_ids": [
+      "sf-parks-views-002"
+    ],
+    "benchmark_note": "Los Angeles food-neighborhood request should retrieve LA district planning, not San Francisco park/view guidance."
+  },
+  {
+    "city": "Chicago",
+    "start_date": "2026-07-13",
+    "end_date": "2026-07-14",
+    "travel_days": 2,
+    "transportation": "walking and public transit",
+    "accommodation": "Loop hotel",
+    "preferences": [
+      "architecture",
+      "river",
+      "landmarks"
+    ],
+    "free_text_input": "Center the trip on the Chicago Riverwalk, architecture, the Loop, and one skyline landmark with realistic weather backup.",
+    "expected_rag_doc_ids": [
+      "chicago-architecture-river-001"
+    ],
+    "expected_rag_themes": [
+      "architecture",
+      "river",
+      "landmarks"
+    ],
+    "forbidden_rag_doc_ids": [
+      "la-beaches-coast-002",
+      "sf-food-neighborhoods-003"
+    ],
+    "benchmark_note": "Chicago architecture request should retrieve river architecture knowledge, not LA beaches or SF food walks."
+  },
+  {
+    "city": "Chicago",
+    "start_date": "2026-07-15",
+    "end_date": "2026-07-16",
+    "travel_days": 2,
+    "transportation": "public transit",
+    "accommodation": "family-friendly hotel",
+    "preferences": [
+      "museums",
+      "parks",
+      "culture"
+    ],
+    "free_text_input": "Plan a Museum Campus or Art Institute day with nearby park breaks and avoid too many major museums.",
+    "expected_rag_doc_ids": [
+      "chicago-museums-parks-002"
+    ],
+    "expected_rag_themes": [
+      "museums",
+      "parks",
+      "culture"
+    ],
+    "forbidden_rag_doc_ids": [
+      "nyc-food-neighborhoods-002"
+    ],
+    "benchmark_note": "Chicago museum and park request should retrieve the Chicago culture document, not NYC food-neighborhood planning."
+  },
+  {
+    "city": "Chicago",
+    "start_date": "2026-07-17",
+    "end_date": "2026-07-18",
+    "travel_days": 2,
+    "transportation": "CTA and rideshare",
+    "accommodation": "boutique hotel",
+    "preferences": [
+      "food",
+      "neighborhoods",
+      "citywalk"
+    ],
+    "free_text_input": "I want West Loop, Pilsen, Chinatown, or Logan Square food with simple transportation back.",
+    "expected_rag_doc_ids": [
+      "chicago-food-neighborhoods-003"
+    ],
+    "expected_rag_themes": [
+      "food",
+      "neighborhoods",
+      "citywalk"
+    ],
+    "forbidden_rag_doc_ids": [
+      "sf-waterfront-landmarks-001"
+    ],
+    "benchmark_note": "Chicago food request should retrieve Chicago food-neighborhood knowledge, not San Francisco waterfront landmarks."
+  },
+  {
+    "city": "San Francisco",
+    "start_date": "2026-07-19",
+    "end_date": "2026-07-20",
+    "travel_days": 2,
+    "transportation": "Muni and walking",
+    "accommodation": "waterfront hotel",
+    "preferences": [
+      "waterfront",
+      "landmarks",
+      "food"
+    ],
+    "free_text_input": "Keep the plan around the Ferry Building, Embarcadero, Fisherman's Wharf, bay views, and nearby food.",
+    "expected_rag_doc_ids": [
+      "sf-waterfront-landmarks-001"
+    ],
+    "expected_rag_themes": [
+      "waterfront",
+      "landmarks",
+      "food"
+    ],
+    "forbidden_rag_doc_ids": [
+      "chicago-food-neighborhoods-003"
+    ],
+    "benchmark_note": "San Francisco waterfront request should retrieve SF waterfront landmarks, not Chicago food-neighborhood guidance."
+  },
+  {
+    "city": "San Francisco",
+    "start_date": "2026-07-21",
+    "end_date": "2026-07-22",
+    "travel_days": 2,
+    "transportation": "public transit and rideshare",
+    "accommodation": "mid-range hotel",
+    "preferences": [
+      "parks",
+      "views",
+      "outdoors"
+    ],
+    "free_text_input": "Plan Golden Gate Bridge views, the Presidio, Golden Gate Park, or Twin Peaks with fog and wind flexibility.",
+    "expected_rag_doc_ids": [
+      "sf-parks-views-002"
+    ],
+    "expected_rag_themes": [
+      "parks",
+      "views",
+      "outdoors"
+    ],
+    "forbidden_rag_doc_ids": [
+      "la-food-neighborhoods-003"
+    ],
+    "benchmark_note": "San Francisco parks and views request should retrieve SF outdoor guidance, not LA food-neighborhood planning."
+  },
+  {
+    "city": "San Francisco",
+    "start_date": "2026-07-23",
+    "end_date": "2026-07-24",
+    "travel_days": 2,
+    "transportation": "BART and walking",
+    "accommodation": "boutique hotel",
+    "preferences": [
+      "food",
+      "neighborhoods",
+      "culture"
+    ],
+    "free_text_input": "Build a compact Mission, Chinatown, North Beach, or Ferry Building food-and-culture walk that accounts for hills.",
+    "expected_rag_doc_ids": [
+      "sf-food-neighborhoods-003"
+    ],
+    "expected_rag_themes": [
+      "food",
+      "neighborhoods",
+      "culture"
+    ],
+    "forbidden_rag_doc_ids": [
+      "nyc-parks-views-003"
+    ],
+    "benchmark_note": "San Francisco food-neighborhood request should retrieve SF food/culture guidance, not NYC parks and skyline views."
   }
 ]

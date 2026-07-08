@@ -29,14 +29,14 @@ from app.services.observability_service import ObservabilityService
 
 def build_request() -> TripRequest:
     return TripRequest(
-        city="北京",
+        city="New York",
         start_date="2026-06-01",
         end_date="2026-06-02",
         travel_days=2,
-        transportation="公共交通",
-        accommodation="经济型酒店",
-        preferences=["历史文化"],
-        free_text_input="希望看故宫",
+        transportation="public transit",
+        accommodation="mid-range hotel",
+        preferences=["museums"],
+        free_text_input="I want to see The Met.",
         profile_id="profile_123456",
         conversation_id="conversation-1",
     )
@@ -44,24 +44,24 @@ def build_request() -> TripRequest:
 
 def build_plan() -> TripPlan:
     return TripPlan(
-        city="北京",
+        city="New York",
         start_date="2026-06-01",
         end_date="2026-06-02",
         days=[
             DayPlan(
                 date="2026-06-01",
                 day_index=0,
-                description="历史文化路线",
-                transportation="公共交通",
-                accommodation="经济型酒店",
-                hotel=Hotel(name="如家酒店", address="北京", estimated_cost=300),
+                description="Museum route",
+                transportation="public transit",
+                accommodation="mid-range hotel",
+                hotel=Hotel(name="Midtown Hotel", address="New York", estimated_cost=300),
                 attractions=[
                     Attraction(
-                        name="故宫",
-                        address="北京",
-                        location=Location(longitude=116.397, latitude=39.917),
+                        name="The Metropolitan Museum of Art",
+                        address="New York",
+                        location=Location(longitude=-73.9632, latitude=40.7794),
                         visit_duration=180,
-                        description="历史文化景点",
+                        description="Museum and cultural landmark",
                         ticket_price=60,
                     )
                 ],
@@ -71,15 +71,15 @@ def build_plan() -> TripPlan:
         weather_info=[
             WeatherInfo(
                 date="2026-06-01",
-                day_weather="晴",
-                night_weather="多云",
+                day_weather="sunny",
+                night_weather="partly cloudy",
                 day_temp=28,
                 night_temp=20,
-                wind_direction="南风",
-                wind_power="2级",
+                wind_direction="south",
+                wind_power="light",
             )
         ],
-        overall_suggestions="注意防晒",
+        overall_suggestions="Plan museum time carefully.",
         budget=Budget(
             total_attractions=60,
             total_hotels=300,
@@ -153,16 +153,16 @@ class ObservabilityServiceTests(unittest.TestCase):
             ],
             "rag_chunks": [
                 RAGChunk(
-                    chunk_id="beijing-history-core-001-overview",
+                    chunk_id="nyc-museums-landmarks-001-overview",
                     source="knowledge",
-                    title="北京历史文化核心线路建议",
-                    content="故宫适合历史文化路线",
+                    title="New York museums and landmarks",
+                    content="The Met fits a museum-focused New York route.",
                     metadata={
-                        "doc_id": "beijing-history-core-001",
-                        "source_url": "https://example.com",
+                        "doc_id": "nyc-museums-landmarks-001",
+                        "source_url": "https://www.nyctourism.com/",
                         "section": "overview",
-                        "city": "北京",
-                        "theme": "历史文化",
+                        "city": "New York",
+                        "theme": "museums",
                         "rag_backend": "chroma_retrieval",
                     },
                 )
@@ -174,11 +174,11 @@ class ObservabilityServiceTests(unittest.TestCase):
         detail = self.service.get_run_detail(run_id)
 
         self.assertIsNotNone(detail)
-        self.assertEqual(detail["city"], "北京")
+        self.assertEqual(detail["city"], "New York")
         self.assertTrue(detail["passed"])
         self.assertEqual(detail["scores"]["grounding_score"], 1.0)
         self.assertEqual(detail["scores"]["attribution_coverage_score"], 1.0)
-        self.assertEqual(detail["retrieved_rag_sources"][0]["doc_id"], "beijing-history-core-001")
+        self.assertEqual(detail["retrieved_rag_sources"][0]["doc_id"], "nyc-museums-landmarks-001")
         self.assertGreaterEqual(len(detail["events"]), 3)
 
         summary = self.service.summary()
@@ -193,7 +193,7 @@ class ObservabilityServiceTests(unittest.TestCase):
             unsupported_entities=[
                 UnsupportedEntity(
                     entity_type="attraction",
-                    name="不存在景点",
+                    name="Unsupported Attraction",
                     reason="not found in retrieved candidates",
                 )
             ],

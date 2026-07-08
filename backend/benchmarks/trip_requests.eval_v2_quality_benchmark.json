@@ -1,54 +1,90 @@
 [
   {
-    "city": "北京",
+    "city": "New York",
     "start_date": "2026-06-10",
     "end_date": "2026-06-11",
     "travel_days": 2,
-    "transportation": "公共交通",
-    "accommodation": "经济型酒店",
-    "preferences": ["历史文化", "经典路线"],
-    "free_text_input": "重点安排故宫和中轴线，明确要求不要太赶，尽量控制每天景点数量。",
-    "expected_rag_doc_ids": ["beijing-history-core-001", "beijing-beijing-official-travel-guide"],
-    "expected_rag_themes": ["历史文化", "经典路线"],
-    "benchmark_note": "Evaluation V2 pacing stress: 北京历史文化请求要求不要太赶，应召回故宫/中轴线知识并减少过载 pacing warning。"
+    "transportation": "public transit",
+    "accommodation": "mid-range hotel",
+    "preferences": [
+      "museums",
+      "landmarks"
+    ],
+    "free_text_input": "Focus on The Met and classic landmarks, but keep each day realistic and avoid overloading the schedule.",
+    "expected_rag_doc_ids": [
+      "nyc-museums-landmarks-001",
+      "nyc-parks-views-003"
+    ],
+    "expected_rag_themes": [
+      "museums",
+      "landmarks"
+    ],
+    "benchmark_note": "Evaluation V2 pacing stress: New York museum and landmark requests should recall museum/landmark knowledge and reduce overloaded pacing warnings."
   },
   {
-    "city": "上海",
+    "city": "Los Angeles",
     "start_date": "2026-06-12",
     "end_date": "2026-06-13",
     "travel_days": 2,
-    "transportation": "公共交通",
-    "accommodation": "精品酒店",
-    "preferences": ["夜景", "拍照"],
-    "free_text_input": "优先安排外滩、陆家嘴和滨江夜景，适合拍照，不要跨区太频繁。",
-    "expected_rag_doc_ids": ["shanghai-photo-modern-003", "shanghai-food-night-002"],
-    "expected_rag_themes": ["夜景", "拍照"],
-    "benchmark_note": "Evaluation V2 route coherence stress: 上海夜景拍照请求应召回现代地标/夜景知识并避免跨区跳转。"
+    "transportation": "rideshare and public transit",
+    "accommodation": "boutique hotel",
+    "preferences": [
+      "beaches",
+      "views"
+    ],
+    "free_text_input": "Prioritize Santa Monica, Venice, and coastal views without jumping across the city too often.",
+    "expected_rag_doc_ids": [
+      "la-beaches-coast-002",
+      "la-hollywood-museums-001"
+    ],
+    "expected_rag_themes": [
+      "beaches",
+      "views"
+    ],
+    "benchmark_note": "Evaluation V2 route coherence stress: Los Angeles coast requests should recall beach knowledge and avoid excessive cross-city jumps."
   },
   {
-    "city": "杭州",
+    "city": "Chicago",
     "start_date": "2026-06-14",
     "end_date": "2026-06-15",
     "travel_days": 2,
-    "transportation": "步行+公共交通",
-    "accommodation": "中档酒店",
-    "preferences": ["自然风光", "轻松"],
-    "free_text_input": "以西湖和灵隐寺为主，想要轻松一点，适合拍照和散步。",
-    "expected_rag_doc_ids": ["hangzhou-westlake-001", "hangzhou-lingyin-002"],
-    "expected_rag_themes": ["自然风光", "经典路线"],
-    "benchmark_note": "Evaluation V2 preference stress: 杭州轻松自然风光请求应召回西湖/灵隐知识并匹配轻松散步偏好。"
+    "transportation": "walking and public transit",
+    "accommodation": "mid-range hotel",
+    "preferences": [
+      "architecture",
+      "parks"
+    ],
+    "free_text_input": "Center the trip on the river architecture route and nearby parks, with relaxed walking time.",
+    "expected_rag_doc_ids": [
+      "chicago-architecture-river-001",
+      "chicago-museums-parks-002"
+    ],
+    "expected_rag_themes": [
+      "architecture",
+      "parks"
+    ],
+    "benchmark_note": "Evaluation V2 preference stress: Chicago architecture and park requests should recall river/park knowledge and match relaxed walking preferences."
   },
   {
-    "city": "广州",
+    "city": "San Francisco",
     "start_date": "2026-06-16",
     "end_date": "2026-06-17",
     "travel_days": 2,
-    "transportation": "公共交通",
-    "accommodation": "中档酒店",
-    "preferences": ["美食", "夜景"],
-    "free_text_input": "重点体验老城区美食和珠江夜景，晚上安排拍照，不要把景点排得太满。",
-    "expected_rag_doc_ids": ["guangzhou-oldtown-food-001", "guangzhou-river-night-002"],
-    "expected_rag_themes": ["美食", "夜景"],
-    "benchmark_note": "Evaluation V2 combined stress: 广州美食夜景请求应召回老城美食和珠江夜景知识，并检测 pacing/preference。"
+    "transportation": "walking and transit",
+    "accommodation": "mid-range hotel",
+    "preferences": [
+      "waterfront",
+      "food"
+    ],
+    "free_text_input": "Combine waterfront landmarks with neighborhood food stops, and avoid packing too many hills into one day.",
+    "expected_rag_doc_ids": [
+      "sf-waterfront-landmarks-001",
+      "sf-food-neighborhoods-003"
+    ],
+    "expected_rag_themes": [
+      "waterfront",
+      "food"
+    ],
+    "benchmark_note": "Evaluation V2 combined stress: San Francisco waterfront and food requests should recall waterfront and neighborhood food knowledge while checking pacing and preference fit."
   }
 ]

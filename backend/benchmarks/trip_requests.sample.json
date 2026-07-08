@@ -1,52 +1,54 @@
 [
   {
-    "city": "北京",
+    "city": "New York",
     "start_date": "2026-06-01",
     "end_date": "2026-06-03",
     "travel_days": 3,
-    "transportation": "公共交通",
-    "accommodation": "经济型酒店",
-    "preferences": ["历史文化", "美食"],
-    "free_text_input": "希望节奏不要太赶，多安排经典景点"
+    "transportation": "public transit",
+    "accommodation": "mid-range hotel",
+    "preferences": [
+      "museums",
+      "food"
+    ],
+    "free_text_input": "Keep the pace realistic and group nearby museum and food stops."
   },
   {
-    "city": "上海",
+    "city": "Los Angeles",
     "start_date": "2026-06-10",
     "end_date": "2026-06-12",
     "travel_days": 3,
-    "transportation": "地铁",
-    "accommodation": "中档酒店",
-    "preferences": ["美食", "城市漫步"],
-    "free_text_input": "想体验本地小吃和夜景"
+    "transportation": "rideshare and public transit",
+    "accommodation": "boutique hotel",
+    "preferences": [
+      "beaches",
+      "views"
+    ],
+    "free_text_input": "Prioritize coastal stops and avoid too much cross-town driving."
   },
   {
-    "city": "杭州",
+    "city": "Chicago",
     "start_date": "2026-06-15",
     "end_date": "2026-06-16",
     "travel_days": 2,
-    "transportation": "打车",
-    "accommodation": "精品酒店",
-    "preferences": ["自然风光", "拍照"],
-    "free_text_input": "希望景点之间移动不要太远"
+    "transportation": "walking and public transit",
+    "accommodation": "mid-range hotel",
+    "preferences": [
+      "architecture",
+      "parks"
+    ],
+    "free_text_input": "Focus on the river architecture route with relaxed park time."
   },
   {
-    "city": "成都",
+    "city": "San Francisco",
     "start_date": "2026-06-20",
     "end_date": "2026-06-23",
     "travel_days": 4,
-    "transportation": "公共交通",
-    "accommodation": "经济型酒店",
-    "preferences": ["美食", "休闲"],
-    "free_text_input": "安排一些适合慢慢逛的地方"
-  },
-  {
-    "city": "广州",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-27",
-    "travel_days": 3,
-    "transportation": "公共交通",
-    "accommodation": "经济型酒店",
-    "preferences": ["美食", "历史文化"],
-    "free_text_input": "预算中等，优先选择交通便利的区域"
+    "transportation": "walking and transit",
+    "accommodation": "mid-range hotel",
+    "preferences": [
+      "waterfront",
+      "food"
+    ],
+    "free_text_input": "Combine waterfront landmarks with neighborhood food stops and manageable hills."
   }
 ]

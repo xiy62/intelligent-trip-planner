@@ -26,36 +26,36 @@ from app.models.schemas import (
 
 def build_request(**overrides) -> TripRequest:
     data = {
-        "city": "北京",
+        "city": "New York",
         "start_date": "2026-06-01",
         "end_date": "2026-06-02",
         "travel_days": 2,
-        "transportation": "公共交通",
-        "accommodation": "经济型酒店",
-        "preferences": ["历史文化", "美食"],
-        "free_text_input": "希望行程不要太赶",
+        "transportation": "public transit",
+        "accommodation": "mid-range hotel",
+        "preferences": ["museums", "food"],
+        "free_text_input": "Keep the museum and food route relaxed.",
     }
     data.update(overrides)
     return TripRequest(**data)
 
 
 def build_plan(*, far_jump: bool = False, overloaded: bool = False) -> TripPlan:
-    far_location = Location(longitude=121.47, latitude=31.23)
+    far_location = Location(longitude=-118.2437, latitude=34.0522)
     normal_attractions = [
         Attraction(
-            name="故宫",
-            address="东城区景山前街4号",
-            location=Location(longitude=116.397, latitude=39.917),
+            name="The Metropolitan Museum of Art",
+            address="1000 5th Ave, New York, NY",
+            location=Location(longitude=-73.9632, latitude=40.7794),
             visit_duration=180,
-            description="历史文化景点",
+            description="Major museum and cultural landmark",
             ticket_price=60,
         ),
         Attraction(
-            name="天坛",
-            address="东城区天坛路",
-            location=far_location if far_jump else Location(longitude=116.41, latitude=39.88),
+            name="Museum of Modern Art",
+            address="11 W 53rd St, New York, NY",
+            location=far_location if far_jump else Location(longitude=-73.9776, latitude=40.7614),
             visit_duration=120,
-            description="世界文化遗产和历史文化景点",
+            description="Modern art museum and cultural stop",
             ticket_price=15,
         ),
     ]
@@ -63,11 +63,11 @@ def build_plan(*, far_jump: bool = False, overloaded: bool = False) -> TripPlan:
         normal_attractions.extend(
             [
                 Attraction(
-                    name=f"景点{i}",
-                    address="北京",
-                    location=Location(longitude=116.42 + i * 0.01, latitude=39.88),
+                    name=f"Extra attraction {i}",
+                    address="New York",
+                    location=Location(longitude=-73.98 + i * 0.01, latitude=40.76),
                     visit_duration=120,
-                    description="加塞景点",
+                    description="Additional crowded itinerary stop",
                     ticket_price=0,
                 )
                 for i in range(5)
@@ -77,36 +77,36 @@ def build_plan(*, far_jump: bool = False, overloaded: bool = False) -> TripPlan:
         DayPlan(
             date="2026-06-01",
             day_index=0,
-            description="历史文化和美食路线，节奏舒适",
-            transportation="公共交通",
-            accommodation="经济型酒店",
-            hotel=Hotel(name="如家酒店", address="北京", estimated_cost=300),
+            description="Museum and food route with a relaxed pace",
+            transportation="public transit",
+            accommodation="mid-range hotel",
+            hotel=Hotel(name="Midtown Hotel", address="New York", estimated_cost=300),
             attractions=normal_attractions,
             meals=[
-                Meal(type="lunch", name="北京小吃", description="美食体验", estimated_cost=60),
-                Meal(type="dinner", name="胡同晚餐", description="美食体验", estimated_cost=80),
+                Meal(type="lunch", name="Museum cafe lunch", description="Food stop", estimated_cost=60),
+                Meal(type="dinner", name="Neighborhood dinner", description="Food experience", estimated_cost=80),
             ],
         ),
         DayPlan(
             date="2026-06-02",
             day_index=1,
-            description="轻松城市漫步",
-            transportation="公共交通",
-            accommodation="经济型酒店",
-            hotel=Hotel(name="如家酒店", address="北京", estimated_cost=300),
+            description="Easy neighborhood walk",
+            transportation="public transit",
+            accommodation="mid-range hotel",
+            hotel=Hotel(name="Midtown Hotel", address="New York", estimated_cost=300),
             attractions=[
                 Attraction(
-                    name="南锣鼓巷",
-                    address="东城区南锣鼓巷",
-                    location=Location(longitude=116.403, latitude=39.94),
+                    name="DUMBO",
+                    address="Brooklyn, NY",
+                    location=Location(longitude=-73.9887, latitude=40.7033),
                     visit_duration=120,
-                    description="美食和胡同文化",
+                    description="Food and neighborhood walk",
                     ticket_price=0,
                 )
             ],
             meals=[
-                Meal(type="lunch", name="胡同小吃", description="美食体验", estimated_cost=60),
-                Meal(type="dinner", name="北京烤鸭", description="美食体验", estimated_cost=120),
+                Meal(type="lunch", name="Brooklyn lunch", description="Food experience", estimated_cost=60),
+                Meal(type="dinner", name="Classic New York dinner", description="Food experience", estimated_cost=120),
             ],
         ),
     ]
@@ -114,15 +114,15 @@ def build_plan(*, far_jump: bool = False, overloaded: bool = False) -> TripPlan:
     total_hotels = sum(day.hotel.estimated_cost for day in days if day.hotel)
     total_meals = sum(meal.estimated_cost for day in days for meal in day.meals)
     return TripPlan(
-        city="北京",
+        city="New York",
         start_date="2026-06-01",
         end_date="2026-06-02",
         days=days,
         weather_info=[
-            WeatherInfo(date="2026-06-01", day_weather="晴", night_weather="多云"),
-            WeatherInfo(date="2026-06-02", day_weather="阴", night_weather="小雨"),
+            WeatherInfo(date="2026-06-01", day_weather="sunny", night_weather="partly cloudy"),
+            WeatherInfo(date="2026-06-02", day_weather="cloudy", night_weather="light rain"),
         ],
-        overall_suggestions="历史文化和美食结合，行程不要太赶。",
+        overall_suggestions="Combine museums and food without overloading the route.",
         budget=Budget(
             total_attractions=total_attractions,
             total_hotels=total_hotels,
@@ -139,24 +139,24 @@ def evaluate(plan: TripPlan):
         travel_dates=["2026-06-01", "2026-06-02"],
         draft_plan=plan,
         candidate_attractions=[
-            AttractionCandidate(name="故宫", source_id="poi-palace"),
-            AttractionCandidate(name="天坛", source_id="poi-temple"),
-            AttractionCandidate(name="南锣鼓巷", source_id="poi-hutong"),
+            AttractionCandidate(name="The Metropolitan Museum of Art", source_id="poi-met"),
+            AttractionCandidate(name="Museum of Modern Art", source_id="poi-moma"),
+            AttractionCandidate(name="DUMBO", source_id="poi-dumbo"),
             *[
-                AttractionCandidate(name=f"景点{i}", source_id=f"poi-extra-{i}")
+                AttractionCandidate(name=f"Extra attraction {i}", source_id=f"poi-extra-{i}")
                 for i in range(5)
             ],
         ],
-        candidate_hotels=[HotelCandidate(name="如家酒店", source_id="poi-hotel")],
+        candidate_hotels=[HotelCandidate(name="Midtown Hotel", source_id="poi-hotel")],
         rag_chunks=[
             RAGChunk(
-                chunk_id="beijing-history-core-001-overview",
+                chunk_id="nyc-museums-landmarks-001-overview",
                 source="knowledge",
-                title="北京历史文化核心线路",
-                content="故宫、天坛和南锣鼓巷适合历史文化和美食路线。",
+                title="New York museums and landmarks",
+                content="The Metropolitan Museum of Art, MoMA, and nearby neighborhoods fit a museum and food route.",
                 metadata={
-                    "doc_id": "beijing-history-core-001",
-                    "source_url": "https://example.com/beijing",
+                    "doc_id": "nyc-museums-landmarks-001",
+                    "source_url": "https://www.nyctourism.com/",
                 },
             )
         ],
@@ -168,12 +168,12 @@ def evaluate(plan: TripPlan):
 class TripPlanEvaluationQualityTests(unittest.TestCase):
     def test_haversine_distance_is_reasonable(self):
         distance = haversine_km(
-            Location(longitude=116.397, latitude=39.917),
-            Location(longitude=116.41, latitude=39.88),
+            Location(longitude=-73.9632, latitude=40.7794),
+            Location(longitude=-73.9776, latitude=40.7614),
         )
 
-        self.assertGreater(distance, 3.0)
-        self.assertLess(distance, 5.0)
+        self.assertGreater(distance, 2.0)
+        self.assertLess(distance, 3.0)
 
     def test_quality_scores_are_recorded_without_blocking_hard_pass(self):
         report = evaluate(build_plan())
@@ -203,7 +203,7 @@ class TripPlanEvaluationQualityTests(unittest.TestCase):
 
     def test_unsupported_entity_lowers_attribution_and_still_uses_hard_grounding(self):
         plan = build_plan()
-        plan.days[0].attractions[0].name = "不存在景点"
+        plan.days[0].attractions[0].name = "Unsupported Attraction"
 
         report = evaluate(plan)
 
@@ -250,7 +250,7 @@ class TripPlanEvaluationQualityTests(unittest.TestCase):
             travel_dates=["2026-06-01", "2026-06-02"],
             draft_plan=plan,
             candidate_attractions=[],
-            candidate_hotels=[HotelCandidate(name="如家酒店", source_id="poi-hotel")],
+            candidate_hotels=[HotelCandidate(name="Midtown Hotel", source_id="poi-hotel")],
             rag_chunks=[],
             retry_counts=RetryState(),
             max_retries=2,

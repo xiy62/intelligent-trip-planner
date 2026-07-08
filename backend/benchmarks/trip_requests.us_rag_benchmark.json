@@ -1,197 +1,318 @@
 [
   {
     "city": "New York",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-26",
-    "travel_days": 2,
-    "transportation": "public transit",
-    "accommodation": "mid-range hotel",
-    "preferences": ["museums", "parks", "classic sightseeing"],
-    "free_text_input": "I want a realistic Manhattan itinerary with museums, Central Park, and good food nearby.",
-    "expected_rag_doc_ids": ["new-york-museum-mile-central-park-001"],
-    "expected_rag_themes": ["museums", "parks", "classic sightseeing"],
-    "benchmark_note": "NYC museum and Central Park route should retrieve the Museum Mile / Central Park planning document."
-  },
-  {
-    "city": "New York",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-26",
-    "travel_days": 2,
-    "transportation": "walking and subway",
-    "accommodation": "boutique hotel",
-    "preferences": ["history", "food", "citywalk"],
-    "free_text_input": "Plan a downtown history and food-focused route without sending me all over Manhattan.",
-    "expected_rag_doc_ids": ["new-york-downtown-history-food-002"],
-    "expected_rag_themes": ["history", "food", "citywalk"],
-    "benchmark_note": "NYC downtown request should retrieve the Lower Manhattan history, food, and citywalk document."
-  },
-  {
-    "city": "San Francisco",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-26",
-    "travel_days": 2,
-    "transportation": "public transit",
-    "accommodation": "mid-range hotel",
-    "preferences": ["waterfront", "food", "classic sightseeing"],
-    "free_text_input": "Keep the plan near the waterfront with food breaks and avoid too many cross-city transfers.",
-    "expected_rag_doc_ids": ["san-francisco-waterfront-wharf-001"],
-    "expected_rag_themes": ["waterfront", "food", "classic sightseeing"],
-    "benchmark_note": "SF waterfront request should retrieve the Fisherman's Wharf / waterfront planning document."
-  },
-  {
-    "city": "San Francisco",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-26",
-    "travel_days": 2,
-    "transportation": "public transit",
-    "accommodation": "budget hotel",
-    "preferences": ["parks", "museums", "relaxed pace"],
-    "free_text_input": "I prefer a relaxed Golden Gate Park day with museums and outdoor time, not a packed citywide tour.",
-    "expected_rag_doc_ids": ["san-francisco-golden-gate-park-museums-002"],
-    "expected_rag_themes": ["parks", "museums", "outdoors"],
-    "benchmark_note": "SF park and museum request should retrieve the Golden Gate Park / museum planning document."
-  },
-  {
-    "city": "Chicago",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-26",
-    "travel_days": 2,
-    "transportation": "public transit",
-    "accommodation": "mid-range hotel",
-    "preferences": ["architecture", "parks", "classic sightseeing"],
-    "free_text_input": "Create a first-time Chicago route centered around the Loop, parks, museums, and architecture.",
-    "expected_rag_doc_ids": ["chicago-millennium-park-loop-001"],
-    "expected_rag_themes": ["architecture", "parks", "classic sightseeing"],
-    "benchmark_note": "Chicago first-time Loop request should retrieve the Millennium Park / Loop planning document."
-  },
-  {
-    "city": "Chicago",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-26",
-    "travel_days": 2,
-    "transportation": "walking and public transit",
-    "accommodation": "boutique hotel",
-    "preferences": ["architecture", "food", "citywalk"],
-    "free_text_input": "I want a riverfront architecture and food citywalk with realistic pacing and minimal backtracking.",
-    "expected_rag_doc_ids": ["chicago-river-architecture-food-002"],
-    "expected_rag_themes": ["architecture", "food", "citywalk"],
-    "benchmark_note": "Chicago riverfront architecture request should retrieve the Riverwalk / architecture / food document."
-  },
-  {
-    "city": "New York",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-26",
+    "start_date": "2026-07-01",
+    "end_date": "2026-07-02",
     "travel_days": 2,
     "transportation": "subway and walking",
     "accommodation": "mid-range hotel",
-    "preferences": ["food", "neighborhoods", "citywalk"],
-    "free_text_input": "Build a Brooklyn-focused food and neighborhood route with waterfront time and minimal borough hopping.",
-    "expected_rag_doc_ids": ["new-york-brooklyn-food-neighborhoods-003"],
-    "expected_rag_themes": ["food", "neighborhoods", "citywalk"],
-    "benchmark_note": "NYC Brooklyn food request should retrieve the Brooklyn food and neighborhood document."
+    "preferences": [
+      "museums",
+      "landmarks",
+      "culture"
+    ],
+    "free_text_input": "Build a Manhattan culture route with major museums, Central Park breaks, and classic landmarks without too much backtracking.",
+    "expected_rag_doc_ids": [
+      "nyc-museums-landmarks-001"
+    ],
+    "expected_rag_themes": [
+      "museums",
+      "landmarks",
+      "culture"
+    ],
+    "forbidden_rag_doc_ids": [
+      "la-beaches-coast-002",
+      "chicago-food-neighborhoods-003"
+    ],
+    "benchmark_note": "New York museum and landmark request should retrieve the NYC culture document, not unrelated beach or Chicago food guidance."
   },
   {
     "city": "New York",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-26",
+    "start_date": "2026-07-03",
+    "end_date": "2026-07-04",
     "travel_days": 2,
-    "transportation": "subway and rideshare",
+    "transportation": "subway",
     "accommodation": "boutique hotel",
-    "preferences": ["skyline", "nightlife", "photography"],
-    "free_text_input": "I want one strong evening skyline or night-view plan without chasing viewpoints all over the city.",
-    "expected_rag_doc_ids": ["new-york-skyline-nightlife-004"],
-    "expected_rag_themes": ["skyline", "nightlife", "photography"],
-    "benchmark_note": "NYC night-view request should retrieve the skyline and evening planning document."
+    "preferences": [
+      "food",
+      "neighborhoods",
+      "citywalk"
+    ],
+    "free_text_input": "Focus on Chinatown, the Lower East Side, or Brooklyn food neighborhoods with a walkable pace.",
+    "expected_rag_doc_ids": [
+      "nyc-food-neighborhoods-002"
+    ],
+    "expected_rag_themes": [
+      "food",
+      "neighborhoods",
+      "citywalk"
+    ],
+    "forbidden_rag_doc_ids": [
+      "sf-parks-views-002"
+    ],
+    "benchmark_note": "New York food neighborhood request should retrieve the NYC food document, not San Francisco outdoor view planning."
   },
   {
     "city": "New York",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-26",
+    "start_date": "2026-07-05",
+    "end_date": "2026-07-06",
+    "travel_days": 2,
+    "transportation": "public transit and ferry",
+    "accommodation": "mid-range hotel",
+    "preferences": [
+      "parks",
+      "waterfront",
+      "views"
+    ],
+    "free_text_input": "I want scenic parks, waterfront walking, and one skyline or ferry view with weather flexibility.",
+    "expected_rag_doc_ids": [
+      "nyc-parks-views-003"
+    ],
+    "expected_rag_themes": [
+      "parks",
+      "waterfront",
+      "views"
+    ],
+    "forbidden_rag_doc_ids": [
+      "chicago-food-neighborhoods-003"
+    ],
+    "benchmark_note": "New York parks and skyline request should retrieve the NYC scenic document, not Chicago food-neighborhood planning."
+  },
+  {
+    "city": "Los Angeles",
+    "start_date": "2026-07-07",
+    "end_date": "2026-07-08",
+    "travel_days": 2,
+    "transportation": "rideshare and driving",
+    "accommodation": "West Hollywood hotel",
+    "preferences": [
+      "hollywood",
+      "museums",
+      "culture"
+    ],
+    "free_text_input": "Plan Hollywood, film culture, and one or two museums with realistic traffic buffers.",
+    "expected_rag_doc_ids": [
+      "la-hollywood-museums-001"
+    ],
+    "expected_rag_themes": [
+      "hollywood",
+      "museums",
+      "culture"
+    ],
+    "forbidden_rag_doc_ids": [
+      "nyc-food-neighborhoods-002",
+      "sf-food-neighborhoods-003"
+    ],
+    "benchmark_note": "Los Angeles Hollywood museum request should retrieve LA culture guidance, not East Coast or SF food-neighborhood documents."
+  },
+  {
+    "city": "Los Angeles",
+    "start_date": "2026-07-09",
+    "end_date": "2026-07-10",
+    "travel_days": 2,
+    "transportation": "driving",
+    "accommodation": "Santa Monica hotel",
+    "preferences": [
+      "beaches",
+      "coast",
+      "outdoors"
+    ],
+    "free_text_input": "Keep the plan along Santa Monica, Venice, or Malibu with sunset flexibility and not too much inland driving.",
+    "expected_rag_doc_ids": [
+      "la-beaches-coast-002"
+    ],
+    "expected_rag_themes": [
+      "beaches",
+      "coast",
+      "outdoors"
+    ],
+    "forbidden_rag_doc_ids": [
+      "chicago-architecture-river-001",
+      "nyc-museums-landmarks-001"
+    ],
+    "benchmark_note": "Los Angeles coastal request should retrieve the LA beach/coast document, not Chicago architecture or NYC museum guidance."
+  },
+  {
+    "city": "Los Angeles",
+    "start_date": "2026-07-11",
+    "end_date": "2026-07-12",
+    "travel_days": 2,
+    "transportation": "Metro and rideshare",
+    "accommodation": "Downtown LA hotel",
+    "preferences": [
+      "food",
+      "neighborhoods",
+      "citywalk"
+    ],
+    "free_text_input": "Build a focused food itinerary around Koreatown, Thai Town, Downtown, or the Arts District without crossing the whole city.",
+    "expected_rag_doc_ids": [
+      "la-food-neighborhoods-003"
+    ],
+    "expected_rag_themes": [
+      "food",
+      "neighborhoods",
+      "citywalk"
+    ],
+    "forbidden_rag_doc_ids": [
+      "sf-parks-views-002"
+    ],
+    "benchmark_note": "Los Angeles food-neighborhood request should retrieve LA district planning, not San Francisco park/view guidance."
+  },
+  {
+    "city": "Chicago",
+    "start_date": "2026-07-13",
+    "end_date": "2026-07-14",
+    "travel_days": 2,
+    "transportation": "walking and public transit",
+    "accommodation": "Loop hotel",
+    "preferences": [
+      "architecture",
+      "river",
+      "landmarks"
+    ],
+    "free_text_input": "Center the trip on the Chicago Riverwalk, architecture, the Loop, and one skyline landmark with realistic weather backup.",
+    "expected_rag_doc_ids": [
+      "chicago-architecture-river-001"
+    ],
+    "expected_rag_themes": [
+      "architecture",
+      "river",
+      "landmarks"
+    ],
+    "forbidden_rag_doc_ids": [
+      "la-beaches-coast-002",
+      "sf-food-neighborhoods-003"
+    ],
+    "benchmark_note": "Chicago architecture request should retrieve river architecture knowledge, not LA beaches or SF food walks."
+  },
+  {
+    "city": "Chicago",
+    "start_date": "2026-07-15",
+    "end_date": "2026-07-16",
     "travel_days": 2,
     "transportation": "public transit",
     "accommodation": "family-friendly hotel",
-    "preferences": ["family", "arts", "parks"],
-    "free_text_input": "Plan a family-friendly day with a museum, Central Park break, and arts nearby without rushing.",
-    "expected_rag_doc_ids": ["new-york-family-arts-parks-005"],
-    "expected_rag_themes": ["family", "arts", "parks"],
-    "benchmark_note": "NYC family request should retrieve the family, arts, and parks document."
+    "preferences": [
+      "museums",
+      "parks",
+      "culture"
+    ],
+    "free_text_input": "Plan a Museum Campus or Art Institute day with nearby park breaks and avoid too many major museums.",
+    "expected_rag_doc_ids": [
+      "chicago-museums-parks-002"
+    ],
+    "expected_rag_themes": [
+      "museums",
+      "parks",
+      "culture"
+    ],
+    "forbidden_rag_doc_ids": [
+      "nyc-food-neighborhoods-002"
+    ],
+    "benchmark_note": "Chicago museum and park request should retrieve the Chicago culture document, not NYC food-neighborhood planning."
   },
   {
-    "city": "San Francisco",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-26",
+    "city": "Chicago",
+    "start_date": "2026-07-17",
+    "end_date": "2026-07-18",
     "travel_days": 2,
-    "transportation": "BART and walking",
-    "accommodation": "mid-range hotel",
-    "preferences": ["food", "murals", "neighborhoods"],
-    "free_text_input": "I want a Mission District route focused on food, murals, and neighborhood walking.",
-    "expected_rag_doc_ids": ["san-francisco-mission-food-murals-003"],
-    "expected_rag_themes": ["food", "murals", "neighborhoods"],
-    "benchmark_note": "SF Mission request should retrieve the Mission food and murals document."
+    "transportation": "CTA and rideshare",
+    "accommodation": "boutique hotel",
+    "preferences": [
+      "food",
+      "neighborhoods",
+      "citywalk"
+    ],
+    "free_text_input": "I want West Loop, Pilsen, Chinatown, or Logan Square food with simple transportation back.",
+    "expected_rag_doc_ids": [
+      "chicago-food-neighborhoods-003"
+    ],
+    "expected_rag_themes": [
+      "food",
+      "neighborhoods",
+      "citywalk"
+    ],
+    "forbidden_rag_doc_ids": [
+      "sf-waterfront-landmarks-001"
+    ],
+    "benchmark_note": "Chicago food request should retrieve Chicago food-neighborhood knowledge, not San Francisco waterfront landmarks."
   },
   {
     "city": "San Francisco",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-26",
+    "start_date": "2026-07-19",
+    "end_date": "2026-07-20",
+    "travel_days": 2,
+    "transportation": "Muni and walking",
+    "accommodation": "waterfront hotel",
+    "preferences": [
+      "waterfront",
+      "landmarks",
+      "food"
+    ],
+    "free_text_input": "Keep the plan around the Ferry Building, Embarcadero, Fisherman's Wharf, bay views, and nearby food.",
+    "expected_rag_doc_ids": [
+      "sf-waterfront-landmarks-001"
+    ],
+    "expected_rag_themes": [
+      "waterfront",
+      "landmarks",
+      "food"
+    ],
+    "forbidden_rag_doc_ids": [
+      "chicago-food-neighborhoods-003"
+    ],
+    "benchmark_note": "San Francisco waterfront request should retrieve SF waterfront landmarks, not Chicago food-neighborhood guidance."
+  },
+  {
+    "city": "San Francisco",
+    "start_date": "2026-07-21",
+    "end_date": "2026-07-22",
     "travel_days": 2,
     "transportation": "public transit and rideshare",
     "accommodation": "mid-range hotel",
-    "preferences": ["bridge views", "outdoors", "photography"],
-    "free_text_input": "Plan around Golden Gate Bridge views and Presidio outdoor stops, with flexibility for fog and wind.",
-    "expected_rag_doc_ids": ["san-francisco-golden-gate-bridge-presidio-004"],
-    "expected_rag_themes": ["bridge views", "outdoors", "photography"],
-    "benchmark_note": "SF bridge-view request should retrieve the Golden Gate Bridge and Presidio document."
+    "preferences": [
+      "parks",
+      "views",
+      "outdoors"
+    ],
+    "free_text_input": "Plan Golden Gate Bridge views, the Presidio, Golden Gate Park, or Twin Peaks with fog and wind flexibility.",
+    "expected_rag_doc_ids": [
+      "sf-parks-views-002"
+    ],
+    "expected_rag_themes": [
+      "parks",
+      "views",
+      "outdoors"
+    ],
+    "forbidden_rag_doc_ids": [
+      "la-food-neighborhoods-003"
+    ],
+    "benchmark_note": "San Francisco parks and views request should retrieve SF outdoor guidance, not LA food-neighborhood planning."
   },
   {
     "city": "San Francisco",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-26",
+    "start_date": "2026-07-23",
+    "end_date": "2026-07-24",
     "travel_days": 2,
-    "transportation": "walking and public transit",
+    "transportation": "BART and walking",
     "accommodation": "boutique hotel",
-    "preferences": ["culture", "food", "citywalk"],
-    "free_text_input": "Create a compact Chinatown and North Beach culture and food walk without jumping across the whole city.",
-    "expected_rag_doc_ids": ["san-francisco-chinatown-north-beach-culture-005"],
-    "expected_rag_themes": ["culture", "food", "citywalk"],
-    "benchmark_note": "SF Chinatown/North Beach request should retrieve the compact culture and food document."
-  },
-  {
-    "city": "Chicago",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-26",
-    "travel_days": 2,
-    "transportation": "public transit",
-    "accommodation": "family-friendly hotel",
-    "preferences": ["museums", "culture", "lakefront"],
-    "free_text_input": "Plan a Museum Campus day with one or two major museums and a short lakefront break.",
-    "expected_rag_doc_ids": ["chicago-museum-campus-culture-003"],
-    "expected_rag_themes": ["museums", "culture", "lakefront"],
-    "benchmark_note": "Chicago Museum Campus request should retrieve the museum and culture document."
-  },
-  {
-    "city": "Chicago",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-26",
-    "travel_days": 2,
-    "transportation": "rideshare and walking",
-    "accommodation": "boutique hotel",
-    "preferences": ["food", "neighborhoods", "nightlife"],
-    "free_text_input": "I want a West Loop food and evening neighborhood plan with simple transportation back to the hotel.",
-    "expected_rag_doc_ids": ["chicago-west-loop-food-neighborhoods-004"],
-    "expected_rag_themes": ["food", "neighborhoods", "nightlife"],
-    "benchmark_note": "Chicago food and nightlife request should retrieve the West Loop document."
-  },
-  {
-    "city": "Chicago",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-26",
-    "travel_days": 2,
-    "transportation": "walking and public transit",
-    "accommodation": "mid-range hotel",
-    "preferences": ["lakefront", "parks", "outdoors"],
-    "free_text_input": "Give me a lakefront and parks itinerary that keeps weather exposure reasonable and has nearby indoor backups.",
-    "expected_rag_doc_ids": ["chicago-lakefront-parks-outdoors-005"],
-    "expected_rag_themes": ["lakefront", "parks", "outdoors"],
-    "benchmark_note": "Chicago lakefront parks request should retrieve the lakefront and outdoor planning document."
+    "preferences": [
+      "food",
+      "neighborhoods",
+      "culture"
+    ],
+    "free_text_input": "Build a compact Mission, Chinatown, North Beach, or Ferry Building food-and-culture walk that accounts for hills.",
+    "expected_rag_doc_ids": [
+      "sf-food-neighborhoods-003"
+    ],
+    "expected_rag_themes": [
+      "food",
+      "neighborhoods",
+      "culture"
+    ],
+    "forbidden_rag_doc_ids": [
+      "nyc-parks-views-003"
+    ],
+    "benchmark_note": "San Francisco food-neighborhood request should retrieve SF food/culture guidance, not NYC parks and skyline views."
   }
 ]

@@ -209,17 +209,17 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
     def test_loader_strips_benchmark_metadata_before_trip_request(self):
         payload = [
             {
-                "city": "北京",
+                "city": "New York",
                 "start_date": "2026-06-01",
                 "end_date": "2026-06-03",
                 "travel_days": 3,
-                "transportation": "公共交通",
-                "accommodation": "经济型酒店",
-                "preferences": ["历史文化"],
-                "free_text_input": "希望以故宫为主",
-                "expected_rag_doc_ids": ["beijing-history-core-001"],
-                "expected_rag_themes": ["历史文化"],
-                "forbidden_rag_doc_ids": ["shanghai-food-night-002"],
+                "transportation": "public transit",
+                "accommodation": "mid-range hotel",
+                "preferences": ["museums"],
+                "free_text_input": "Keep the museum route realistic.",
+                "expected_rag_doc_ids": ["nyc-museums-landmarks-001"],
+                "expected_rag_themes": ["museums"],
+                "forbidden_rag_doc_ids": ["la-beaches-coast-002"],
                 "benchmark_note": "metadata should not be passed into TripRequest",
             }
         ]
@@ -229,26 +229,26 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
             cases = load_benchmark_cases(dataset)
 
         self.assertEqual(len(cases), 1)
-        self.assertEqual(cases[0].request.city, "北京")
-        self.assertEqual(cases[0].expected_rag_doc_ids, ["beijing-history-core-001"])
+        self.assertEqual(cases[0].request.city, "New York")
+        self.assertEqual(cases[0].expected_rag_doc_ids, ["nyc-museums-landmarks-001"])
         self.assertEqual(cases[0].expected_rag_sections, [])
         self.assertEqual(cases[0].expected_rag_claims, [])
-        self.assertEqual(cases[0].forbidden_rag_doc_ids, ["shanghai-food-night-002"])
+        self.assertEqual(cases[0].forbidden_rag_doc_ids, ["la-beaches-coast-002"])
         self.assertFalse(hasattr(cases[0].request, "expected_rag_doc_ids"))
         self.assertFalse(hasattr(cases[0].request, "forbidden_rag_doc_ids"))
 
     def test_loader_defaults_missing_forbidden_doc_ids_for_backward_compatibility(self):
         payload = [
             {
-                "city": "北京",
+                "city": "Chicago",
                 "start_date": "2026-06-01",
                 "end_date": "2026-06-03",
                 "travel_days": 3,
-                "transportation": "公共交通",
-                "accommodation": "经济型酒店",
-                "preferences": ["历史文化"],
-                "free_text_input": "希望以故宫为主",
-                "expected_rag_doc_ids": ["beijing-history-core-001"],
+                "transportation": "public transit",
+                "accommodation": "mid-range hotel",
+                "preferences": ["architecture"],
+                "free_text_input": "Focus on the river architecture route.",
+                "expected_rag_doc_ids": ["chicago-architecture-river-001"],
             }
         ]
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -268,18 +268,18 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
                 "transportation": "public transit",
                 "accommodation": "mid-range hotel",
                 "preferences": ["museums"],
-                "free_text_input": "Museum Campus by water taxi",
-                "expected_rag_doc_ids": ["chicago-chicago-001"],
+                "free_text_input": "Museum Campus with nearby park breaks",
+                "expected_rag_doc_ids": ["chicago-museums-parks-002"],
                 "expected_rag_sections": [
-                    {"doc_id": "chicago-chicago-001", "section": "transport"}
+                    {"doc_id": "chicago-museums-parks-002", "section": "transport"}
                 ],
                 "expected_rag_claims": [
                     {
-                        "claim_id": "water-taxi",
-                        "doc_id": "chicago-chicago-001",
+                        "claim_id": "museum-campus-cluster",
+                        "doc_id": "chicago-museums-parks-002",
                         "section": "transport",
                         "category": "transport",
-                        "evidence_quote": "You can get to the Chicago Museum Campus by Shoreline Sightseeing Water Taxi.",
+                        "evidence_quote": "Museum Campus and Loop museum routes should be grouped with nearby parks rather than split across the city.",
                     }
                 ],
             }
@@ -290,26 +290,36 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
             cases = load_benchmark_cases(dataset)
 
         self.assertEqual(cases[0].expected_rag_sections[0]["section"], "transport")
-        self.assertEqual(cases[0].expected_rag_claims[0]["claim_id"], "water-taxi")
+        self.assertEqual(cases[0].expected_rag_claims[0]["claim_id"], "museum-campus-cluster")
         self.assertFalse(hasattr(cases[0].request, "expected_rag_claims"))
 
-    def test_us_rag_benchmark_labels_reference_existing_corpus_docs(self):
+    def test_active_us_rag_benchmark_labels_reference_existing_corpus_docs(self):
         repo_root = Path(__file__).resolve().parents[1]
-        dataset_path = repo_root / "benchmarks" / "trip_requests.us_rag_benchmark.json"
-        corpus_dir = repo_root / "data" / "knowledge" / "us"
-        corpus_doc_ids = set()
-        for corpus_file in corpus_dir.glob("*.json"):
-            for document in json.loads(corpus_file.read_text(encoding="utf-8")):
-                corpus_doc_ids.add(document["doc_id"])
+        dataset_path = repo_root / "benchmarks" / "trip_requests.rag_benchmark.json"
+        service = TravelRAGService(knowledge_root=repo_root / "data" / "knowledge")
+        documents = service.load_knowledge_docs()
+        corpus_doc_ids = {document.doc_id for document in documents}
+        corpus_cities = {document.city for document in documents}
+        old_china_cities = {"北京", "上海", "杭州", "广州"}
 
         cases = load_benchmark_cases(dataset_path)
         expected_doc_ids = {
             doc_id for case in cases for doc_id in case.expected_rag_doc_ids
         }
+        forbidden_doc_ids = {
+            doc_id for case in cases for doc_id in case.forbidden_rag_doc_ids
+        }
 
-        self.assertEqual(len(cases), 15)
+        self.assertEqual(len(cases), 12)
         self.assertTrue(expected_doc_ids)
+        self.assertGreaterEqual(sum(bool(case.forbidden_rag_doc_ids) for case in cases), 8)
         self.assertTrue(expected_doc_ids.issubset(corpus_doc_ids))
+        self.assertTrue(forbidden_doc_ids.issubset(corpus_doc_ids))
+        self.assertFalse(old_china_cities & {case.request.city for case in cases})
+        self.assertFalse(old_china_cities & corpus_cities)
+        for case in cases:
+            self.assertIn(case.request.city, corpus_cities)
+            self.assertFalse(set(case.expected_rag_doc_ids) & set(case.forbidden_rag_doc_ids))
 
     def test_us_hard_rag_benchmark_labels_reference_existing_sections_and_quotes(self):
         repo_root = Path(__file__).resolve().parents[1]
@@ -328,7 +338,7 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
             doc_id for case in cases for doc_id in case.expected_rag_doc_ids
         }
 
-        self.assertEqual(len(cases), 9)
+        self.assertEqual(len(cases), 12)
         self.assertTrue(expected_doc_ids)
         self.assertTrue(all(case.expected_rag_sections for case in cases))
         self.assertTrue(all(case.expected_rag_claims for case in cases))
@@ -358,8 +368,8 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
                         "doc_id": "doc-a",
                         "source_url": "https://example.com/a",
                         "section": "overview",
-                        "city": "北京",
-                        "theme": "历史文化",
+                        "city": "New York",
+                        "theme": "museums",
                         "rag_backend": "chroma_retrieval",
                         "vector_rank": 1,
                         "rerank_score": 1.25,
@@ -393,14 +403,14 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
 
     def test_plan_with_langgraph_persists_observability_when_enabled(self):
         request = TripRequest(
-            city="北京",
+            city="New York",
             start_date="2026-06-01",
             end_date="2026-06-02",
             travel_days=2,
-            transportation="公共交通",
-            accommodation="经济型酒店",
-            preferences=["历史文化"],
-            free_text_input="希望看故宫",
+            transportation="public transit",
+            accommodation="mid-range hotel",
+            preferences=["museums"],
+            free_text_input="Focus on museums and landmarks.",
         )
         report = EvaluationReport(
             passed=True,
@@ -465,14 +475,14 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
 
     def test_plan_with_langgraph_records_runtime_error_without_crashing(self):
         request = TripRequest(
-            city="杭州",
+            city="Chicago",
             start_date="2026-06-01",
             end_date="2026-06-02",
             travel_days=2,
-            transportation="公共交通",
-            accommodation="经济型酒店",
-            preferences=["自然风光"],
-            free_text_input="希望看西湖",
+            transportation="public transit",
+            accommodation="mid-range hotel",
+            preferences=["architecture"],
+            free_text_input="Focus on Chicago River architecture.",
         )
 
         class FailingPlanner:
@@ -485,7 +495,7 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
         result = plan_with_langgraph(
             FailingPlanner(),
             request,
-            benchmark_metadata={"expected_rag_doc_ids": ["hangzhou-westlake-001"]},
+            benchmark_metadata={"expected_rag_doc_ids": ["chicago-architecture-river-001"]},
             persist_observability=True,
         )
 

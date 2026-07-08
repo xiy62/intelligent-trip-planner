@@ -91,16 +91,16 @@ class RAGIngestionTests(unittest.TestCase):
     def test_manifest_parsing_and_required_fields(self):
         payload = [
             {
-                "source_id": "beijing-source",
-                "country": "CN",
-                "city": "北京",
-                "source_url": "https://example.com/beijing",
+                "source_id": "nyc-source",
+                "country": "US",
+                "city": "New York",
+                "source_url": "https://www.nyctourism.com/",
                 "source_type": "official_tourism_portal",
-                "title": "Beijing Source",
-                "theme": ["历史文化"],
-                "poi_names": ["故宫博物院"],
-                "district": "东城区",
-                "language": "zh",
+                "title": "New York Source",
+                "theme": ["museums"],
+                "poi_names": ["The Metropolitan Museum of Art"],
+                "district": "Manhattan",
+                "language": "en",
             }
         ]
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -108,46 +108,48 @@ class RAGIngestionTests(unittest.TestCase):
             manifest.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
             entries = load_manifest(manifest)
 
-        self.assertEqual(entries[0].source_id, "beijing-source")
-        self.assertEqual(entries[0].city, "北京")
+        self.assertEqual(entries[0].source_id, "nyc-source")
+        self.assertEqual(entries[0].city, "New York")
 
     def test_extract_readable_text_ignores_scripts_and_navigation(self):
         html = """
         <html>
           <body>
             <nav>Menu should disappear</nav>
-            <script>console.log("hidden")</script>
+              <script>console.log("hidden")</script>
             <main>
-              <h1>故宫参观指南</h1>
-              <p>故宫适合历史文化主题行程。</p>
-              <p>建议预留充足参观时间。</p>
+              <h1>Museum visit guide</h1>
+              <p>The Met fits a museum-focused itinerary.</p>
+              <p>Reserve enough time for nearby galleries.</p>
             </main>
           </body>
         </html>
         """
         text = extract_readable_text(html)
 
-        self.assertIn("故宫参观指南", text)
-        self.assertIn("建议预留充足参观时间", text)
+        self.assertIn("Museum visit guide", text)
+        self.assertIn("Reserve enough time", text)
         self.assertNotIn("console.log", text)
         self.assertNotIn("Menu should disappear", text)
 
     def test_draft_generation_roundtrip(self):
         entry = SourceManifestEntry(
-            source_id="beijing-source",
-            city="北京",
-            source_url="https://example.com/beijing",
+            source_id="nyc-source",
+            country="US",
+            city="New York",
+            source_url="https://www.nyctourism.com/",
             source_type="official_tourism_portal",
-            title="Beijing Source",
-            theme=["历史文化"],
-            poi_names=["故宫博物院"],
-            district="东城区",
+            title="New York Source",
+            theme=["museums"],
+            poi_names=["The Metropolitan Museum of Art"],
+            district="Manhattan",
+            language="en",
         )
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             draft = build_draft_document(
                 entry=entry,
-                extracted_text="故宫适合历史文化主题行程。建议预留充足时间。",
+                extracted_text="The Met fits a museum-focused itinerary. Reserve enough time.",
                 raw_html_path=root / "source.html",
                 raw_text_path=root / "source.txt",
                 fetched_at="2026-05-06T00:00:00+00:00",
@@ -157,22 +159,23 @@ class RAGIngestionTests(unittest.TestCase):
             loaded = read_draft(draft_path)
 
         self.assertEqual(loaded.review_status, "draft")
-        self.assertEqual(loaded.doc_id, "beijing-beijing-source")
+        self.assertEqual(loaded.doc_id, "new_york-nyc-source")
         self.assertEqual(loaded.last_verified_at, "2026-05-06")
-        self.assertIn("故宫适合历史文化主题行程", loaded.content)
+        self.assertIn("The Met fits a museum-focused itinerary", loaded.content)
 
     def test_unapproved_draft_is_not_promoted(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             draft = build_draft_document(
                 entry=SourceManifestEntry(
-                    source_id="beijing-source",
-                    city="北京",
-                    source_url="https://example.com/beijing",
+                    source_id="nyc-source",
+                    country="US",
+                    city="New York",
+                    source_url="https://www.nyctourism.com/",
                     source_type="official_tourism_portal",
-                    title="Beijing Source",
+                    title="New York Source",
                 ),
-                extracted_text="故宫适合历史文化主题行程。",
+                extracted_text="The Met fits a museum-focused itinerary.",
                 raw_html_path=root / "source.html",
                 raw_text_path=root / "source.txt",
             )
@@ -185,7 +188,7 @@ class RAGIngestionTests(unittest.TestCase):
     def test_approved_doc_validates_and_loads_from_knowledge_root(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            knowledge_file = root / "knowledge" / "china" / "beijing.json"
+            knowledge_file = root / "knowledge" / "us" / "new_york.json"
             doc = self._knowledge_doc("doc-a")
             promoted = merge_knowledge_docs(knowledge_file=knowledge_file, docs=[doc])
             service = TravelRAGService(knowledge_root=knowledge_file.parent, persist_directory=root / "index")
@@ -197,7 +200,7 @@ class RAGIngestionTests(unittest.TestCase):
     def test_duplicate_doc_id_is_skipped_unless_overwrite(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            knowledge_file = root / "knowledge" / "beijing.json"
+            knowledge_file = root / "knowledge" / "new_york.json"
             first = self._knowledge_doc("doc-a", title="first")
             second = self._knowledge_doc("doc-a", title="second")
 
@@ -908,22 +911,22 @@ class RAGIngestionTests(unittest.TestCase):
     def _knowledge_doc(self, doc_id: str, title: str = "title") -> KnowledgeDocument:
         return KnowledgeDocument(
             doc_id=doc_id,
-            country="CN",
-            city="北京",
-            district="东城区",
-            theme=["历史文化"],
-            poi_names=["故宫博物院"],
+            country="US",
+            city="New York",
+            district="Manhattan",
+            theme=["museums"],
+            poi_names=["The Metropolitan Museum of Art"],
             best_for=[],
             recommended_duration="",
             seasonality=[],
             transport_advice=[],
             planning_tips=[],
             source_type="official_tourism_portal",
-            source_url="https://example.com/beijing",
-            language="zh",
+            source_url="https://www.nyctourism.com/",
+            language="en",
             last_verified_at="2026-05-06",
             title=title,
-            content="故宫适合历史文化主题行程。",
+            content="The Met fits a museum-focused itinerary.",
         )
 
 

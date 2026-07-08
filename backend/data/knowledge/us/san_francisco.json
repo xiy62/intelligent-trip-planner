@@ -1,11 +1,12 @@
 [
   {
-    "doc_id": "san-francisco-waterfront-wharf-001",
+    "doc_id": "sf-waterfront-landmarks-001",
     "country": "US",
     "city": "San Francisco",
     "district": "Northeast Waterfront",
     "theme": [
       "waterfront",
+      "landmarks",
       "classic sightseeing",
       "food"
     ],
@@ -13,200 +14,121 @@
       "Fisherman's Wharf",
       "Pier 39",
       "Ferry Building",
+      "Alcatraz Island",
       "Coit Tower"
     ],
     "best_for": [
       "first-time visitors",
       "waterfront walks",
-      "food-focused travelers"
+      "classic landmarks"
     ],
     "recommended_duration": "half_day_to_full_day",
     "seasonality": [
-      "Waterfront weather can be windy, so keep layers and indoor food stops available.",
-      "Foggy days may reduce long-view photo stops but still support neighborhood walking."
+      "Fog and wind can affect waterfront comfort, so keep layers and indoor food stops available.",
+      "Clear days support longer Embarcadero walks and bay-view photo stops."
     ],
     "transport_advice": [
-      "Keep waterfront stops grouped to avoid repeated hill climbs and cross-city transfers.",
-      "Use transit, walking, or short rideshare hops between the Ferry Building, Embarcadero, and Fisherman's Wharf."
+      "Keep waterfront landmarks grouped to avoid repeated hill climbs and cross-city transfers.",
+      "Use transit, walking, or short rideshare hops between the Ferry Building, Embarcadero, Fisherman's Wharf, and nearby viewpoints."
     ],
     "planning_tips": [
-      "A waterfront day should balance scenic stops with food breaks rather than stacking too many distant neighborhoods.",
-      "Pair Fisherman's Wharf or Pier 39 with nearby waterfront walking and a meal stop.",
+      "A waterfront day should balance landmarks, bay views, and food breaks rather than overloading distant neighborhoods.",
+      "Pair Ferry Building or Fisherman's Wharf with nearby waterfront walking and one optional viewpoint.",
       "Avoid putting Golden Gate Park and the waterfront into the same short half-day unless the user accepts more transit time."
     ],
     "source_type": "official_tourism_portal",
     "source_url": "https://www.sftravel.com/",
     "language": "en",
-    "last_verified_at": "2026-06-16",
-    "title": "San Francisco Waterfront and Fisherman's Wharf Planning Notes",
-    "content": "San Francisco Travel highlights visitor planning around attractions, weather, safety, public transportation, Fisherman's Wharf, Coit Tower, Golden Gate experiences, and waterfront activities. For itinerary planning, waterfront stops should be grouped to preserve pacing and reduce unnecessary transfers."
+    "last_verified_at": "2026-07-07",
+    "title": "San Francisco Waterfront, Landmarks, and Bay Planning Notes",
+    "content": "Seed benchmark knowledge for San Francisco waterfront routes: the Ferry Building, Embarcadero, Fisherman's Wharf, Alcatraz context, and bay viewpoints work best as a grouped waterfront plan. The itinerary should respect fog, wind, hills, and transfer time."
   },
   {
-    "doc_id": "san-francisco-golden-gate-park-museums-002",
+    "doc_id": "sf-parks-views-002",
     "country": "US",
     "city": "San Francisco",
-    "district": "Golden Gate Park",
+    "district": "Golden Gate Park, Presidio, Twin Peaks",
     "theme": [
       "parks",
-      "museums",
-      "outdoors"
-    ],
-    "poi_names": [
-      "Golden Gate Park",
-      "de Young Museum",
-      "California Academy of Sciences",
-      "Japanese Tea Garden"
-    ],
-    "best_for": [
-      "museum-focused travelers",
-      "outdoor travelers",
-      "relaxed pace"
-    ],
-    "recommended_duration": "half_day_to_full_day",
-    "seasonality": [
-      "Fog and wind can make layered clothing useful even in warmer months.",
-      "Rainy days should emphasize museums and shorten garden or park walks."
-    ],
-    "transport_advice": [
-      "Golden Gate Park attractions are best grouped together rather than split across multiple distant neighborhoods.",
-      "Public transit is workable, but schedules should leave buffer time for transfers."
-    ],
-    "planning_tips": [
-      "For a relaxed San Francisco day, combine one major museum with one or two park stops instead of trying to cover the entire city.",
-      "Golden Gate Park works well as a weather-flexible cluster because it has both indoor museums and outdoor gardens.",
-      "Avoid overloading the day with both park museums and distant waterfront landmarks."
-    ],
-    "source_type": "official_tourism_portal",
-    "source_url": "https://www.sftravel.com/things-to-do/attractions",
-    "language": "en",
-    "last_verified_at": "2026-06-16",
-    "title": "San Francisco Golden Gate Park and Museum Planning Notes",
-    "content": "San Francisco Travel describes attractions such as world-class museums, Fisherman's Wharf, Golden Gate Park, botanical gardens, and art museums. Golden Gate Park is a strong same-day cluster for museum, outdoor, and relaxed-pace itineraries because it combines indoor and outdoor options in one area."
-  },
-  {
-    "doc_id": "san-francisco-mission-food-murals-003",
-    "country": "US",
-    "city": "San Francisco",
-    "district": "Mission District",
-    "theme": [
-      "food",
-      "murals",
-      "neighborhoods"
-    ],
-    "poi_names": [
-      "Mission District",
-      "Clarion Alley",
-      "Mission Dolores Park",
-      "Valencia Street"
-    ],
-    "best_for": [
-      "food-focused travelers",
-      "street-art routes",
-      "neighborhood walks"
-    ],
-    "recommended_duration": "half_day",
-    "seasonality": [
-      "Sunny afternoons work well for Dolores Park and mural walks.",
-      "Rainy days should keep the route closer to restaurants, cafes, and transit."
-    ],
-    "transport_advice": [
-      "Keep Mission food, murals, and Dolores Park in the same block of the day instead of crossing back to the waterfront.",
-      "Use BART or Muni access to start or end the route near the hotel area."
-    ],
-    "planning_tips": [
-      "For food and neighborhood preferences, build the day around the Mission rather than mixing too many distant landmarks.",
-      "Pair murals and Valencia Street food stops with a short park break when weather is good.",
-      "Avoid scheduling a full waterfront route and a full Mission food route in the same half-day."
-    ],
-    "source_type": "official_tourism_portal",
-    "source_url": "https://www.sftravel.com/neighborhoods/mission-district",
-    "language": "en",
-    "last_verified_at": "2026-06-16",
-    "title": "San Francisco Mission Food, Murals, and Neighborhood Planning Notes",
-    "content": "San Francisco Travel presents the Mission as a neighborhood known for food, culture, murals, parks, and walkable streets. Mission-focused itineraries should preserve neighborhood depth rather than turning the day into a scattered citywide checklist."
-  },
-  {
-    "doc_id": "san-francisco-golden-gate-bridge-presidio-004",
-    "country": "US",
-    "city": "San Francisco",
-    "district": "Presidio and Golden Gate",
-    "theme": [
-      "bridge views",
+      "views",
       "outdoors",
-      "photography"
+      "bridge"
     ],
     "poi_names": [
       "Golden Gate Bridge",
       "Presidio",
-      "Crissy Field",
-      "Palace of Fine Arts"
+      "Golden Gate Park",
+      "Twin Peaks",
+      "Crissy Field"
     ],
     "best_for": [
       "outdoor travelers",
       "photography-focused travelers",
-      "classic sightseeing"
+      "weather-flexible routes"
     ],
     "recommended_duration": "half_day_to_full_day",
     "seasonality": [
-      "Fog can obscure bridge views, so keep flexible timing for viewpoint stops.",
-      "Wind near the bridge and waterfront makes layers important year-round."
+      "Fog can obscure bridge and hilltop views, so keep timing flexible for viewpoint stops.",
+      "Rainy days should shorten exposed park walks and add nearby indoor or cafe breaks."
     ],
     "transport_advice": [
-      "Group Presidio, Crissy Field, and bridge viewpoints to reduce cross-city transit.",
-      "Avoid sending public-transit travelers between the bridge, Golden Gate Park, and waterfront repeatedly in one day."
+      "Group Presidio, Crissy Field, and bridge viewpoints together rather than crossing back to the waterfront repeatedly.",
+      "Public transit is workable but schedules should leave buffer time for hill and park transfers."
     ],
     "planning_tips": [
-      "For bridge-view requests, pick a small set of nearby viewpoints and leave time for weather flexibility.",
-      "Use the Palace of Fine Arts or Presidio as nearby add-ons rather than distant backup stops.",
-      "Keep photo stops shorter on foggy or windy days and add indoor breaks if needed."
+      "For parks and view requests, choose either a Golden Gate/Presidio cluster or a Golden Gate Park cluster before adding distant stops.",
+      "Keep photo stops shorter on foggy or windy days and use nearby cafes or museums as backups.",
+      "Avoid overloading the day with both western parks and northeastern waterfront landmarks unless the traveler accepts extra transit."
     ],
     "source_type": "official_tourism_portal",
-    "source_url": "https://www.sftravel.com/things-to-do/attractions/iconic-sf/golden-gate-bridge",
+    "source_url": "https://www.sftravel.com/",
     "language": "en",
-    "last_verified_at": "2026-06-16",
-    "title": "San Francisco Golden Gate Bridge and Presidio Planning Notes",
-    "content": "Golden Gate Bridge and Presidio planning should account for fog, wind, viewpoint timing, and transit buffers. The strongest itineraries group bridge viewpoints with nearby Presidio or Crissy Field stops instead of scattering the day across unrelated neighborhoods."
+    "last_verified_at": "2026-07-07",
+    "title": "San Francisco Parks, Bridge Views, and Outdoor Planning Notes",
+    "content": "Seed benchmark knowledge for San Francisco outdoor routes: Golden Gate Bridge viewpoints, the Presidio, Golden Gate Park, Crissy Field, and Twin Peaks require weather flexibility and careful clustering. Strong itineraries reduce cross-city transit and keep fog or wind backups available."
   },
   {
-    "doc_id": "san-francisco-chinatown-north-beach-culture-005",
+    "doc_id": "sf-food-neighborhoods-003",
     "country": "US",
     "city": "San Francisco",
-    "district": "Chinatown and North Beach",
+    "district": "Mission, Chinatown, North Beach, Ferry Building",
     "theme": [
-      "culture",
       "food",
-      "citywalk"
+      "neighborhoods",
+      "citywalk",
+      "culture"
     ],
     "poi_names": [
+      "Mission District",
       "Chinatown",
       "North Beach",
-      "City Lights Bookstore",
-      "Coit Tower"
+      "Ferry Building",
+      "Hayes Valley"
     ],
     "best_for": [
-      "culture-focused travelers",
       "food-focused travelers",
-      "compact walking routes"
+      "culture-focused walkers",
+      "compact neighborhood routes"
     ],
     "recommended_duration": "half_day",
     "seasonality": [
-      "Steep streets can feel harder in rain or strong wind.",
-      "Mild weather supports a longer walk between Chinatown, North Beach, and Coit Tower."
+      "Rain or strong wind makes steep streets harder, so keep routes compact and near transit.",
+      "Sunny afternoons work well for Mission murals, Dolores Park, or North Beach walking."
     ],
     "transport_advice": [
-      "Chinatown and North Beach work well as a compact walking cluster.",
-      "If adding Coit Tower, account for hills and avoid placing another distant neighborhood immediately after it."
+      "Food and neighborhood walks should stay compact because hills and transfers can slow the day.",
+      "Use BART, Muni, or short rideshare segments to start or end neighborhood routes near the hotel."
     ],
     "planning_tips": [
-      "For culture and food requests, pair Chinatown meals with North Beach walking rather than treating them as separate days.",
-      "Use Coit Tower as an optional viewpoint if pace and weather allow.",
-      "Keep hotel return routing simple because the area can involve hills and transfers."
+      "For food and culture requests, build around one or two adjacent neighborhoods such as Chinatown and North Beach or the Mission.",
+      "Pair meal stops with murals, bookstores, markets, or short park breaks when nearby.",
+      "Avoid mixing a full Mission food route with a full waterfront landmark route in the same half-day."
     ],
     "source_type": "official_tourism_portal",
-    "source_url": "https://www.sftravel.com/neighborhoods",
+    "source_url": "https://www.sftravel.com/",
     "language": "en",
-    "last_verified_at": "2026-06-16",
-    "title": "San Francisco Chinatown, North Beach, Culture, and Food Planning Notes",
-    "content": "San Francisco neighborhood planning can combine Chinatown, North Beach, food, literature, culture, and nearby viewpoints into a compact walking route. This is more coherent than mixing those stops with far western park or bridge routes on the same short day."
+    "last_verified_at": "2026-07-07",
+    "title": "San Francisco Food, Neighborhoods, and Culture Walk Planning Notes",
+    "content": "Seed benchmark knowledge for San Francisco food routes: compact neighborhood planning is essential because hills, transit transfers, and microclimates affect pacing. The Mission, Chinatown, North Beach, Ferry Building, and Hayes Valley can each support focused food and culture walks."
   }
 ]

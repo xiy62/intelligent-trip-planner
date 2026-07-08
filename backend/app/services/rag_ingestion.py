@@ -24,6 +24,7 @@ CITY_SLUGS = {
     "杭州": "hangzhou",
     "广州": "guangzhou",
     "New York": "new_york",
+    "Los Angeles": "los_angeles",
     "San Francisco": "san_francisco",
     "Chicago": "chicago",
 }

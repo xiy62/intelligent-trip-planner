@@ -1,299 +1,630 @@
 [
   {
     "city": "New York",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-26",
-    "travel_days": 2,
-    "transportation": "subway and walking",
-    "accommodation": "family-friendly hotel",
-    "preferences": ["family", "arts", "parks", "rainy day"],
-    "free_text_input": "Plan a family-friendly Upper West Side day that still works if it rains, with museums, arts, and a Central Park break.",
-    "expected_rag_doc_ids": ["new-york-family-arts-parks-005"],
-    "expected_rag_themes": ["family", "arts", "parks"],
-    "expected_rag_sections": [
-      {"doc_id": "new-york-family-arts-parks-005", "section": "seasonality"},
-      {"doc_id": "new-york-family-arts-parks-005", "section": "transport"}
-    ],
-    "expected_rag_claims": [
-      {
-        "claim_id": "ny-family-rainy-museums",
-        "doc_id": "new-york-family-arts-parks-005",
-        "section": "seasonality",
-        "category": "weather_backup",
-        "evidence_quote": "Rainy days should prioritize museums and indoor arts stops."
-      },
-      {
-        "claim_id": "ny-family-upper-west-side-cluster",
-        "doc_id": "new-york-family-arts-parks-005",
-        "section": "transport",
-        "category": "transport",
-        "evidence_quote": "Use the Upper West Side as a same-day cluster for museums, parks, and arts stops."
-      }
-    ],
-    "benchmark_note": "Hard NYC case: requires the family document's seasonality and transport sections, not just overview matching."
-  },
-  {
-    "city": "New York",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-26",
-    "travel_days": 2,
-    "transportation": "subway and rideshare",
-    "accommodation": "boutique hotel",
-    "preferences": ["skyline", "nightlife", "photography"],
-    "free_text_input": "I want a night-view plan with one strong skyline stop, dinner nearby, and a simple safe route back to the hotel.",
-    "expected_rag_doc_ids": ["new-york-skyline-nightlife-004"],
-    "expected_rag_themes": ["skyline", "nightlife", "photography"],
-    "expected_rag_sections": [
-      {"doc_id": "new-york-skyline-nightlife-004", "section": "planning_tips"},
-      {"doc_id": "new-york-skyline-nightlife-004", "section": "transport"}
-    ],
-    "expected_rag_claims": [
-      {
-        "claim_id": "ny-skyline-one-primary-viewpoint",
-        "doc_id": "new-york-skyline-nightlife-004",
-        "section": "planning_tips",
-        "category": "pacing",
-        "evidence_quote": "For night-view requests, pick one primary observation or waterfront viewpoint rather than stacking several paid viewpoints."
-      },
-      {
-        "claim_id": "ny-skyline-direct-return",
-        "doc_id": "new-york-skyline-nightlife-004",
-        "section": "transport",
-        "category": "transport",
-        "evidence_quote": "End the day near a direct subway or rideshare route back to the hotel."
-      }
-    ],
-    "benchmark_note": "Hard NYC case: tests skyline planning and return-route evidence rather than generic nightlife terms."
-  },
-  {
-    "city": "New York",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-26",
+    "start_date": "2026-07-01",
+    "end_date": "2026-07-02",
     "travel_days": 2,
     "transportation": "subway and walking",
     "accommodation": "mid-range hotel",
-    "preferences": ["food", "neighborhoods", "citywalk"],
-    "free_text_input": "Keep a Brooklyn food and neighborhood day compact, with waterfront time but no repeated borough hopping.",
-    "expected_rag_doc_ids": ["new-york-brooklyn-food-neighborhoods-003"],
-    "expected_rag_themes": ["food", "neighborhoods", "citywalk"],
+    "preferences": [
+      "museums",
+      "landmarks",
+      "culture"
+    ],
+    "free_text_input": "Build a Manhattan culture route with major museums, Central Park breaks, and classic landmarks without too much backtracking.",
+    "expected_rag_doc_ids": [
+      "nyc-museums-landmarks-001"
+    ],
+    "expected_rag_themes": [
+      "museums",
+      "landmarks",
+      "culture"
+    ],
+    "forbidden_rag_doc_ids": [
+      "la-beaches-coast-002",
+      "chicago-food-neighborhoods-003"
+    ],
+    "benchmark_note": "Hard New York case: requires section-level planning and transport evidence for nyc-museums-landmarks-001.",
     "expected_rag_sections": [
-      {"doc_id": "new-york-brooklyn-food-neighborhoods-003", "section": "planning_tips"},
-      {"doc_id": "new-york-brooklyn-food-neighborhoods-003", "section": "transport"}
+      {
+        "doc_id": "nyc-museums-landmarks-001",
+        "section": "planning_tips"
+      },
+      {
+        "doc_id": "nyc-museums-landmarks-001",
+        "section": "transport"
+      }
     ],
     "expected_rag_claims": [
       {
-        "claim_id": "ny-brooklyn-compact-areas",
-        "doc_id": "new-york-brooklyn-food-neighborhoods-003",
+        "claim_id": "nyc-museums-landmarks-001-planning",
+        "doc_id": "nyc-museums-landmarks-001",
         "section": "planning_tips",
         "category": "pacing",
-        "evidence_quote": "For food and neighborhood requests, prefer one or two compact Brooklyn areas over scattered citywide stops."
+        "evidence_quote": "Choose one or two major museums rather than stacking every famous museum into the same day."
       },
       {
-        "claim_id": "ny-brooklyn-avoid-borough-crossing",
-        "doc_id": "new-york-brooklyn-food-neighborhoods-003",
+        "claim_id": "nyc-museums-landmarks-001-transport",
+        "doc_id": "nyc-museums-landmarks-001",
         "section": "transport",
         "category": "transport",
-        "evidence_quote": "Group Brooklyn waterfront and neighborhood stops together instead of crossing repeatedly between boroughs."
+        "evidence_quote": "Group Manhattan museums and landmarks by neighborhood to avoid unnecessary borough transfers."
+      }
+    ]
+  },
+  {
+    "city": "New York",
+    "start_date": "2026-07-03",
+    "end_date": "2026-07-04",
+    "travel_days": 2,
+    "transportation": "subway",
+    "accommodation": "boutique hotel",
+    "preferences": [
+      "food",
+      "neighborhoods",
+      "citywalk"
+    ],
+    "free_text_input": "Focus on Chinatown, the Lower East Side, or Brooklyn food neighborhoods with a walkable pace.",
+    "expected_rag_doc_ids": [
+      "nyc-food-neighborhoods-002"
+    ],
+    "expected_rag_themes": [
+      "food",
+      "neighborhoods",
+      "citywalk"
+    ],
+    "forbidden_rag_doc_ids": [
+      "sf-parks-views-002"
+    ],
+    "benchmark_note": "Hard New York case: requires section-level planning and transport evidence for nyc-food-neighborhoods-002.",
+    "expected_rag_sections": [
+      {
+        "doc_id": "nyc-food-neighborhoods-002",
+        "section": "planning_tips"
+      },
+      {
+        "doc_id": "nyc-food-neighborhoods-002",
+        "section": "transport"
       }
     ],
-    "benchmark_note": "Hard NYC case: targets anti-backtracking transport evidence for Brooklyn food routes."
+    "expected_rag_claims": [
+      {
+        "claim_id": "nyc-food-neighborhoods-002-planning",
+        "doc_id": "nyc-food-neighborhoods-002",
+        "section": "planning_tips",
+        "category": "pacing",
+        "evidence_quote": "For food requests, pick one or two neighborhoods and preserve time for browsing, snacks, and unscheduled stops."
+      },
+      {
+        "claim_id": "nyc-food-neighborhoods-002-transport",
+        "doc_id": "nyc-food-neighborhoods-002",
+        "section": "transport",
+        "category": "transport",
+        "evidence_quote": "Keep food neighborhoods clustered instead of sending travelers between Manhattan, Brooklyn, and Queens in the same short block."
+      }
+    ]
+  },
+  {
+    "city": "New York",
+    "start_date": "2026-07-05",
+    "end_date": "2026-07-06",
+    "travel_days": 2,
+    "transportation": "public transit and ferry",
+    "accommodation": "mid-range hotel",
+    "preferences": [
+      "parks",
+      "waterfront",
+      "views"
+    ],
+    "free_text_input": "I want scenic parks, waterfront walking, and one skyline or ferry view with weather flexibility.",
+    "expected_rag_doc_ids": [
+      "nyc-parks-views-003"
+    ],
+    "expected_rag_themes": [
+      "parks",
+      "waterfront",
+      "views"
+    ],
+    "forbidden_rag_doc_ids": [
+      "chicago-food-neighborhoods-003"
+    ],
+    "benchmark_note": "Hard New York case: requires section-level planning and transport evidence for nyc-parks-views-003.",
+    "expected_rag_sections": [
+      {
+        "doc_id": "nyc-parks-views-003",
+        "section": "planning_tips"
+      },
+      {
+        "doc_id": "nyc-parks-views-003",
+        "section": "transport"
+      }
+    ],
+    "expected_rag_claims": [
+      {
+        "claim_id": "nyc-parks-views-003-planning",
+        "doc_id": "nyc-parks-views-003",
+        "section": "planning_tips",
+        "category": "pacing",
+        "evidence_quote": "Use one primary skyline or waterfront viewpoint instead of stacking several distant view stops."
+      },
+      {
+        "claim_id": "nyc-parks-views-003-transport",
+        "doc_id": "nyc-parks-views-003",
+        "section": "transport",
+        "category": "transport",
+        "evidence_quote": "Group parks and waterfront viewpoints by side of the city to avoid crossing the river repeatedly."
+      }
+    ]
+  },
+  {
+    "city": "Los Angeles",
+    "start_date": "2026-07-07",
+    "end_date": "2026-07-08",
+    "travel_days": 2,
+    "transportation": "rideshare and driving",
+    "accommodation": "West Hollywood hotel",
+    "preferences": [
+      "hollywood",
+      "museums",
+      "culture"
+    ],
+    "free_text_input": "Plan Hollywood, film culture, and one or two museums with realistic traffic buffers.",
+    "expected_rag_doc_ids": [
+      "la-hollywood-museums-001"
+    ],
+    "expected_rag_themes": [
+      "hollywood",
+      "museums",
+      "culture"
+    ],
+    "forbidden_rag_doc_ids": [
+      "nyc-food-neighborhoods-002",
+      "sf-food-neighborhoods-003"
+    ],
+    "benchmark_note": "Hard Los Angeles case: requires section-level planning and transport evidence for la-hollywood-museums-001.",
+    "expected_rag_sections": [
+      {
+        "doc_id": "la-hollywood-museums-001",
+        "section": "planning_tips"
+      },
+      {
+        "doc_id": "la-hollywood-museums-001",
+        "section": "transport"
+      }
+    ],
+    "expected_rag_claims": [
+      {
+        "claim_id": "la-hollywood-museums-001-planning",
+        "doc_id": "la-hollywood-museums-001",
+        "section": "planning_tips",
+        "category": "pacing",
+        "evidence_quote": "Do not combine every famous LA museum and Hollywood landmark into one rushed day."
+      },
+      {
+        "claim_id": "la-hollywood-museums-001-transport",
+        "doc_id": "la-hollywood-museums-001",
+        "section": "transport",
+        "category": "transport",
+        "evidence_quote": "Los Angeles attractions are spread out, so group Hollywood and museum stops into realistic geographic clusters."
+      }
+    ]
+  },
+  {
+    "city": "Los Angeles",
+    "start_date": "2026-07-09",
+    "end_date": "2026-07-10",
+    "travel_days": 2,
+    "transportation": "driving",
+    "accommodation": "Santa Monica hotel",
+    "preferences": [
+      "beaches",
+      "coast",
+      "outdoors"
+    ],
+    "free_text_input": "Keep the plan along Santa Monica, Venice, or Malibu with sunset flexibility and not too much inland driving.",
+    "expected_rag_doc_ids": [
+      "la-beaches-coast-002"
+    ],
+    "expected_rag_themes": [
+      "beaches",
+      "coast",
+      "outdoors"
+    ],
+    "forbidden_rag_doc_ids": [
+      "chicago-architecture-river-001",
+      "nyc-museums-landmarks-001"
+    ],
+    "benchmark_note": "Hard Los Angeles case: requires section-level planning and transport evidence for la-beaches-coast-002.",
+    "expected_rag_sections": [
+      {
+        "doc_id": "la-beaches-coast-002",
+        "section": "planning_tips"
+      },
+      {
+        "doc_id": "la-beaches-coast-002",
+        "section": "transport"
+      }
+    ],
+    "expected_rag_claims": [
+      {
+        "claim_id": "la-beaches-coast-002-planning",
+        "doc_id": "la-beaches-coast-002",
+        "section": "planning_tips",
+        "category": "pacing",
+        "evidence_quote": "A beach-focused LA route should choose one coastal corridor instead of jumping between every beach city."
+      },
+      {
+        "claim_id": "la-beaches-coast-002-transport",
+        "doc_id": "la-beaches-coast-002",
+        "section": "transport",
+        "category": "transport",
+        "evidence_quote": "Keep coastal stops on the same side of the city instead of pairing beaches with distant inland museums."
+      }
+    ]
+  },
+  {
+    "city": "Los Angeles",
+    "start_date": "2026-07-11",
+    "end_date": "2026-07-12",
+    "travel_days": 2,
+    "transportation": "Metro and rideshare",
+    "accommodation": "Downtown LA hotel",
+    "preferences": [
+      "food",
+      "neighborhoods",
+      "citywalk"
+    ],
+    "free_text_input": "Build a focused food itinerary around Koreatown, Thai Town, Downtown, or the Arts District without crossing the whole city.",
+    "expected_rag_doc_ids": [
+      "la-food-neighborhoods-003"
+    ],
+    "expected_rag_themes": [
+      "food",
+      "neighborhoods",
+      "citywalk"
+    ],
+    "forbidden_rag_doc_ids": [
+      "sf-parks-views-002"
+    ],
+    "benchmark_note": "Hard Los Angeles case: requires section-level planning and transport evidence for la-food-neighborhoods-003.",
+    "expected_rag_sections": [
+      {
+        "doc_id": "la-food-neighborhoods-003",
+        "section": "planning_tips"
+      },
+      {
+        "doc_id": "la-food-neighborhoods-003",
+        "section": "transport"
+      }
+    ],
+    "expected_rag_claims": [
+      {
+        "claim_id": "la-food-neighborhoods-003-planning",
+        "doc_id": "la-food-neighborhoods-003",
+        "section": "planning_tips",
+        "category": "pacing",
+        "evidence_quote": "For food requests, choose one food corridor such as Koreatown, Thai Town, Downtown, or the Arts District and build depth there."
+      },
+      {
+        "claim_id": "la-food-neighborhoods-003-transport",
+        "doc_id": "la-food-neighborhoods-003",
+        "section": "transport",
+        "category": "transport",
+        "evidence_quote": "Food neighborhoods in Los Angeles should be grouped by district because cross-city transfers can dominate the itinerary."
+      }
+    ]
+  },
+  {
+    "city": "Chicago",
+    "start_date": "2026-07-13",
+    "end_date": "2026-07-14",
+    "travel_days": 2,
+    "transportation": "walking and public transit",
+    "accommodation": "Loop hotel",
+    "preferences": [
+      "architecture",
+      "river",
+      "landmarks"
+    ],
+    "free_text_input": "Center the trip on the Chicago Riverwalk, architecture, the Loop, and one skyline landmark with realistic weather backup.",
+    "expected_rag_doc_ids": [
+      "chicago-architecture-river-001"
+    ],
+    "expected_rag_themes": [
+      "architecture",
+      "river",
+      "landmarks"
+    ],
+    "forbidden_rag_doc_ids": [
+      "la-beaches-coast-002",
+      "sf-food-neighborhoods-003"
+    ],
+    "benchmark_note": "Hard Chicago case: requires section-level planning and transport evidence for chicago-architecture-river-001.",
+    "expected_rag_sections": [
+      {
+        "doc_id": "chicago-architecture-river-001",
+        "section": "planning_tips"
+      },
+      {
+        "doc_id": "chicago-architecture-river-001",
+        "section": "transport"
+      }
+    ],
+    "expected_rag_claims": [
+      {
+        "claim_id": "chicago-architecture-river-001-planning",
+        "doc_id": "chicago-architecture-river-001",
+        "section": "planning_tips",
+        "category": "pacing",
+        "evidence_quote": "Use the Chicago Riverwalk as the anchor for architecture requests and build nearby landmarks around it."
+      },
+      {
+        "claim_id": "chicago-architecture-river-001-transport",
+        "doc_id": "chicago-architecture-river-001",
+        "section": "transport",
+        "category": "transport",
+        "evidence_quote": "Downtown architecture and river stops are best handled as a compact walking and public-transit cluster."
+      }
+    ]
+  },
+  {
+    "city": "Chicago",
+    "start_date": "2026-07-15",
+    "end_date": "2026-07-16",
+    "travel_days": 2,
+    "transportation": "public transit",
+    "accommodation": "family-friendly hotel",
+    "preferences": [
+      "museums",
+      "parks",
+      "culture"
+    ],
+    "free_text_input": "Plan a Museum Campus or Art Institute day with nearby park breaks and avoid too many major museums.",
+    "expected_rag_doc_ids": [
+      "chicago-museums-parks-002"
+    ],
+    "expected_rag_themes": [
+      "museums",
+      "parks",
+      "culture"
+    ],
+    "forbidden_rag_doc_ids": [
+      "nyc-food-neighborhoods-002"
+    ],
+    "benchmark_note": "Hard Chicago case: requires section-level planning and transport evidence for chicago-museums-parks-002.",
+    "expected_rag_sections": [
+      {
+        "doc_id": "chicago-museums-parks-002",
+        "section": "planning_tips"
+      },
+      {
+        "doc_id": "chicago-museums-parks-002",
+        "section": "transport"
+      }
+    ],
+    "expected_rag_claims": [
+      {
+        "claim_id": "chicago-museums-parks-002-planning",
+        "doc_id": "chicago-museums-parks-002",
+        "section": "planning_tips",
+        "category": "pacing",
+        "evidence_quote": "Choose one or two major museums, then use nearby parks or lakefront breaks for pacing."
+      },
+      {
+        "claim_id": "chicago-museums-parks-002-transport",
+        "doc_id": "chicago-museums-parks-002",
+        "section": "transport",
+        "category": "transport",
+        "evidence_quote": "Museum Campus and Loop museum routes should be grouped with nearby parks rather than split across the city."
+      }
+    ]
+  },
+  {
+    "city": "Chicago",
+    "start_date": "2026-07-17",
+    "end_date": "2026-07-18",
+    "travel_days": 2,
+    "transportation": "CTA and rideshare",
+    "accommodation": "boutique hotel",
+    "preferences": [
+      "food",
+      "neighborhoods",
+      "citywalk"
+    ],
+    "free_text_input": "I want West Loop, Pilsen, Chinatown, or Logan Square food with simple transportation back.",
+    "expected_rag_doc_ids": [
+      "chicago-food-neighborhoods-003"
+    ],
+    "expected_rag_themes": [
+      "food",
+      "neighborhoods",
+      "citywalk"
+    ],
+    "forbidden_rag_doc_ids": [
+      "sf-waterfront-landmarks-001"
+    ],
+    "benchmark_note": "Hard Chicago case: requires section-level planning and transport evidence for chicago-food-neighborhoods-003.",
+    "expected_rag_sections": [
+      {
+        "doc_id": "chicago-food-neighborhoods-003",
+        "section": "planning_tips"
+      },
+      {
+        "doc_id": "chicago-food-neighborhoods-003",
+        "section": "transport"
+      }
+    ],
+    "expected_rag_claims": [
+      {
+        "claim_id": "chicago-food-neighborhoods-003-planning",
+        "doc_id": "chicago-food-neighborhoods-003",
+        "section": "planning_tips",
+        "category": "pacing",
+        "evidence_quote": "For food requests, preserve flexible time for restaurants, markets, and neighborhood wandering."
+      },
+      {
+        "claim_id": "chicago-food-neighborhoods-003-transport",
+        "doc_id": "chicago-food-neighborhoods-003",
+        "section": "transport",
+        "category": "transport",
+        "evidence_quote": "Pick one or two food neighborhoods and avoid zigzagging across Chicago for unrelated meals."
+      }
+    ]
   },
   {
     "city": "San Francisco",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-26",
+    "start_date": "2026-07-19",
+    "end_date": "2026-07-20",
+    "travel_days": 2,
+    "transportation": "Muni and walking",
+    "accommodation": "waterfront hotel",
+    "preferences": [
+      "waterfront",
+      "landmarks",
+      "food"
+    ],
+    "free_text_input": "Keep the plan around the Ferry Building, Embarcadero, Fisherman's Wharf, bay views, and nearby food.",
+    "expected_rag_doc_ids": [
+      "sf-waterfront-landmarks-001"
+    ],
+    "expected_rag_themes": [
+      "waterfront",
+      "landmarks",
+      "food"
+    ],
+    "forbidden_rag_doc_ids": [
+      "chicago-food-neighborhoods-003"
+    ],
+    "benchmark_note": "Hard San Francisco case: requires section-level planning and transport evidence for sf-waterfront-landmarks-001.",
+    "expected_rag_sections": [
+      {
+        "doc_id": "sf-waterfront-landmarks-001",
+        "section": "planning_tips"
+      },
+      {
+        "doc_id": "sf-waterfront-landmarks-001",
+        "section": "transport"
+      }
+    ],
+    "expected_rag_claims": [
+      {
+        "claim_id": "sf-waterfront-landmarks-001-planning",
+        "doc_id": "sf-waterfront-landmarks-001",
+        "section": "planning_tips",
+        "category": "pacing",
+        "evidence_quote": "A waterfront day should balance landmarks, bay views, and food breaks rather than overloading distant neighborhoods."
+      },
+      {
+        "claim_id": "sf-waterfront-landmarks-001-transport",
+        "doc_id": "sf-waterfront-landmarks-001",
+        "section": "transport",
+        "category": "transport",
+        "evidence_quote": "Keep waterfront landmarks grouped to avoid repeated hill climbs and cross-city transfers."
+      }
+    ]
+  },
+  {
+    "city": "San Francisco",
+    "start_date": "2026-07-21",
+    "end_date": "2026-07-22",
     "travel_days": 2,
     "transportation": "public transit and rideshare",
     "accommodation": "mid-range hotel",
-    "preferences": ["bridge views", "outdoors", "photography", "weather flexibility"],
-    "free_text_input": "Plan Golden Gate Bridge and Presidio viewpoints with flexibility for fog and wind, avoiding repeated cross-city transit.",
-    "expected_rag_doc_ids": ["san-francisco-golden-gate-bridge-presidio-004"],
-    "expected_rag_themes": ["bridge views", "outdoors", "photography"],
+    "preferences": [
+      "parks",
+      "views",
+      "outdoors"
+    ],
+    "free_text_input": "Plan Golden Gate Bridge views, the Presidio, Golden Gate Park, or Twin Peaks with fog and wind flexibility.",
+    "expected_rag_doc_ids": [
+      "sf-parks-views-002"
+    ],
+    "expected_rag_themes": [
+      "parks",
+      "views",
+      "outdoors"
+    ],
+    "forbidden_rag_doc_ids": [
+      "la-food-neighborhoods-003"
+    ],
+    "benchmark_note": "Hard San Francisco case: requires section-level planning and transport evidence for sf-parks-views-002.",
     "expected_rag_sections": [
-      {"doc_id": "san-francisco-golden-gate-bridge-presidio-004", "section": "seasonality"},
-      {"doc_id": "san-francisco-golden-gate-bridge-presidio-004", "section": "transport"}
+      {
+        "doc_id": "sf-parks-views-002",
+        "section": "planning_tips"
+      },
+      {
+        "doc_id": "sf-parks-views-002",
+        "section": "transport"
+      }
     ],
     "expected_rag_claims": [
       {
-        "claim_id": "sf-bridge-fog-flexibility",
-        "doc_id": "san-francisco-golden-gate-bridge-presidio-004",
-        "section": "seasonality",
-        "category": "weather",
-        "evidence_quote": "Fog can obscure bridge views, so keep flexible timing for viewpoint stops."
+        "claim_id": "sf-parks-views-002-planning",
+        "doc_id": "sf-parks-views-002",
+        "section": "planning_tips",
+        "category": "pacing",
+        "evidence_quote": "For parks and view requests, choose either a Golden Gate/Presidio cluster or a Golden Gate Park cluster before adding distant stops."
       },
       {
-        "claim_id": "sf-bridge-presidio-cluster",
-        "doc_id": "san-francisco-golden-gate-bridge-presidio-004",
+        "claim_id": "sf-parks-views-002-transport",
+        "doc_id": "sf-parks-views-002",
         "section": "transport",
         "category": "transport",
-        "evidence_quote": "Group Presidio, Crissy Field, and bridge viewpoints to reduce cross-city transit."
+        "evidence_quote": "Group Presidio, Crissy Field, and bridge viewpoints together rather than crossing back to the waterfront repeatedly."
       }
-    ],
-    "benchmark_note": "Hard SF case: tests fog/wind and bridge-cluster evidence."
+    ]
   },
   {
     "city": "San Francisco",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-26",
+    "start_date": "2026-07-23",
+    "end_date": "2026-07-24",
     "travel_days": 2,
-    "transportation": "public transit",
-    "accommodation": "budget hotel",
-    "preferences": ["parks", "museums", "relaxed pace", "rainy day"],
-    "free_text_input": "Create a relaxed Golden Gate Park plan that can shift indoors if it rains and does not overload the day.",
-    "expected_rag_doc_ids": ["san-francisco-golden-gate-park-museums-002"],
-    "expected_rag_themes": ["parks", "museums", "outdoors"],
-    "expected_rag_sections": [
-      {"doc_id": "san-francisco-golden-gate-park-museums-002", "section": "seasonality"},
-      {"doc_id": "san-francisco-golden-gate-park-museums-002", "section": "planning_tips"}
-    ],
-    "expected_rag_claims": [
-      {
-        "claim_id": "sf-ggp-rainy-museums",
-        "doc_id": "san-francisco-golden-gate-park-museums-002",
-        "section": "seasonality",
-        "category": "weather_backup",
-        "evidence_quote": "Rainy days should emphasize museums and shorten garden or park walks."
-      },
-      {
-        "claim_id": "sf-ggp-relaxed-one-museum",
-        "doc_id": "san-francisco-golden-gate-park-museums-002",
-        "section": "planning_tips",
-        "category": "pacing",
-        "evidence_quote": "For a relaxed San Francisco day, combine one major museum with one or two park stops instead of trying to cover the entire city."
-      }
-    ],
-    "benchmark_note": "Hard SF case: section labels require rainy-day and relaxed-pacing evidence."
-  },
-  {
-    "city": "San Francisco",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-26",
-    "travel_days": 2,
-    "transportation": "walking and public transit",
+    "transportation": "BART and walking",
     "accommodation": "boutique hotel",
-    "preferences": ["culture", "food", "citywalk", "hills"],
-    "free_text_input": "Make a Chinatown and North Beach food-and-culture walk, accounting for hills and avoiding another distant neighborhood afterward.",
-    "expected_rag_doc_ids": ["san-francisco-chinatown-north-beach-culture-005"],
-    "expected_rag_themes": ["culture", "food", "citywalk"],
-    "expected_rag_sections": [
-      {"doc_id": "san-francisco-chinatown-north-beach-culture-005", "section": "seasonality"},
-      {"doc_id": "san-francisco-chinatown-north-beach-culture-005", "section": "transport"}
+    "preferences": [
+      "food",
+      "neighborhoods",
+      "culture"
     ],
-    "expected_rag_claims": [
+    "free_text_input": "Build a compact Mission, Chinatown, North Beach, or Ferry Building food-and-culture walk that accounts for hills.",
+    "expected_rag_doc_ids": [
+      "sf-food-neighborhoods-003"
+    ],
+    "expected_rag_themes": [
+      "food",
+      "neighborhoods",
+      "culture"
+    ],
+    "forbidden_rag_doc_ids": [
+      "nyc-parks-views-003"
+    ],
+    "benchmark_note": "Hard San Francisco case: requires section-level planning and transport evidence for sf-food-neighborhoods-003.",
+    "expected_rag_sections": [
       {
-        "claim_id": "sf-chinatown-rain-hills",
-        "doc_id": "san-francisco-chinatown-north-beach-culture-005",
-        "section": "seasonality",
-        "category": "weather",
-        "evidence_quote": "Steep streets can feel harder in rain or strong wind."
+        "doc_id": "sf-food-neighborhoods-003",
+        "section": "planning_tips"
       },
       {
-        "claim_id": "sf-chinatown-compact-cluster",
-        "doc_id": "san-francisco-chinatown-north-beach-culture-005",
-        "section": "transport",
-        "category": "transport",
-        "evidence_quote": "Chinatown and North Beach work well as a compact walking cluster."
+        "doc_id": "sf-food-neighborhoods-003",
+        "section": "transport"
       }
-    ],
-    "benchmark_note": "Hard SF case: tests hill/weather context and compact walking cluster evidence."
-  },
-  {
-    "city": "Chicago",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-26",
-    "travel_days": 2,
-    "transportation": "public transit and water taxi",
-    "accommodation": "family-friendly hotel",
-    "preferences": ["museums", "lakefront", "culture", "water taxi"],
-    "free_text_input": "Plan a Museum Campus day with one or two major museums, a short lakefront break, and an optional water taxi approach.",
-    "expected_rag_doc_ids": ["chicago-museum-campus-culture-003", "chicago-chicago-001"],
-    "expected_rag_themes": ["museums", "culture", "lakefront"],
-    "expected_rag_sections": [
-      {"doc_id": "chicago-museum-campus-culture-003", "section": "planning_tips"},
-      {"doc_id": "chicago-chicago-001", "section": "transport"}
     ],
     "expected_rag_claims": [
       {
-        "claim_id": "chi-museum-one-or-two",
-        "doc_id": "chicago-museum-campus-culture-003",
+        "claim_id": "sf-food-neighborhoods-003-planning",
+        "doc_id": "sf-food-neighborhoods-003",
         "section": "planning_tips",
         "category": "pacing",
-        "evidence_quote": "For museum-heavy Chicago days, choose one or two major museums instead of trying to complete all Museum Campus venues."
+        "evidence_quote": "For food and culture requests, build around one or two adjacent neighborhoods such as Chinatown and North Beach or the Mission."
       },
       {
-        "claim_id": "chi-museum-water-taxi",
-        "doc_id": "chicago-chicago-001",
+        "claim_id": "sf-food-neighborhoods-003-transport",
+        "doc_id": "sf-food-neighborhoods-003",
         "section": "transport",
         "category": "transport",
-        "evidence_quote": "You can get to the Chicago Museum Campus by Shoreline Sightseeing Water Taxi."
+        "evidence_quote": "Food and neighborhood walks should stay compact because hills and transfers can slow the day."
       }
-    ],
-    "benchmark_note": "Hard Chicago case: multi-document evidence combines curated Museum Campus pacing with newly ingested water-taxi advice."
-  },
-  {
-    "city": "Chicago",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-26",
-    "travel_days": 2,
-    "transportation": "rideshare and walking",
-    "accommodation": "boutique hotel",
-    "preferences": ["food", "neighborhoods", "nightlife", "simple return"],
-    "free_text_input": "Build a West Loop and Fulton Market food-nightlife evening with simple transportation back after dinner.",
-    "expected_rag_doc_ids": ["chicago-west-loop-food-neighborhoods-004"],
-    "expected_rag_themes": ["food", "neighborhoods", "nightlife"],
-    "expected_rag_sections": [
-      {"doc_id": "chicago-west-loop-food-neighborhoods-004", "section": "planning_tips"},
-      {"doc_id": "chicago-west-loop-food-neighborhoods-004", "section": "transport"}
-    ],
-    "expected_rag_claims": [
-      {
-        "claim_id": "chi-west-loop-dining-anchor",
-        "doc_id": "chicago-west-loop-food-neighborhoods-004",
-        "section": "planning_tips",
-        "category": "food",
-        "evidence_quote": "For food requests, make West Loop or Fulton Market the dining anchor and build nearby evening activities around it."
-      },
-      {
-        "claim_id": "chi-west-loop-return-trip",
-        "doc_id": "chicago-west-loop-food-neighborhoods-004",
-        "section": "transport",
-        "category": "transport",
-        "evidence_quote": "Use rideshare or transit planning for the return trip after dinner."
-      }
-    ],
-    "benchmark_note": "Hard Chicago case: tests nightlife return-routing and food-anchor evidence."
-  },
-  {
-    "city": "Chicago",
-    "start_date": "2026-06-25",
-    "end_date": "2026-06-26",
-    "travel_days": 2,
-    "transportation": "walking and public transit",
-    "accommodation": "mid-range hotel",
-    "preferences": ["lakefront", "parks", "outdoors", "indoor backups"],
-    "free_text_input": "Give me lakefront parks and outdoor time, but keep indoor backups and avoid long exposed walks if weather is cold or windy.",
-    "expected_rag_doc_ids": ["chicago-lakefront-parks-outdoors-005"],
-    "expected_rag_themes": ["lakefront", "parks", "outdoors"],
-    "expected_rag_sections": [
-      {"doc_id": "chicago-lakefront-parks-outdoors-005", "section": "seasonality"},
-      {"doc_id": "chicago-lakefront-parks-outdoors-005", "section": "planning_tips"}
-    ],
-    "expected_rag_claims": [
-      {
-        "claim_id": "chi-lakefront-winter-indoor",
-        "doc_id": "chicago-lakefront-parks-outdoors-005",
-        "section": "seasonality",
-        "category": "weather_backup",
-        "evidence_quote": "Winter wind can make lakefront walking uncomfortable, so add indoor alternatives nearby."
-      },
-      {
-        "claim_id": "chi-lakefront-scenic-connector",
-        "doc_id": "chicago-lakefront-parks-outdoors-005",
-        "section": "planning_tips",
-        "category": "pacing",
-        "evidence_quote": "For outdoors and parks preferences, use the lakefront as a scenic connector rather than an isolated stop."
-      }
-    ],
-    "benchmark_note": "Hard Chicago case: targets weather-exposure and planning-tip evidence for lakefront routes."
+    ]
   }
 ]

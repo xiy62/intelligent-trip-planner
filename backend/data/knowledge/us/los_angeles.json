@@ -1,0 +1,133 @@
+[
+  {
+    "doc_id": "la-hollywood-museums-001",
+    "country": "US",
+    "city": "Los Angeles",
+    "district": "Hollywood, Miracle Mile, Westside",
+    "theme": [
+      "hollywood",
+      "museums",
+      "culture",
+      "landmarks"
+    ],
+    "poi_names": [
+      "Hollywood Walk of Fame",
+      "Griffith Observatory",
+      "The Getty Center",
+      "LACMA",
+      "Academy Museum of Motion Pictures"
+    ],
+    "best_for": [
+      "film fans",
+      "museum-focused travelers",
+      "first-time visitors"
+    ],
+    "recommended_duration": "full_day",
+    "seasonality": [
+      "Hot days should prioritize indoor museums during the afternoon and save viewpoints for morning or evening.",
+      "Clear evenings are better for Griffith Observatory views when traffic and parking are manageable."
+    ],
+    "transport_advice": [
+      "Los Angeles attractions are spread out, so group Hollywood and museum stops into realistic geographic clusters.",
+      "Use rideshare or driving buffers between Hollywood, Miracle Mile, and Westside museums rather than assuming short walking transfers."
+    ],
+    "planning_tips": [
+      "Do not combine every famous LA museum and Hollywood landmark into one rushed day.",
+      "Pair one film or Hollywood stop with one museum cluster and a viewpoint if timing allows.",
+      "Account for traffic when moving between Hollywood, the Getty, and Miracle Mile."
+    ],
+    "source_type": "official_tourism_portal",
+    "source_url": "https://www.discoverlosangeles.com/",
+    "language": "en",
+    "last_verified_at": "2026-07-07",
+    "title": "Los Angeles Hollywood, Museums, and Culture Planning Notes",
+    "content": "Seed benchmark knowledge for Los Angeles culture routes: Hollywood landmarks, film-related attractions, museums, and scenic viewpoints are appealing but geographically spread out. A realistic itinerary should cluster stops and treat traffic as a planning constraint."
+  },
+  {
+    "doc_id": "la-beaches-coast-002",
+    "country": "US",
+    "city": "Los Angeles",
+    "district": "Westside and Beach Cities",
+    "theme": [
+      "beaches",
+      "coast",
+      "outdoors",
+      "views"
+    ],
+    "poi_names": [
+      "Santa Monica Pier",
+      "Venice Beach",
+      "Malibu",
+      "Manhattan Beach",
+      "Palisades Park"
+    ],
+    "best_for": [
+      "beach travelers",
+      "outdoor routes",
+      "sunset views"
+    ],
+    "recommended_duration": "half_day_to_full_day",
+    "seasonality": [
+      "Marine layer can make mornings cooler and cloudier near the coast, so sunset plans need flexibility.",
+      "Summer weekends can increase beach-area congestion and parking pressure."
+    ],
+    "transport_advice": [
+      "Keep coastal stops on the same side of the city instead of pairing beaches with distant inland museums.",
+      "Build in traffic buffers between Santa Monica, Venice, Malibu, and the hotel area."
+    ],
+    "planning_tips": [
+      "A beach-focused LA route should choose one coastal corridor instead of jumping between every beach city.",
+      "Pair Santa Monica and Venice for a walkable coast day, or choose Malibu for a more driving-heavy scenic day.",
+      "Avoid placing a late coastal sunset immediately before a far inland reservation without buffer time."
+    ],
+    "source_type": "official_tourism_portal",
+    "source_url": "https://www.discoverlosangeles.com/",
+    "language": "en",
+    "last_verified_at": "2026-07-07",
+    "title": "Los Angeles Beaches, Coast, and Outdoor Views Planning Notes",
+    "content": "Seed benchmark knowledge for Los Angeles coastal routes: beach and ocean-view itineraries work best when the planner selects a coherent coastal corridor such as Santa Monica and Venice or a more scenic Malibu-focused route. The day should account for traffic, parking, and weather near the coast."
+  },
+  {
+    "doc_id": "la-food-neighborhoods-003",
+    "country": "US",
+    "city": "Los Angeles",
+    "district": "Downtown, Koreatown, Eastside, Thai Town",
+    "theme": [
+      "food",
+      "neighborhoods",
+      "citywalk"
+    ],
+    "poi_names": [
+      "Grand Central Market",
+      "Arts District",
+      "Koreatown",
+      "Thai Town",
+      "Olvera Street"
+    ],
+    "best_for": [
+      "food-focused travelers",
+      "neighborhood exploration",
+      "low-key evenings"
+    ],
+    "recommended_duration": "half_day_to_full_day",
+    "seasonality": [
+      "Hot afternoons should shift longer walks indoors or later in the day.",
+      "Evening food routes should account for driving or rideshare return times."
+    ],
+    "transport_advice": [
+      "Food neighborhoods in Los Angeles should be grouped by district because cross-city transfers can dominate the itinerary.",
+      "Use rideshare, Metro, or driving segments deliberately instead of assuming a continuous pedestrian citywalk."
+    ],
+    "planning_tips": [
+      "For food requests, choose one food corridor such as Koreatown, Thai Town, Downtown, or the Arts District and build depth there.",
+      "Pair markets and neighborhood walks with nearby cultural stops only when they are geographically close.",
+      "Avoid mixing beach, Hollywood, and food-neighborhood routes in the same short day unless the traveler accepts significant travel time."
+    ],
+    "source_type": "official_tourism_portal",
+    "source_url": "https://www.discoverlosangeles.com/",
+    "language": "en",
+    "last_verified_at": "2026-07-07",
+    "title": "Los Angeles Food, Neighborhoods, and Citywalk Planning Notes",
+    "content": "Seed benchmark knowledge for Los Angeles food routes: food and neighborhood itineraries should choose a focused district rather than attempt a continuous citywide walk. Koreatown, Thai Town, Downtown, the Arts District, and historic areas can each anchor a coherent half-day."
+  }
+]

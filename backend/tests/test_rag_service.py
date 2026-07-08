@@ -33,8 +33,8 @@ def build_request(city: str, preferences: list[str]) -> TripRequest:
         start_date="2026-06-01",
         end_date="2026-06-03",
         travel_days=3,
-        transportation="公共交通",
-        accommodation="经济型酒店",
+        transportation="public transit",
+        accommodation="mid-range hotel",
         preferences=preferences,
         free_text_input="",
     )
@@ -43,7 +43,7 @@ def build_request(city: str, preferences: list[str]) -> TripRequest:
 class RAGServiceTests(unittest.TestCase):
     def test_local_chunks_match_request_preferences(self):
         service = TravelRAGService()
-        chunks = service.retrieve_local_chunks(build_request("北京", ["历史文化"]))
+        chunks = service.retrieve_local_chunks(build_request("New York", ["museums"]))
         self.assertTrue(chunks)
         self.assertEqual(chunks[0].metadata["rag_backend"], "local_lightweight")
 
@@ -51,9 +51,9 @@ class RAGServiceTests(unittest.TestCase):
         service = TravelRAGService()
         doc_ids = {doc.doc_id for doc in service.load_knowledge_docs()}
 
-        self.assertIn("new-york-museum-mile-central-park-001", doc_ids)
-        self.assertIn("san-francisco-waterfront-wharf-001", doc_ids)
-        self.assertIn("chicago-millennium-park-loop-001", doc_ids)
+        self.assertIn("nyc-museums-landmarks-001", doc_ids)
+        self.assertIn("la-beaches-coast-002", doc_ids)
+        self.assertIn("sf-waterfront-landmarks-001", doc_ids)
 
     def test_chroma_roundtrip_returns_city_chunk(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -64,13 +64,13 @@ class RAGServiceTests(unittest.TestCase):
             )
             service.ensure_index(force_rebuild=True)
             chunks = service.retrieve_chroma_chunks(
-                build_request("上海", ["美食", "城市漫步"]),
+                build_request("Los Angeles", ["food", "neighborhoods"]),
                 attraction_candidates=[],
                 k=3,
             )
             self.assertTrue(chunks)
             self.assertEqual(chunks[0].metadata["rag_backend"], "chroma_retrieval")
-            self.assertIn(chunks[0].metadata["city"], {"上海"})
+            self.assertEqual(chunks[0].metadata["city"], "Los Angeles")
 
     def test_chroma_roundtrip_returns_new_york_chunk(self):
         with tempfile.TemporaryDirectory() as tmpdir:
