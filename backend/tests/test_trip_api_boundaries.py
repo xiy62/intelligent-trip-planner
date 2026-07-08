@@ -332,6 +332,42 @@ class TripPlanApiTests(RoutePatchMixin, unittest.TestCase):
         self.assertFalse(summary["date_coverage_passed"])
         self.assertFalse(summary["budget_consistency_passed"])
 
+    def test_plan_labels_fallback_from_evaluation_next_action(self):
+        class FakePlanner:
+            rag_mode = "test"
+
+            def plan_trip_with_state(self, request):
+                return {
+                    "final_plan": valid_trip_plan(),
+                    "conversation_id": "conversation-next-action-fallback",
+                    "memory_applied": False,
+                    "memory_summary": "",
+                    "memory_profile": None,
+                    "evaluation_report": EvaluationReport(
+                        passed=False,
+                        scores=EvaluationScores(
+                            date_coverage_score=1.0,
+                            budget_consistency_score=1.0,
+                        ),
+                        next_action="fallback_response",
+                    ),
+                    "metrics": RunMetrics(fallback_count=0),
+                }
+
+        class FakeObservabilityService:
+            def persist_state(self, state, source: str, rag_mode: str):
+                return None
+
+        self.patch_route_attr("get_trip_planner_agent", lambda: FakePlanner())
+        self.patch_route_attr("get_observability_service", lambda: FakeObservabilityService())
+
+        response = self.client.post("/api/trip/plan", json=valid_payload())
+
+        self.assertEqual(response.status_code, 200)
+        summary = response.json()["validation_summary"]
+        self.assertFalse(summary["validated"])
+        self.assertTrue(summary["fallback_used"])
+
     def test_plan_returns_500_with_clear_error_when_planner_fails(self):
         class FailingPlanner:
             def plan_trip_with_state(self, request):

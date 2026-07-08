@@ -159,6 +159,37 @@ function formatWarningLabel(value: string) {
     low_preference_match_score: 'Some preferences may be underrepresented'
   }
   if (known[value]) return known[value]
+
+  const longTransfer = value.match(/^route_day_(\d+)_long_transfer_(\d+)min$/)
+  if (longTransfer) {
+    return `Long transfer on Day ${Number(longTransfer[1]) + 1}: ${longTransfer[2]} min`
+  }
+
+  const totalTransit = value.match(/^route_day_(\d+)_total_transit_(\d+)min$/)
+  if (totalTransit) {
+    return `High travel time on Day ${Number(totalTransit[1]) + 1}: ${totalTransit[2]} min`
+  }
+
+  const routeTimeFallback = value.match(/^route_time_fallback_day_(\d+)_segment_\d+$/)
+  if (routeTimeFallback) {
+    return `Route-time estimate unavailable on Day ${Number(routeTimeFallback[1]) + 1}`
+  }
+
+  const longJump = value.match(/^route_day_(\d+)_long_jump_([\d.]+)km$/)
+  if (longJump) {
+    return `Long route jump on Day ${Number(longJump[1]) + 1}: ${longJump[2]} km`
+  }
+
+  const pacingOverloaded = value.match(/^pacing_day_(\d+)_overloaded$/)
+  if (pacingOverloaded) {
+    return `Day ${Number(pacingOverloaded[1]) + 1} may be overloaded`
+  }
+
+  const pacingTight = value.match(/^pacing_day_(\d+)_tight$/)
+  if (pacingTight) {
+    return `Day ${Number(pacingTight[1]) + 1} may be tight`
+  }
+
   return value
     .replace(/^route_time_fallback_/, 'Route-time estimate fallback: ')
     .replace(/^route_/, 'Route: ')
@@ -179,6 +210,7 @@ export default function Result() {
   const [tripPlan, setTripPlan] = useState<TripPlan | null>(() => readStoredPlan())
   const [memoryProfile] = useState<MemoryProfile | null>(() => readMemoryProfile())
   const [validationSummary] = useState<ValidationSummary | null>(() => readValidationSummary())
+  const [validationStale, setValidationStale] = useState(false)
   const [memoryApplied] = useState(() => sessionStorage.getItem('tripMemoryApplied') === 'true')
   const [editMode, setEditMode] = useState(false)
 
@@ -197,6 +229,7 @@ export default function Result() {
     }
     day.attractions.splice(attractionIndex, 1)
     updatePlan(next)
+    setValidationStale(true)
   }
 
   function moveAttraction(dayIndex: number, attractionIndex: number, direction: 'up' | 'down') {
@@ -209,6 +242,7 @@ export default function Result() {
     const [item] = day.attractions.splice(attractionIndex, 1)
     day.attractions.splice(target, 0, item)
     updatePlan(next)
+    setValidationStale(true)
   }
 
   async function exportImage() {
@@ -309,6 +343,11 @@ export default function Result() {
                         </div>
                         {validationSummary.evidence_summary && (
                           <p className="muted">{validationSummary.evidence_summary}</p>
+                        )}
+                        {validationStale && (
+                          <p className="validation-stale-note">
+                            Validation applies to the originally generated itinerary. Your edits have not been revalidated.
+                          </p>
                         )}
                         <div className="validation-score-grid">
                           <div><span>Grounding</span><strong>{formatScore(validationSummary.grounding_score)}</strong></div>

@@ -15,7 +15,12 @@ def build_validation_summary(state: dict) -> ValidationSummary | None:
     """Create a sanitized public validation summary from graph state."""
     report = state.get("evaluation_report")
     metrics = state.get("metrics")
-    fallback_used = bool(getattr(metrics, "fallback_count", 0) or state.get("final_plan") is None)
+    next_action = getattr(report, "next_action", None) if report is not None else None
+    fallback_used = bool(
+        getattr(metrics, "fallback_count", 0)
+        or state.get("final_plan") is None
+        or next_action == "fallback_response"
+    )
     if report is None and not fallback_used:
         return None
 

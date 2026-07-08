@@ -305,6 +305,16 @@ a {
   font-size: 18px;
 }
 
+.validation-stale-note {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  color: #92400e;
+  background: #fffbeb;
+  font-weight: 700;
+}
+
 .validation-warning-tags .ant-tag {
   white-space: normal;
 }
