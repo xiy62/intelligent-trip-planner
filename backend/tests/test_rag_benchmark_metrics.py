@@ -300,7 +300,9 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
         documents = service.load_knowledge_docs()
         corpus_doc_ids = {document.doc_id for document in documents}
         corpus_cities = {document.city for document in documents}
-        old_china_cities = {"北京", "上海", "杭州", "广州"}
+        expected_active_cities = {"New York", "Los Angeles", "Chicago", "San Francisco"}
+        legacy_china_cities = {"北京", "上海", "杭州", "广州"}
+        legacy_doc_prefixes = ("beijing", "shanghai", "hangzhou", "guangzhou")
 
         cases = load_benchmark_cases(dataset_path)
         expected_doc_ids = {
@@ -309,14 +311,26 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
         forbidden_doc_ids = {
             doc_id for case in cases for doc_id in case.forbidden_rag_doc_ids
         }
+        benchmark_cities = {case.request.city for case in cases}
+        benchmark_doc_ids = expected_doc_ids | forbidden_doc_ids
+        missing_expected_doc_ids = expected_doc_ids - corpus_doc_ids
+        missing_forbidden_doc_ids = forbidden_doc_ids - corpus_doc_ids
 
         self.assertEqual(len(cases), 12)
+        self.assertEqual(benchmark_cities, expected_active_cities)
         self.assertTrue(expected_doc_ids)
         self.assertGreaterEqual(sum(bool(case.forbidden_rag_doc_ids) for case in cases), 8)
-        self.assertTrue(expected_doc_ids.issubset(corpus_doc_ids))
-        self.assertTrue(forbidden_doc_ids.issubset(corpus_doc_ids))
-        self.assertFalse(old_china_cities & {case.request.city for case in cases})
-        self.assertFalse(old_china_cities & corpus_cities)
+        self.assertEqual(missing_expected_doc_ids, set())
+        self.assertEqual(missing_forbidden_doc_ids, set())
+        self.assertFalse(legacy_china_cities & benchmark_cities)
+        self.assertFalse(legacy_china_cities & corpus_cities)
+        self.assertFalse(
+            {
+                doc_id
+                for doc_id in benchmark_doc_ids
+                if doc_id.lower().startswith(legacy_doc_prefixes)
+            }
+        )
         for case in cases:
             self.assertIn(case.request.city, corpus_cities)
             self.assertFalse(set(case.expected_rag_doc_ids) & set(case.forbidden_rag_doc_ids))
