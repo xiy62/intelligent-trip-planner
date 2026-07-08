@@ -20,7 +20,7 @@ export default function App() {
         <Outlet />
       </Content>
       <Footer className="app-footer">
-        LangChain + LangGraph trip planning workflow
+        Grounded trip planning workflow
       </Footer>
     </Layout>
   )

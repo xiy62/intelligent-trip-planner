@@ -252,6 +252,63 @@ a {
   background: #ccfbf1;
 }
 
+.validation-card .ant-collapse {
+  background: transparent;
+}
+
+.validation-card .ant-collapse-header {
+  align-items: center !important;
+  padding: 0 !important;
+  font-weight: 800;
+}
+
+.validation-card .ant-collapse-content-box {
+  padding: 16px 0 0 !important;
+}
+
+.validation-summary {
+  display: grid;
+  gap: 14px;
+}
+
+.validation-status-row,
+.validation-warning-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.validation-score-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.validation-score-grid > div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(15, 118, 110, 0.12);
+  border-radius: 8px;
+  background: #f8faf9;
+}
+
+.validation-score-grid span {
+  display: block;
+  margin-bottom: 4px;
+  color: #5f706b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.validation-score-grid strong {
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.validation-warning-tags .ant-tag {
+  white-space: normal;
+}
+
 .day-panel {
   display: grid;
   gap: 18px;
@@ -623,6 +680,10 @@ a {
 
   .preference-grid {
     grid-template-columns: 1fr;
+  }
+
+  .validation-score-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .map-container {

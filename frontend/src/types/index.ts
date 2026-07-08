@@ -88,6 +88,21 @@ export interface TripPlan {
   budget?: Budget
 }
 
+export interface ValidationSummary {
+  validated: boolean
+  fallback_used: boolean
+  date_coverage_passed: boolean
+  budget_consistency_passed: boolean
+  grounding_score?: number | null
+  attribution_coverage_score?: number | null
+  pacing_score?: number | null
+  route_coherence_score?: number | null
+  quality_warnings: string[]
+  grounded_entity_count?: number | null
+  checked_entity_count?: number | null
+  evidence_summary?: string | null
+}
+
 export interface MemoryProfile {
   profile_id: string
   transportation: string
@@ -142,6 +157,7 @@ export interface TripPlanResponse {
   memory_summary?: string
   memory_profile?: MemoryProfile
   memory_conflicts?: MemoryConflictExplanation[]
+  validation_summary?: ValidationSummary
 }
 
 export interface MemoryClearResponse {

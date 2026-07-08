@@ -104,6 +104,11 @@ export default function Home() {
 
       if (response.success && response.data) {
         sessionStorage.setItem('tripPlan', JSON.stringify(response.data))
+        if (response.validation_summary) {
+          sessionStorage.setItem('tripValidationSummary', JSON.stringify(response.validation_summary))
+        } else {
+          sessionStorage.removeItem('tripValidationSummary')
+        }
         if (response.conversation_id) {
           sessionStorage.setItem(CONVERSATION_STORAGE_KEY, response.conversation_id)
         }
@@ -157,7 +162,7 @@ export default function Home() {
   return (
     <main className="home-page">
       <section className="hero">
-        <Tag color="blue">LangChain + LangGraph</Tag>
+        <Tag color="blue">Grounded planning</Tag>
         <h1>Plan a grounded city itinerary</h1>
         <p>
           Retrieve places, hotels, weather, and travel context, then validate the itinerary before it reaches the user.

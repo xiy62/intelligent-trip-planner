@@ -12,6 +12,12 @@ from fastapi.testclient import TestClient
 
 from app.api.main import app
 from app.api.routes import trip as trip_routes
+from app.models.langgraph_state import (
+    EvaluationReport,
+    EvaluationScores,
+    EvidenceLink,
+    RunMetrics,
+)
 from app.models.schemas import DayPlan, TripPlan
 
 
@@ -212,6 +218,29 @@ class TripPlanApiTests(RoutePatchMixin, unittest.TestCase):
                             "explanation": "Previous accommodation was overridden by the current request.",
                         }
                     ],
+                    "evaluation_report": EvaluationReport(
+                        passed=True,
+                        scores=EvaluationScores(
+                            date_coverage_score=1.0,
+                            budget_consistency_score=1.0,
+                            grounding_score=1.0,
+                            attribution_coverage_score=1.0,
+                            pacing_score=0.92,
+                            route_coherence_score=0.88,
+                        ),
+                        quality_warnings=["route_day_1_tight"],
+                        evidence_links=[
+                            EvidenceLink(
+                                entity_type="attraction",
+                                entity_name="Museum",
+                                evidence_type="candidate_attraction",
+                                evidence_id="poi-1",
+                                confidence=1.0,
+                            )
+                        ],
+                        next_action="finalize_response",
+                    ),
+                    "metrics": RunMetrics(fallback_count=0),
                 }
 
         class FakeObservabilityService:
@@ -240,10 +269,68 @@ class TripPlanApiTests(RoutePatchMixin, unittest.TestCase):
         self.assertEqual(body["memory_conflicts"][0]["resolution"], "current_request_used")
         self.assertEqual(body["data"]["city"], "New York")
         self.assertEqual(len(body["data"]["days"]), 2)
+        self.assertEqual(
+            body["validation_summary"],
+            {
+                "validated": True,
+                "fallback_used": False,
+                "date_coverage_passed": True,
+                "budget_consistency_passed": True,
+                "grounding_score": 1.0,
+                "attribution_coverage_score": 1.0,
+                "pacing_score": 0.92,
+                "route_coherence_score": 0.88,
+                "quality_warnings": ["route_day_1_tight"],
+                "grounded_entity_count": 1,
+                "checked_entity_count": 1,
+                "evidence_summary": "Attractions and hotels were checked against retrieved map/RAG evidence.",
+            },
+        )
+        self.assertNotIn("evidence_links", body["validation_summary"])
+        self.assertNotIn("unsupported_claims", body["validation_summary"])
         self.assertEqual(captured_request.city, "New York")
         self.assertEqual(len(observability.persist_calls), 1)
         self.assertEqual(observability.persist_calls[0][1], "runtime")
         self.assertEqual(observability.persist_calls[0][2], "test")
+
+    def test_plan_labels_fallback_validation_summary(self):
+        class FakePlanner:
+            rag_mode = "test"
+
+            def plan_trip_with_state(self, request):
+                return {
+                    "final_plan": valid_trip_plan(),
+                    "conversation_id": "conversation-fallback",
+                    "memory_applied": False,
+                    "memory_summary": "",
+                    "memory_profile": None,
+                    "evaluation_report": EvaluationReport(
+                        passed=False,
+                        scores=EvaluationScores(
+                            date_coverage_score=0.0,
+                            budget_consistency_score=0.0,
+                        ),
+                        hard_failures=["date_coverage", "budget_consistency"],
+                        next_action="fallback_response",
+                    ),
+                    "metrics": RunMetrics(fallback_count=1),
+                }
+
+        class FakeObservabilityService:
+            def persist_state(self, state, source: str, rag_mode: str):
+                return None
+
+        self.patch_route_attr("get_trip_planner_agent", lambda: FakePlanner())
+        self.patch_route_attr("get_observability_service", lambda: FakeObservabilityService())
+
+        response = self.client.post("/api/trip/plan", json=valid_payload())
+
+        self.assertEqual(response.status_code, 200)
+        summary = response.json()["validation_summary"]
+        self.assertFalse(summary["validated"])
+        self.assertTrue(summary["fallback_used"])
+        self.assertFalse(summary["date_coverage_passed"])
+        self.assertFalse(summary["budget_consistency_passed"])
 
     def test_plan_returns_500_with_clear_error_when_planner_fails(self):
         class FailingPlanner:

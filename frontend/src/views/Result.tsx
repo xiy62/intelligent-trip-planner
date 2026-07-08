@@ -6,7 +6,7 @@ import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { Attraction, DayPlan, MemoryProfile, TripPlan } from '@/types'
+import type { Attraction, DayPlan, MemoryProfile, TripPlan, ValidationSummary } from '@/types'
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
@@ -120,6 +120,16 @@ function readMemoryProfile(): MemoryProfile | null {
   }
 }
 
+function readValidationSummary(): ValidationSummary | null {
+  const raw = sessionStorage.getItem('tripValidationSummary')
+  if (!raw) return null
+  try {
+    return JSON.parse(raw) as ValidationSummary
+  } catch {
+    return null
+  }
+}
+
 function isForecastUnavailable(item: TripPlan['weather_info'][number]) {
   const dayUnknown = !item.day_weather || item.day_weather.toLowerCase() === 'unknown'
   const nightUnknown = !item.night_weather || item.night_weather.toLowerCase() === 'unknown'
@@ -136,11 +146,39 @@ function googleMapsSearchUrl(query: string, city: string) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${query} ${city}`)}`
 }
 
+function formatScore(value?: number | null) {
+  if (typeof value !== 'number' || Number.isNaN(value)) return 'Not available'
+  return `${Math.round(Math.max(0, Math.min(1, value)) * 100)}%`
+}
+
+function formatWarningLabel(value: string) {
+  const known: Record<string, string> = {
+    low_attribution_coverage: 'Low attribution coverage',
+    low_pacing_score: 'Pacing may be tight',
+    low_route_coherence_score: 'Route may need review',
+    low_preference_match_score: 'Some preferences may be underrepresented'
+  }
+  if (known[value]) return known[value]
+  return value
+    .replace(/^route_time_fallback_/, 'Route-time estimate fallback: ')
+    .replace(/^route_/, 'Route: ')
+    .replace(/^pacing_/, 'Pacing: ')
+    .replace(/_/g, ' ')
+}
+
+function statusTag(summary: ValidationSummary | null) {
+  if (!summary) return <Tag color="default">Validation summary unavailable</Tag>
+  if (summary.fallback_used) return <Tag color="orange">Fallback plan</Tag>
+  if (summary.validated) return <Tag color="blue">Validated itinerary</Tag>
+  return <Tag color="gold">Generated with limited validation</Tag>
+}
+
 export default function Result() {
   const navigate = useNavigate()
   const exportRef = useRef<HTMLDivElement>(null)
   const [tripPlan, setTripPlan] = useState<TripPlan | null>(() => readStoredPlan())
   const [memoryProfile] = useState<MemoryProfile | null>(() => readMemoryProfile())
+  const [validationSummary] = useState<ValidationSummary | null>(() => readValidationSummary())
   const [memoryApplied] = useState(() => sessionStorage.getItem('tripMemoryApplied') === 'true')
   const [editMode, setEditMode] = useState(false)
 
@@ -242,12 +280,63 @@ export default function Result() {
             <div className="eyebrow-row">
               <Tag color="cyan">{tripPlan.city}</Tag>
               <Tag color="green">{tripPlan.days.length} day{tripPlan.days.length === 1 ? '' : 's'}</Tag>
-              <Tag color="blue">Validated itinerary</Tag>
+              {statusTag(validationSummary)}
             </div>
             <h1>{tripPlan.city} itinerary</h1>
             <p className="date-range">{tripPlan.start_date} to {tripPlan.end_date}</p>
             <p>{tripPlan.overall_suggestions}</p>
           </Card>
+
+          {validationSummary && (
+            <Card variant="borderless" className="validation-card">
+              <Collapse
+                ghost
+                defaultActiveKey={['validation']}
+                items={[
+                  {
+                    key: 'validation',
+                    label: validationSummary.fallback_used ? 'Validation summary' : 'Why this plan was accepted',
+                    children: (
+                      <div className="validation-summary">
+                        <div className="validation-status-row">
+                          {statusTag(validationSummary)}
+                          <Tag color={validationSummary.date_coverage_passed ? 'green' : 'orange'}>
+                            Date coverage {validationSummary.date_coverage_passed ? 'passed' : 'needs review'}
+                          </Tag>
+                          <Tag color={validationSummary.budget_consistency_passed ? 'green' : 'orange'}>
+                            Budget consistency {validationSummary.budget_consistency_passed ? 'passed' : 'needs review'}
+                          </Tag>
+                        </div>
+                        {validationSummary.evidence_summary && (
+                          <p className="muted">{validationSummary.evidence_summary}</p>
+                        )}
+                        <div className="validation-score-grid">
+                          <div><span>Grounding</span><strong>{formatScore(validationSummary.grounding_score)}</strong></div>
+                          <div><span>Attribution</span><strong>{formatScore(validationSummary.attribution_coverage_score)}</strong></div>
+                          <div><span>Pacing</span><strong>{formatScore(validationSummary.pacing_score)}</strong></div>
+                          <div><span>Route coherence</span><strong>{formatScore(validationSummary.route_coherence_score)}</strong></div>
+                        </div>
+                        {typeof validationSummary.checked_entity_count === 'number' && (
+                          <p className="muted">
+                            Evidence checks grounded {validationSummary.grounded_entity_count ?? 0} of {validationSummary.checked_entity_count} checked itinerary items.
+                          </p>
+                        )}
+                        {validationSummary.quality_warnings.length > 0 ? (
+                          <Space wrap className="validation-warning-tags">
+                            {validationSummary.quality_warnings.map((warning) => (
+                              <Tag color="gold" key={warning}>{formatWarningLabel(warning)}</Tag>
+                            ))}
+                          </Space>
+                        ) : (
+                          <p className="muted">No quality warnings were reported for this itinerary.</p>
+                        )}
+                      </div>
+                    )
+                  }
+                ]}
+              />
+            </Card>
+          )}
 
           {memoryApplied && memoryProfile && (
             <Card variant="borderless" title="Preference memory applied">
@@ -440,7 +529,7 @@ export default function Result() {
                     {isForecastUnavailable(item) ? (
                       <>
                         <p className="weather-unavailable">Forecast unavailable</p>
-                        <p className="muted">This date is outside the reliable forecast window or the provider returned incomplete data.</p>
+                        <p className="muted">Weather is unavailable because the trip date may be outside the supported forecast window or the provider returned incomplete data.</p>
                       </>
                     ) : (
                       <>

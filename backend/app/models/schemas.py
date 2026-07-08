@@ -296,6 +296,23 @@ class MemoryProfile(BaseModel):
     updated_at: Optional[float] = Field(default=None, description="Updated timestamp")
 
 
+class ValidationSummary(BaseModel):
+    """Sanitized user-facing validation summary for public trip responses."""
+
+    validated: bool = Field(default=False, description="Whether the final itinerary passed validation without fallback")
+    fallback_used: bool = Field(default=False, description="Whether a fallback itinerary was returned")
+    date_coverage_passed: bool = Field(default=False, description="Whether itinerary dates cover the requested trip")
+    budget_consistency_passed: bool = Field(default=False, description="Whether budget totals are internally consistent")
+    grounding_score: Optional[float] = Field(default=None, description="Share of checked entities grounded to evidence")
+    attribution_coverage_score: Optional[float] = Field(default=None, description="Share of checked entities with attribution evidence")
+    pacing_score: Optional[float] = Field(default=None, description="Soft pacing quality score")
+    route_coherence_score: Optional[float] = Field(default=None, description="Soft same-day route coherence score")
+    quality_warnings: List[str] = Field(default_factory=list, description="Sanitized quality warning codes")
+    grounded_entity_count: Optional[int] = Field(default=None, description="Count of checked entities with supporting evidence")
+    checked_entity_count: Optional[int] = Field(default=None, description="Count of generated entities checked for evidence")
+    evidence_summary: Optional[str] = Field(default=None, description="Concise user-facing explanation of evidence checks")
+
+
 class TripPlanResponse(BaseModel):
     """Trip-planning API response."""
     success: bool = Field(..., description="Whether the request succeeded")
@@ -308,6 +325,10 @@ class TripPlanResponse(BaseModel):
     memory_conflicts: List[MemoryConflictExplanation] = Field(
         default_factory=list,
         description="Explicit explanations when current request overrides historical memory",
+    )
+    validation_summary: Optional[ValidationSummary] = Field(
+        default=None,
+        description="Sanitized validation metadata for user-facing result display",
     )
 
 

@@ -4,11 +4,52 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from ..dependencies import require_admin_token
 from ...agents.langgraph_trip_planner import get_trip_planner_agent
-from ...models.schemas import MemoryClearRequest, MemoryClearResponse, TripPlanResponse, TripRequest
+from ...models.schemas import MemoryClearRequest, MemoryClearResponse, TripPlanResponse, TripRequest, ValidationSummary
 from ...services.memory_service import get_memory_service
 from ...services.observability_service import get_observability_service
 
 router = APIRouter(prefix="/trip", tags=["Trip Planning"])
+
+
+def build_validation_summary(state: dict) -> ValidationSummary | None:
+    """Create a sanitized public validation summary from graph state."""
+    report = state.get("evaluation_report")
+    metrics = state.get("metrics")
+    fallback_used = bool(getattr(metrics, "fallback_count", 0) or state.get("final_plan") is None)
+    if report is None and not fallback_used:
+        return None
+
+    hard_failures = set(getattr(report, "hard_failures", []) if report is not None else [])
+    scores = getattr(report, "scores", None) if report is not None else None
+    evidence_links = list(getattr(report, "evidence_links", []) if report is not None else [])
+    supported_links = [link for link in evidence_links if getattr(link, "confidence", 0.0) >= 0.65]
+
+    evidence_summary = None
+    if report is not None:
+        if evidence_links:
+            summary_parts = ["Attractions and hotels were checked against retrieved map/RAG evidence."]
+            if any(getattr(link, "entity_type", "") == "meal" for link in evidence_links):
+                summary_parts.append("Concrete named restaurants were checked against retrieved restaurant candidates.")
+            if any(getattr(link, "evidence_type", "") == "rag_chunk" for link in evidence_links):
+                summary_parts.append("Destination context was cross-checked with retrieved travel knowledge.")
+            evidence_summary = " ".join(summary_parts)
+        else:
+            evidence_summary = "The plan was checked for date coverage, budget consistency, pacing, and route coherence."
+
+    return ValidationSummary(
+        validated=bool(report and report.passed and not fallback_used),
+        fallback_used=fallback_used,
+        date_coverage_passed=bool(report and "date_coverage" not in hard_failures),
+        budget_consistency_passed=bool(report and "budget_consistency" not in hard_failures),
+        grounding_score=getattr(scores, "grounding_score", None),
+        attribution_coverage_score=getattr(scores, "attribution_coverage_score", None),
+        pacing_score=getattr(scores, "pacing_score", None),
+        route_coherence_score=getattr(scores, "route_coherence_score", None),
+        quality_warnings=list(getattr(report, "quality_warnings", []) if report is not None else []),
+        grounded_entity_count=len(supported_links) if report is not None else None,
+        checked_entity_count=len(evidence_links) if report is not None else None,
+        evidence_summary=evidence_summary,
+    )
 
 
 @router.post(
@@ -45,6 +86,7 @@ async def plan_trip(request: TripRequest):
             memory_summary=state.get("memory_summary") or None,
             memory_profile=state.get("memory_profile") or None,
             memory_conflicts=list(state.get("memory_conflicts") or []),
+            validation_summary=build_validation_summary(state),
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Trip planning failed: {exc}") from exc
