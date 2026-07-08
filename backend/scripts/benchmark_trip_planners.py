@@ -40,6 +40,7 @@ class BenchmarkCase:
     expected_rag_themes: List[str] = field(default_factory=list)
     expected_rag_sections: List[Dict[str, str]] = field(default_factory=list)
     expected_rag_claims: List[Dict[str, str]] = field(default_factory=list)
+    forbidden_rag_doc_ids: List[str] = field(default_factory=list)
     benchmark_note: str = ""
 
     def metadata_dump(self) -> Dict[str, Any]:
@@ -48,6 +49,7 @@ class BenchmarkCase:
             "expected_rag_themes": self.expected_rag_themes,
             "expected_rag_sections": self.expected_rag_sections,
             "expected_rag_claims": self.expected_rag_claims,
+            "forbidden_rag_doc_ids": self.forbidden_rag_doc_ids,
             "benchmark_note": self.benchmark_note,
         }
 
@@ -64,6 +66,7 @@ def load_benchmark_cases(dataset_path: Path) -> List[BenchmarkCase]:
                 expected_rag_themes=list(item.get("expected_rag_themes", [])),
                 expected_rag_sections=list(item.get("expected_rag_sections", [])),
                 expected_rag_claims=list(item.get("expected_rag_claims", [])),
+                forbidden_rag_doc_ids=list(item.get("forbidden_rag_doc_ids", [])),
                 benchmark_note=str(item.get("benchmark_note", "")),
             )
         )
@@ -125,6 +128,29 @@ def recall_for_entry(entry: Dict[str, Any]) -> Optional[float]:
     return len(expected & retrieved) / len(expected)
 
 
+def forbidden_doc_hits_for_entry(entry: Dict[str, Any]) -> Optional[List[str]]:
+    forbidden = set(entry.get("forbidden_rag_doc_ids", []))
+    if not forbidden:
+        return None
+    retrieved = {
+        source.get("doc_id")
+        for source in entry.get("retrieved_rag_sources", [])[:4]
+        if source.get("doc_id")
+    }
+    return sorted(forbidden & retrieved)
+
+
+def forbidden_doc_hit_count_for_entry(entry: Dict[str, Any]) -> Optional[int]:
+    forbidden = set(entry.get("forbidden_rag_doc_ids", []))
+    if not forbidden:
+        return None
+    return sum(
+        1
+        for source in entry.get("retrieved_rag_sources", [])[:4]
+        if source.get("doc_id") in forbidden
+    )
+
+
 def quality_warning_category(warning: str) -> str:
     """Group granular quality warnings into benchmark-friendly categories."""
     if warning.startswith("pacing_") or warning == "low_pacing_score":
@@ -175,6 +201,7 @@ def plan_with_langgraph(
             "expected_rag_themes": list(benchmark_metadata.get("expected_rag_themes", [])),
             "expected_rag_sections": list(benchmark_metadata.get("expected_rag_sections", [])),
             "expected_rag_claims": list(benchmark_metadata.get("expected_rag_claims", [])),
+            "forbidden_rag_doc_ids": list(benchmark_metadata.get("forbidden_rag_doc_ids", [])),
             "benchmark_note": benchmark_metadata.get("benchmark_note", ""),
             "retrieved_rag_sources": [],
             "latency_ms": round((time.perf_counter() - started_at) * 1000.0, 3),
@@ -214,6 +241,7 @@ def plan_with_langgraph(
         "expected_rag_themes": list(benchmark_metadata.get("expected_rag_themes", [])),
         "expected_rag_sections": list(benchmark_metadata.get("expected_rag_sections", [])),
         "expected_rag_claims": list(benchmark_metadata.get("expected_rag_claims", [])),
+        "forbidden_rag_doc_ids": list(benchmark_metadata.get("forbidden_rag_doc_ids", [])),
         "benchmark_note": benchmark_metadata.get("benchmark_note", ""),
         "retrieved_rag_sources": compact_rag_sources(state),
         "latency_ms": round((metrics.end_to_end_ms if metrics else 0.0), 3),
@@ -306,6 +334,31 @@ def aggregate_results(entries: List[Dict[str, Any]]) -> Dict[str, Any]:
     recovered_runs = [entry for entry in entries if entry.get("recovered_after_retry")]
     recall_values = [value for entry in entries if (value := recall_for_entry(entry)) is not None]
     hit_values = [1.0 if value > 0 else 0.0 for value in recall_values]
+    negative_labeled_entries = [
+        entry for entry in entries if entry.get("forbidden_rag_doc_ids")
+    ]
+    forbidden_hit_lists = [
+        hits
+        for entry in negative_labeled_entries
+        if (hits := forbidden_doc_hits_for_entry(entry)) is not None
+    ]
+    forbidden_hit_counts = [
+        count
+        for entry in negative_labeled_entries
+        if (count := forbidden_doc_hit_count_for_entry(entry)) is not None
+    ]
+    forbidden_retrieval_count = sum(forbidden_hit_counts)
+    forbidden_doc_hit_values = [1.0 if hits else 0.0 for hits in forbidden_hit_lists]
+    negative_retrieved_doc_count = sum(
+        len(
+            [
+                source.get("doc_id")
+                for source in entry.get("retrieved_rag_sources", [])[:4]
+                if source.get("doc_id")
+            ]
+        )
+        for entry in negative_labeled_entries
+    )
     retrieved_doc_id_lists = [
         [
             source.get("doc_id")
@@ -417,6 +470,16 @@ def aggregate_results(entries: List[Dict[str, Any]]) -> Dict[str, Any]:
         "recall_labeled_request_count": len(recall_values),
         "retrieval_hit_rate": round(statistics.fmean(hit_values), 4) if hit_values else None,
         "retrieval_recall_at_4": round(statistics.fmean(recall_values), 4) if recall_values else None,
+        "forbidden_retrieval_count": forbidden_retrieval_count,
+        "negative_precision": round(
+            1.0 - (forbidden_retrieval_count / negative_retrieved_doc_count),
+            4,
+        )
+        if negative_retrieved_doc_count
+        else None,
+        "forbidden_doc_hit_rate": round(statistics.fmean(forbidden_doc_hit_values), 4)
+        if forbidden_doc_hit_values
+        else None,
         "retrieved_unique_doc_count_avg": round(statistics.fmean(unique_doc_counts), 4)
         if unique_doc_counts
         else 0.0,

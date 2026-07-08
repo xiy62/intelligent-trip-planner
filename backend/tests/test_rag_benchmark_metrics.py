@@ -16,6 +16,8 @@ from scripts.benchmark_rag_ranking_ablation import normalize_claim_text
 from scripts.benchmark_trip_planners import (
     aggregate_results,
     compact_rag_sources,
+    forbidden_doc_hit_count_for_entry,
+    forbidden_doc_hits_for_entry,
     load_benchmark_cases,
     plan_with_langgraph,
     recall_for_entry,
@@ -46,6 +48,36 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
         self.assertEqual(recall_for_entry(partial), 0.5)
         self.assertEqual(recall_for_entry(miss), 0.0)
         self.assertIsNone(recall_for_entry(unlabeled))
+
+    def test_forbidden_doc_hits_only_checks_top_four_sources(self):
+        entry = {
+            "forbidden_rag_doc_ids": ["doc-bad", "doc-too-deep"],
+            "retrieved_rag_sources": [
+                {"doc_id": "doc-good-1"},
+                {"doc_id": "doc-bad"},
+                {"doc_id": "doc-good-2"},
+                {"doc_id": "doc-good-3"},
+                {"doc_id": "doc-too-deep"},
+            ],
+        }
+
+        self.assertEqual(forbidden_doc_hits_for_entry(entry), ["doc-bad"])
+        self.assertEqual(forbidden_doc_hit_count_for_entry(entry), 1)
+        self.assertIsNone(forbidden_doc_hits_for_entry({"retrieved_rag_sources": []}))
+        self.assertIsNone(forbidden_doc_hit_count_for_entry({"retrieved_rag_sources": []}))
+
+    def test_forbidden_doc_hit_count_counts_repeated_top_four_slots(self):
+        entry = {
+            "forbidden_rag_doc_ids": ["doc-bad"],
+            "retrieved_rag_sources": [
+                {"doc_id": "doc-bad"},
+                {"doc_id": "doc-good"},
+                {"doc_id": "doc-bad"},
+            ],
+        }
+
+        self.assertEqual(forbidden_doc_hits_for_entry(entry), ["doc-bad"])
+        self.assertEqual(forbidden_doc_hit_count_for_entry(entry), 2)
 
     def test_aggregate_results_reports_recall_only_for_labeled_requests(self):
         entries = [
@@ -102,6 +134,9 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
         summary = aggregate_results(entries)
 
         self.assertEqual(summary["recall_labeled_request_count"], 2)
+        self.assertEqual(summary["forbidden_retrieval_count"], 0)
+        self.assertIsNone(summary["negative_precision"])
+        self.assertIsNone(summary["forbidden_doc_hit_rate"])
         self.assertTrue(summary["parallel_retrieval_enabled"])
         self.assertEqual(summary["avg_retrieval_stage_latency_ms"], 8.0)
         self.assertEqual(summary["retrieval_hit_rate"], 1.0)
@@ -120,6 +155,57 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
         self.assertEqual(summary["route_warning_rate"], 0.3333)
         self.assertEqual(summary["preference_warning_rate"], 0.3333)
 
+    def test_aggregate_results_reports_negative_retrieval_metrics(self):
+        entries = [
+            {
+                "latency_ms": 10.0,
+                "parallel_retrieval_enabled": True,
+                "retrieval_stage_latency_ms": 4.0,
+                "first_evaluation_pass": True,
+                "recovered_after_retry": False,
+                "fallback": False,
+                "report": {"passed": True, "hard_failures": [], "scores": {}, "quality_warnings": []},
+                "expected_rag_doc_ids": ["doc-good"],
+                "forbidden_rag_doc_ids": ["doc-bad"],
+                "retrieved_rag_sources": [
+                    {"doc_id": "doc-good"},
+                    {"doc_id": "doc-bad"},
+                ],
+            },
+            {
+                "latency_ms": 12.0,
+                "parallel_retrieval_enabled": True,
+                "retrieval_stage_latency_ms": 5.0,
+                "first_evaluation_pass": True,
+                "recovered_after_retry": False,
+                "fallback": False,
+                "report": {"passed": True, "hard_failures": [], "scores": {}, "quality_warnings": []},
+                "expected_rag_doc_ids": ["doc-other"],
+                "forbidden_rag_doc_ids": ["doc-forbidden"],
+                "retrieved_rag_sources": [
+                    {"doc_id": "doc-other"},
+                    {"doc_id": "doc-safe"},
+                ],
+            },
+            {
+                "latency_ms": 15.0,
+                "parallel_retrieval_enabled": True,
+                "retrieval_stage_latency_ms": 6.0,
+                "first_evaluation_pass": True,
+                "recovered_after_retry": False,
+                "fallback": False,
+                "report": {"passed": True, "hard_failures": [], "scores": {}, "quality_warnings": []},
+                "expected_rag_doc_ids": [],
+                "retrieved_rag_sources": [{"doc_id": "unlabeled"}],
+            },
+        ]
+
+        summary = aggregate_results(entries)
+
+        self.assertEqual(summary["forbidden_retrieval_count"], 1)
+        self.assertEqual(summary["negative_precision"], 0.75)
+        self.assertEqual(summary["forbidden_doc_hit_rate"], 0.5)
+
     def test_loader_strips_benchmark_metadata_before_trip_request(self):
         payload = [
             {
@@ -133,6 +219,7 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
                 "free_text_input": "希望以故宫为主",
                 "expected_rag_doc_ids": ["beijing-history-core-001"],
                 "expected_rag_themes": ["历史文化"],
+                "forbidden_rag_doc_ids": ["shanghai-food-night-002"],
                 "benchmark_note": "metadata should not be passed into TripRequest",
             }
         ]
@@ -146,7 +233,30 @@ class RAGBenchmarkMetricTests(unittest.TestCase):
         self.assertEqual(cases[0].expected_rag_doc_ids, ["beijing-history-core-001"])
         self.assertEqual(cases[0].expected_rag_sections, [])
         self.assertEqual(cases[0].expected_rag_claims, [])
+        self.assertEqual(cases[0].forbidden_rag_doc_ids, ["shanghai-food-night-002"])
         self.assertFalse(hasattr(cases[0].request, "expected_rag_doc_ids"))
+        self.assertFalse(hasattr(cases[0].request, "forbidden_rag_doc_ids"))
+
+    def test_loader_defaults_missing_forbidden_doc_ids_for_backward_compatibility(self):
+        payload = [
+            {
+                "city": "北京",
+                "start_date": "2026-06-01",
+                "end_date": "2026-06-03",
+                "travel_days": 3,
+                "transportation": "公共交通",
+                "accommodation": "经济型酒店",
+                "preferences": ["历史文化"],
+                "free_text_input": "希望以故宫为主",
+                "expected_rag_doc_ids": ["beijing-history-core-001"],
+            }
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dataset = Path(tmpdir) / "dataset.json"
+            dataset.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            cases = load_benchmark_cases(dataset)
+
+        self.assertEqual(cases[0].forbidden_rag_doc_ids, [])
 
     def test_loader_parses_section_and_claim_labels(self):
         payload = [

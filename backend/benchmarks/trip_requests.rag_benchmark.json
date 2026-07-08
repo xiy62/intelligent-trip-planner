@@ -10,6 +10,7 @@
     "free_text_input": "希望以故宫和中轴线为主，节奏不要太赶",
     "expected_rag_doc_ids": ["beijing-history-core-001"],
     "expected_rag_themes": ["历史文化", "经典路线"],
+    "forbidden_rag_doc_ids": ["shanghai-food-night-002"],
     "benchmark_note": "北京历史文化和中轴线请求应召回故宫/中轴线知识"
   },
   {
@@ -23,6 +24,7 @@
     "free_text_input": "想体验胡同和夜间步行氛围",
     "expected_rag_doc_ids": ["beijing-hutong-food-002"],
     "expected_rag_themes": ["美食", "城市漫步"],
+    "forbidden_rag_doc_ids": ["hangzhou-westlake-001"],
     "benchmark_note": "北京美食和胡同 citywalk 请求应召回胡同/夜间美食知识"
   },
   {
@@ -49,6 +51,7 @@
     "free_text_input": "想体验本地小吃、外滩和夜景",
     "expected_rag_doc_ids": ["shanghai-citywalk-core-001", "shanghai-food-night-002"],
     "expected_rag_themes": ["美食", "城市漫步", "夜景"],
+    "forbidden_rag_doc_ids": ["beijing-history-core-001"],
     "benchmark_note": "上海小吃、外滩和夜景请求应召回 citywalk 与美食夜景知识"
   },
   {
@@ -88,6 +91,7 @@
     "free_text_input": "希望西湖和山寺类景点搭配，不要赶路",
     "expected_rag_doc_ids": ["hangzhou-westlake-001", "hangzhou-lingyin-002"],
     "expected_rag_themes": ["自然风光", "拍照"],
+    "forbidden_rag_doc_ids": ["guangzhou-river-night-002"],
     "benchmark_note": "杭州西湖和山寺请求应召回西湖与灵隐知识"
   },
   {
@@ -127,6 +131,7 @@
     "free_text_input": "想重点体验老城区和本地餐饮",
     "expected_rag_doc_ids": ["guangzhou-oldtown-food-001"],
     "expected_rag_themes": ["美食", "城市漫步"],
+    "forbidden_rag_doc_ids": ["shanghai-photo-modern-003"],
     "benchmark_note": "广州老城区和本地餐饮请求应召回老城美食知识"
   },
   {

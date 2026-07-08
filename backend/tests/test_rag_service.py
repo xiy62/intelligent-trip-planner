@@ -178,6 +178,69 @@ class RAGServiceTests(unittest.TestCase):
         self.assertTrue(all("vector_rank" in metadata for _, metadata in selected))
         self.assertEqual([metadata["dedup_rank"] for _, metadata in selected], [1, 2, 3])
 
+    def test_source_quality_adjustments_change_score_and_reasons(self):
+        service = TravelRAGService(embedding_function=FakeEmbeddings())
+        request = TripRequest(
+            city="Chicago",
+            start_date="2026-07-01",
+            end_date="2026-07-02",
+            travel_days=2,
+            transportation="public transit",
+            accommodation="mid-range hotel",
+            preferences=["museums"],
+            free_text_input="Museum Campus planning.",
+        )
+        request_terms = service._request_terms(request, [])
+        common_metadata = {
+            "chunk_id": "museum-campus-overview",
+            "doc_id": "museum-campus",
+            "city": "Chicago",
+            "theme": "museums",
+            "poi_names": "Museum Campus",
+            "language": "en",
+            "title": "Museum Campus",
+        }
+        official_doc = Document(
+            page_content="Museum Campus planning for Chicago museums.",
+            metadata={
+                **common_metadata,
+                "source_type": "official_tourism_portal",
+                "source_url": "https://example.com/museum-campus",
+                "last_verified_at": "2099-01-01",
+            },
+        )
+        stale_doc = Document(
+            page_content="Museum Campus planning for Chicago museums.",
+            metadata={
+                **common_metadata,
+                "source_type": "travel_blog",
+                "source_url": "",
+                "last_verified_at": "2000-01-01",
+            },
+        )
+
+        official_score, official_reasons = service._score_rag_doc(
+            request=request,
+            request_terms=request_terms,
+            doc=official_doc,
+            metadata=dict(official_doc.metadata),
+            vector_rank=1,
+        )
+        stale_score, stale_reasons = service._score_rag_doc(
+            request=request,
+            request_terms=request_terms,
+            doc=stale_doc,
+            metadata=dict(stale_doc.metadata),
+            vector_rank=1,
+        )
+
+        self.assertGreater(official_score, stale_score)
+        self.assertIn("source_quality:official:+0.08", official_reasons)
+        self.assertIn("source_quality:missing_source_url:-0.08", stale_reasons)
+        self.assertTrue(
+            any(reason.startswith("source_quality:stale:") for reason in stale_reasons)
+        )
+
     def test_rerank_packs_multiple_sections_from_selected_document(self):
         service = TravelRAGService(embedding_function=FakeEmbeddings())
         request = TripRequest(

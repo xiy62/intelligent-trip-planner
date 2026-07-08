@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from datetime import date
 from types import SimpleNamespace
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
@@ -43,6 +44,10 @@ RAG_STOPWORDS = {
 
 MAX_PACKED_SECTIONS_PER_DOC = 4
 MAX_PACKED_CONTEXT_CHARS_PER_DOC = 6000
+DEFAULT_STALE_AFTER_DAYS = 365
+OFFICIAL_SOURCE_BOOST = 0.08
+MISSING_SOURCE_URL_PENALTY = 0.08
+STALE_SOURCE_PENALTY = 0.1
 
 
 DEFAULT_LOCAL_KNOWLEDGE = [
@@ -388,6 +393,10 @@ class TravelRAGService:
             score += 0.1
             reasons.append(f"language:{request_language}")
 
+        source_adjustment, source_reasons = self._source_quality_adjustments(metadata)
+        score += source_adjustment
+        reasons.extend(source_reasons)
+
         theme_terms = self._tokenize(str(metadata.get("theme", "")))
         theme_overlap = request_terms & theme_terms
         if theme_overlap:
@@ -409,6 +418,59 @@ class TravelRAGService:
             reasons.append(f"content_overlap:{','.join(sorted(content_overlap)[:8])}")
 
         return score, reasons
+
+    def _source_quality_adjustments(self, metadata: Dict[str, Any]) -> tuple[float, List[str]]:
+        adjustment = 0.0
+        reasons: List[str] = []
+
+        source_type = str(metadata.get("source_type", "")).strip().lower()
+        if self._is_official_source_type(source_type):
+            adjustment += OFFICIAL_SOURCE_BOOST
+            reasons.append(f"source_quality:official:+{OFFICIAL_SOURCE_BOOST:.2f}")
+
+        source_url = str(metadata.get("source_url", "")).strip()
+        if not source_url:
+            adjustment -= MISSING_SOURCE_URL_PENALTY
+            reasons.append(f"source_quality:missing_source_url:-{MISSING_SOURCE_URL_PENALTY:.2f}")
+
+        verified_at = self._parse_verified_date(metadata.get("last_verified_at"))
+        stale_after_days = self._stale_after_days()
+        if verified_at is not None:
+            age_days = (date.today() - verified_at).days
+            if age_days > stale_after_days:
+                adjustment -= STALE_SOURCE_PENALTY
+                reasons.append(f"source_quality:stale:{age_days}d:-{STALE_SOURCE_PENALTY:.2f}")
+
+        return adjustment, reasons
+
+    def _is_official_source_type(self, source_type: str) -> bool:
+        official_markers = (
+            "official",
+            "government",
+            "tourism_portal",
+            "tourism_board",
+            "visitor_bureau",
+        )
+        return any(marker in source_type for marker in official_markers)
+
+    def _stale_after_days(self) -> int:
+        raw_value = os.getenv("RAG_STALE_AFTER_DAYS", str(DEFAULT_STALE_AFTER_DAYS))
+        try:
+            parsed = int(raw_value)
+        except ValueError:
+            return DEFAULT_STALE_AFTER_DAYS
+        return parsed if parsed > 0 else DEFAULT_STALE_AFTER_DAYS
+
+    def _parse_verified_date(self, value: Any) -> Optional[date]:
+        if value is None:
+            return None
+        raw_value = str(value).strip()
+        if not raw_value:
+            return None
+        try:
+            return date.fromisoformat(raw_value[:10])
+        except ValueError:
+            return None
 
     def _request_terms(
         self,
