@@ -439,6 +439,7 @@ class LangGraphTripPlanner:
             (
                 f"evaluate_itinerary: next_action={report.next_action} passed={report.passed}"
                 f" hard_failures={','.join(report.hard_failures) if report.hard_failures else 'none'}"
+                f" warnings={','.join(report.warnings) if report.warnings else 'none'}"
             ),
         )
         history = list(state.get("evaluation_history", []))
@@ -499,6 +500,7 @@ class LangGraphTripPlanner:
         return report.next_action
 
     def _evaluate_plan(self, state: TripGraphState) -> EvaluationReport:
+        settings = get_settings()
         return evaluate_trip_plan(
             request=state["request"],
             travel_dates=list(state.get("travel_dates", [])),
@@ -508,6 +510,10 @@ class LangGraphTripPlanner:
             rag_chunks=list(state.get("rag_chunks", [])),
             retry_counts=state.get("retry_counts") or RetryState(),
             max_retries=self.max_retries,
+            quality_retry_enabled=settings.quality_retry_enabled,
+            min_pacing_score=settings.min_pacing_score,
+            min_route_coherence_score=settings.min_route_coherence_score,
+            min_preference_match_score=settings.min_preference_match_score,
         )
 
     def _next_action_with_retry_budget(self, retry_counts: RetryState, action: str) -> str:

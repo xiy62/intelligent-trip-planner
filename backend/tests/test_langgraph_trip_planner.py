@@ -8,6 +8,8 @@ import unittest
 from pathlib import Path
 
 from app.agents.langgraph_trip_planner import LangGraphTripPlanner
+from app.config import settings
+from app.models.langgraph_state import AttractionCandidate, HotelCandidate, RetryState
 from app.models.schemas import TripPlan, TripRequest, WeatherInfo
 from app.services.memory_service import MemoryService
 
@@ -274,6 +276,36 @@ HOTELS_ALL = "1. Pod Times Square - Address: 400 W 42nd St, New York, NY"
 
 
 class LangGraphTripPlannerTests(unittest.TestCase):
+    def build_overloaded_evaluation_state(self, planner: LangGraphTripPlanner, request: TripRequest):
+        plan = TripPlan(
+            **json.loads(build_valid_plan_json().split("```json\n", 1)[1].rsplit("\n```", 1)[0])
+        )
+        plan = planner._normalize_trip_plan(plan, request)
+        plan.days[0].attractions.extend([plan.days[0].attractions[1].model_copy() for _ in range(3)])
+        plan.budget.total_attractions = sum(
+            attraction.ticket_price for day in plan.days for attraction in day.attractions
+        )
+        plan.budget.total = (
+            plan.budget.total_attractions
+            + plan.budget.total_hotels
+            + plan.budget.total_meals
+            + plan.budget.total_transportation
+        )
+        return {
+            "request": request,
+            "travel_dates": ["2026-06-01", "2026-06-02"],
+            "draft_plan": plan,
+            "candidate_attractions": [
+                AttractionCandidate(name="Metropolitan Museum of Art", source_id="poi-met"),
+                AttractionCandidate(name="Central Park", source_id="poi-park"),
+                AttractionCandidate(name="Brooklyn Bridge", source_id="poi-bridge"),
+                AttractionCandidate(name="Chelsea Market", source_id="poi-market"),
+            ],
+            "candidate_hotels": [HotelCandidate(name="Pod Times Square", source_id="poi-hotel")],
+            "rag_chunks": [],
+            "retry_counts": RetryState(plan_itinerary=1),
+        }
+
     def test_weather_authority_and_checkpoint_snapshot(self):
         runtime = FakeNativeRuntime(
             attraction_responses=[ATTRACTIONS_ALL],
@@ -296,6 +328,70 @@ class LangGraphTripPlannerTests(unittest.TestCase):
         snapshot = planner.get_state_snapshot(thread_id)
         self.assertEqual(snapshot.values["final_plan"].city, "New York")
         self.assertEqual(snapshot.values["metrics"].evaluation_pass_count, 1)
+
+    def test_default_quality_warnings_do_not_retry_langgraph_evaluation(self):
+        original_quality_retry_enabled = settings.quality_retry_enabled
+        try:
+            settings.quality_retry_enabled = False
+            planner = LangGraphTripPlanner(
+                llm=FakeLLM([build_valid_plan_json()]),
+                map_service=StaticMapService([]),
+                weather_service=FakeWeatherService(),
+            )
+            state = planner.evaluate_itinerary(
+                self.build_overloaded_evaluation_state(planner, build_request())
+            )
+        finally:
+            settings.quality_retry_enabled = original_quality_retry_enabled
+
+        report = state["evaluation_report"]
+        self.assertTrue(report.passed)
+        self.assertEqual(report.next_action, "finalize_response")
+        self.assertIn("pacing_day_0_overloaded", report.quality_warnings)
+
+    def test_strict_quality_warnings_retry_langgraph_evaluation(self):
+        original_quality_retry_enabled = settings.quality_retry_enabled
+        try:
+            settings.quality_retry_enabled = True
+            planner = LangGraphTripPlanner(
+                llm=FakeLLM([build_valid_plan_json()]),
+                map_service=StaticMapService([]),
+                weather_service=FakeWeatherService(),
+            )
+            state = planner.evaluate_itinerary(
+                self.build_overloaded_evaluation_state(planner, build_request())
+            )
+        finally:
+            settings.quality_retry_enabled = original_quality_retry_enabled
+
+        report = state["evaluation_report"]
+        self.assertFalse(report.passed)
+        self.assertEqual(report.hard_failures, [])
+        self.assertEqual(report.next_action, "plan_itinerary")
+        self.assertIn("strict_quality_retry_triggered", report.warnings)
+        self.assertIn("warnings=strict_quality_retry_triggered", state["decision_trace"][0])
+
+    def test_strict_quality_retry_exhaustion_falls_back_in_langgraph_evaluation(self):
+        original_quality_retry_enabled = settings.quality_retry_enabled
+        try:
+            settings.quality_retry_enabled = True
+            planner = LangGraphTripPlanner(
+                max_retries=2,
+                llm=FakeLLM([build_valid_plan_json()]),
+                map_service=StaticMapService([]),
+                weather_service=FakeWeatherService(),
+            )
+            graph_state = self.build_overloaded_evaluation_state(planner, build_request())
+            graph_state["retry_counts"] = RetryState(plan_itinerary=3)
+            state = planner.evaluate_itinerary(graph_state)
+        finally:
+            settings.quality_retry_enabled = original_quality_retry_enabled
+
+        report = state["evaluation_report"]
+        self.assertFalse(report.passed)
+        self.assertEqual(report.hard_failures, [])
+        self.assertEqual(report.next_action, "fallback_response")
+        self.assertIn("strict_quality_retry_triggered", report.warnings)
 
     def test_planner_malformed_json_retries_then_succeeds(self):
         runtime = FakeNativeRuntime(

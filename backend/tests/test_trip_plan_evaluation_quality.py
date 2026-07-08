@@ -133,7 +133,12 @@ def build_plan(*, far_jump: bool = False, overloaded: bool = False) -> TripPlan:
     )
 
 
-def evaluate(plan: TripPlan):
+def evaluate(plan: TripPlan, **overrides):
+    options = {
+        "retry_counts": RetryState(),
+        "max_retries": 2,
+    }
+    options.update(overrides)
     return evaluate_trip_plan(
         request=build_request(),
         travel_dates=["2026-06-01", "2026-06-02"],
@@ -160,8 +165,7 @@ def evaluate(plan: TripPlan):
                 },
             )
         ],
-        retry_counts=RetryState(),
-        max_retries=2,
+        **options,
     )
 
 
@@ -191,6 +195,7 @@ class TripPlanEvaluationQualityTests(unittest.TestCase):
         report = evaluate(build_plan(far_jump=True))
 
         self.assertTrue(report.passed)
+        self.assertEqual(report.next_action, "finalize_response")
         self.assertLess(report.scores.route_coherence_score, 0.75)
         self.assertIn("low_route_coherence_score", report.quality_warnings)
 
@@ -198,8 +203,33 @@ class TripPlanEvaluationQualityTests(unittest.TestCase):
         report = evaluate(build_plan(overloaded=True))
 
         self.assertTrue(report.passed)
+        self.assertEqual(report.next_action, "finalize_response")
         self.assertLess(report.scores.pacing_score, 0.75)
         self.assertIn("low_pacing_score", report.quality_warnings)
+
+    def test_strict_quality_retry_routes_low_soft_scores_to_planner_retry(self):
+        report = evaluate(build_plan(overloaded=True), quality_retry_enabled=True)
+
+        self.assertFalse(report.passed)
+        self.assertEqual(report.hard_failures, [])
+        self.assertEqual(report.next_action, "plan_itinerary")
+        self.assertIn("strict_quality_retry_triggered", report.warnings)
+        self.assertTrue(
+            any("pacing_score" in claim for claim in report.unsupported_claims)
+        )
+
+    def test_strict_quality_retry_respects_retry_budget_and_falls_back(self):
+        report = evaluate(
+            build_plan(overloaded=True),
+            retry_counts=RetryState(plan_itinerary=3),
+            max_retries=2,
+            quality_retry_enabled=True,
+        )
+
+        self.assertFalse(report.passed)
+        self.assertEqual(report.hard_failures, [])
+        self.assertEqual(report.next_action, "fallback_response")
+        self.assertIn("strict_quality_retry_triggered", report.warnings)
 
     def test_unsupported_entity_lowers_attribution_and_still_uses_hard_grounding(self):
         plan = build_plan()

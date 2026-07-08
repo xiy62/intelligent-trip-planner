@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     openweather_api_key: str = ""
 
     rag_mode: str = "chroma_retrieval"
+    quality_retry_enabled: bool = False
+    min_pacing_score: float = 0.75
+    min_route_coherence_score: float = 0.75
+    min_preference_match_score: float = 0.60
 
     unsplash_access_key: str = ""
     unsplash_secret_key: str = ""
@@ -101,6 +105,7 @@ def print_config():
     print(f"Map provider: {settings.map_provider}")
     print(f"Weather provider: {settings.weather_provider}")
     print(f"RAG mode: {settings.rag_mode}")
+    print(f"Quality retry enabled: {settings.quality_retry_enabled}")
     print(f"Google Maps API key: {'configured' if settings.google_maps_api_key else 'not configured'}")
     print(f"Admin API token: {'configured' if settings.admin_api_token else 'not configured'}")
     print(f"LLM API key: {'configured' if llm_api_key else 'not configured'}")

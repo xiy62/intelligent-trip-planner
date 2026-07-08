@@ -349,6 +349,10 @@ def evaluate_trip_plan(
     rag_chunks: List[RAGChunk],
     retry_counts: RetryState,
     max_retries: int,
+    quality_retry_enabled: bool = False,
+    min_pacing_score: float = 0.75,
+    min_route_coherence_score: float = 0.75,
+    min_preference_match_score: float = 0.60,
 ) -> EvaluationReport:
     """Evaluate a trip plan against schema, date, budget, and grounding checks."""
     scores = EvaluationScores()
@@ -526,12 +530,28 @@ def evaluate_trip_plan(
     quality_warnings.extend(pacing_warnings)
     quality_warnings.extend(route_warnings)
     quality_warnings.extend(preference_warnings)
-    if scores.pacing_score < 0.75 and "low_pacing_score" not in quality_warnings:
+    if scores.pacing_score < min_pacing_score and "low_pacing_score" not in quality_warnings:
         quality_warnings.append("low_pacing_score")
-    if scores.route_coherence_score < 0.75 and "low_route_coherence_score" not in quality_warnings:
+    if scores.route_coherence_score < min_route_coherence_score and "low_route_coherence_score" not in quality_warnings:
         quality_warnings.append("low_route_coherence_score")
-    if scores.preference_match_score < 0.6 and "low_preference_match_score" not in quality_warnings:
+    if scores.preference_match_score < min_preference_match_score and "low_preference_match_score" not in quality_warnings:
         quality_warnings.append("low_preference_match_score")
+
+    strict_quality_reasons: List[str] = []
+    if scores.pacing_score < min_pacing_score:
+        strict_quality_reasons.append(
+            f"pacing_score={scores.pacing_score:.4f} below min_pacing_score={min_pacing_score:.4f}"
+        )
+    if scores.route_coherence_score < min_route_coherence_score:
+        strict_quality_reasons.append(
+            "route_coherence_score="
+            f"{scores.route_coherence_score:.4f} below min_route_coherence_score={min_route_coherence_score:.4f}"
+        )
+    if scores.preference_match_score < min_preference_match_score:
+        strict_quality_reasons.append(
+            "preference_match_score="
+            f"{scores.preference_match_score:.4f} below min_preference_match_score={min_preference_match_score:.4f}"
+        )
 
     next_action = "finalize_response"
     passed = len(hard_failures) == 0
@@ -547,6 +567,13 @@ def evaluate_trip_plan(
             next_action = next_action_with_retry_budget(retry_counts, "retrieve_hotels", max_retries)
         else:
             next_action = next_action_with_retry_budget(retry_counts, "plan_itinerary", max_retries)
+    elif quality_retry_enabled and strict_quality_reasons:
+        passed = False
+        warnings.append("strict_quality_retry_triggered")
+        unsupported_claims.extend(
+            f"strict_quality_retry: {reason}" for reason in strict_quality_reasons
+        )
+        next_action = next_action_with_retry_budget(retry_counts, "plan_itinerary", max_retries)
 
     return EvaluationReport(
         passed=passed,
