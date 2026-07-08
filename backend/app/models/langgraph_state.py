@@ -58,6 +58,21 @@ class MealCandidate(BaseModel):
     raw_text: str = ""
 
 
+class RouteTimeEstimate(BaseModel):
+    """Precomputed same-day transfer estimate for consecutive attractions."""
+
+    day_index: int
+    segment_index: int
+    from_name: str
+    to_name: str
+    route_type: str = "walking"
+    duration_minutes: Optional[float] = None
+    distance_meters: Optional[float] = None
+    source: str = "map_provider"
+    error: str = ""
+    fallback_reason: str = ""
+
+
 class RAGChunk(BaseModel):
     """Retrieved travel knowledge chunk."""
 
@@ -148,6 +163,7 @@ class RetryState(BaseModel):
     retrieve_attractions: int = 0
     retrieve_hotels: int = 0
     retrieve_meals: int = 0
+    collect_route_times: int = 0
     retrieve_weather: int = 0
     retrieve_rag_context: int = 0
     plan_itinerary: int = 0
@@ -243,6 +259,7 @@ class TripGraphState(TypedDict, total=False):
     candidate_attractions: List[AttractionCandidate]
     candidate_hotels: List[HotelCandidate]
     candidate_meals: List[MealCandidate]
+    route_time_estimates: List[RouteTimeEstimate]
     weather_info: List[WeatherInfo]
     rag_chunks: List[RAGChunk]
     planner_inputs: PlannerInputBundle

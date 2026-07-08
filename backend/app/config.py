@@ -1,7 +1,7 @@
 """Application configuration."""
 
 import os
-from typing import List
+from typing import Dict, List
 
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
@@ -36,6 +36,20 @@ class Settings(BaseSettings):
     min_pacing_score: float = 0.75
     min_route_coherence_score: float = 0.75
     min_preference_match_score: float = 0.60
+    route_time_evaluation_enabled: bool = False
+    max_route_time_evaluations_per_trip: int = 12
+    max_segment_minutes_by_mode: Dict[str, int] = {
+        "walking": 30,
+        "transit": 45,
+        "driving": 35,
+        "bicycling": 30,
+    }
+    max_daily_transit_minutes_by_mode: Dict[str, int] = {
+        "walking": 90,
+        "transit": 150,
+        "driving": 120,
+        "bicycling": 120,
+    }
 
     unsplash_access_key: str = ""
     unsplash_secret_key: str = ""
@@ -106,6 +120,7 @@ def print_config():
     print(f"Weather provider: {settings.weather_provider}")
     print(f"RAG mode: {settings.rag_mode}")
     print(f"Quality retry enabled: {settings.quality_retry_enabled}")
+    print(f"Route-time evaluation enabled: {settings.route_time_evaluation_enabled}")
     print(f"Google Maps API key: {'configured' if settings.google_maps_api_key else 'not configured'}")
     print(f"Admin API token: {'configured' if settings.admin_api_token else 'not configured'}")
     print(f"LLM API key: {'configured' if llm_api_key else 'not configured'}")

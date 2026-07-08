@@ -22,6 +22,7 @@ from ..models.langgraph_state import (
     RAGChunk,
     RequestContext,
     RetryState,
+    RouteTimeEstimate,
     RunMetrics,
     TripGraphState,
 )
@@ -35,7 +36,7 @@ from ..services.map_service import get_map_service
 from ..services.memory_service import MemoryService, get_memory_service
 from ..services.rag_service import TravelRAGService, get_rag_service
 from ..services.weather_service import get_weather_service
-from .trip_plan_evaluation import evaluate_trip_plan, normalize_entity_name
+from .trip_plan_evaluation import evaluate_trip_plan, normalize_entity_name, route_type_for_transportation
 
 NON_ATTRACTION_PLACE_TYPES = {
     "car_rental",
@@ -100,6 +101,7 @@ ALLOWED_MSGPACK_MODULES = [
     ("app.models.langgraph_state", "AttractionCandidate"),
     ("app.models.langgraph_state", "HotelCandidate"),
     ("app.models.langgraph_state", "MealCandidate"),
+    ("app.models.langgraph_state", "RouteTimeEstimate"),
     ("app.models.langgraph_state", "RAGChunk"),
     ("app.models.langgraph_state", "PlannerInputBundle"),
     ("app.models.langgraph_state", "EvaluationReport"),
@@ -154,6 +156,7 @@ class LangGraphTripPlanner:
         builder.add_node("retry_retrieve_meals", self.retrieve_meals)
         builder.add_node("retry_retrieve_rag_context", self.retrieve_rag_context)
         builder.add_node("plan_itinerary", self.plan_itinerary)
+        builder.add_node("collect_route_times", self.collect_route_times)
         builder.add_node("evaluate_itinerary", self.evaluate_itinerary)
         builder.add_node("finalize_response", self.finalize_response)
         builder.add_node("fallback_response", self.fallback_response)
@@ -168,7 +171,8 @@ class LangGraphTripPlanner:
             ["retrieve_hotels", "retrieve_meals", "retrieve_weather", "retrieve_rag_context"],
             "plan_itinerary",
         )
-        builder.add_edge("plan_itinerary", "evaluate_itinerary")
+        builder.add_edge("plan_itinerary", "collect_route_times")
+        builder.add_edge("collect_route_times", "evaluate_itinerary")
         builder.add_conditional_edges(
             "evaluate_itinerary",
             self._route_after_evaluation,
@@ -241,6 +245,7 @@ class LangGraphTripPlanner:
                 "retry_retrieve_meals",
                 "retry_retrieve_rag_context",
                 "plan_itinerary",
+                "collect_route_times",
                 "evaluate_itinerary",
                 "finalize_response",
                 "fallback_response",
@@ -490,6 +495,32 @@ class LangGraphTripPlanner:
             "decision_trace": trace,
         }
 
+    def collect_route_times(self, state: TripGraphState) -> TripGraphState:
+        start = time.perf_counter()
+        settings = get_settings()
+        estimates: List[RouteTimeEstimate] = []
+        if settings.route_time_evaluation_enabled and state.get("draft_plan") is not None:
+            estimates = self._collect_route_time_estimates(
+                state["request"],
+                state["draft_plan"],
+                max_calls=max(0, settings.max_route_time_evaluations_per_trip),
+            )
+        metrics = self._record_node_metrics(state, "collect_route_times", start)
+        trace = self._append_trace(
+            state,
+            (
+                f"collect_route_times: collected {len(estimates)} estimates"
+                if settings.route_time_evaluation_enabled
+                else "collect_route_times: disabled"
+            ),
+        )
+        return {
+            "route_time_estimates": estimates,
+            "retry_counts": self._increment_retry_count(state, "collect_route_times"),
+            "metrics": metrics,
+            "decision_trace": trace,
+        }
+
     def evaluate_itinerary(self, state: TripGraphState) -> TripGraphState:
         start = time.perf_counter()
         report = self._evaluate_plan(state)
@@ -573,6 +604,10 @@ class LangGraphTripPlanner:
             candidate_attractions=list(state.get("candidate_attractions", [])),
             candidate_hotels=list(state.get("candidate_hotels", [])),
             candidate_meals=list(state.get("candidate_meals", [])),
+            route_time_estimates=list(state.get("route_time_estimates", [])),
+            route_time_evaluation_enabled=settings.route_time_evaluation_enabled,
+            max_segment_minutes_by_mode=settings.max_segment_minutes_by_mode,
+            max_daily_transit_minutes_by_mode=settings.max_daily_transit_minutes_by_mode,
             rag_chunks=list(state.get("rag_chunks", [])),
             retry_counts=state.get("retry_counts") or RetryState(),
             max_retries=self.max_retries,
@@ -587,6 +622,79 @@ class LangGraphTripPlanner:
         if attempts >= self.max_retries + 1:
             return "fallback_response"
         return action
+
+    def _collect_route_time_estimates(
+        self,
+        request: TripRequest,
+        draft_plan: TripPlan,
+        max_calls: int,
+    ) -> List[RouteTimeEstimate]:
+        estimates: List[RouteTimeEstimate] = []
+        calls_made = 0
+        for day in draft_plan.days:
+            if len(day.attractions) <= 1:
+                continue
+            route_type = route_type_for_transportation(day.transportation or request.transportation)
+            for index in range(len(day.attractions) - 1):
+                origin = day.attractions[index]
+                destination = day.attractions[index + 1]
+                base = {
+                    "day_index": day.day_index,
+                    "segment_index": index,
+                    "from_name": origin.name,
+                    "to_name": destination.name,
+                    "route_type": route_type,
+                }
+                if calls_made >= max_calls:
+                    estimates.append(
+                        RouteTimeEstimate(
+                            **base,
+                            source="not_called",
+                            fallback_reason="route_time_call_cap_reached",
+                        )
+                    )
+                    continue
+                calls_made += 1
+                try:
+                    route = self.map_service.plan_route(
+                        origin_address=origin.address or origin.name,
+                        destination_address=destination.address or destination.name,
+                        origin_city=request.city,
+                        destination_city=request.city,
+                        route_type=route_type,
+                    )
+                    if not route:
+                        estimates.append(
+                            RouteTimeEstimate(
+                                **base,
+                                fallback_reason="empty_route_response",
+                            )
+                        )
+                        continue
+                    duration_seconds = float(route.get("duration") or 0)
+                    duration_minutes = round(duration_seconds / 60.0, 2) if duration_seconds > 0 else None
+                    estimates.append(
+                        RouteTimeEstimate(
+                            **base,
+                            duration_minutes=duration_minutes,
+                            distance_meters=(
+                                float(route.get("distance"))
+                                if route.get("distance") is not None
+                                else None
+                            ),
+                            source=str(route.get("source") or "map_provider"),
+                            fallback_reason="" if duration_minutes else "missing_duration",
+                        )
+                    )
+                except Exception as exc:
+                    estimates.append(
+                        RouteTimeEstimate(
+                            **base,
+                            error=exc.__class__.__name__,
+                            fallback_reason="provider_error",
+                        )
+                    )
+        return estimates
 
     def _apply_evaluation_metrics(self, metrics: RunMetrics, report: EvaluationReport) -> None:
         if "schema_correctness" in report.hard_failures:

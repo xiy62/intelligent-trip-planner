@@ -14,6 +14,7 @@ from app.models.langgraph_state import (
     HotelCandidate,
     MealCandidate,
     RAGChunk,
+    RouteTimeEstimate,
     RetryState,
 )
 from app.models.schemas import (
@@ -203,6 +204,98 @@ class TripPlanEvaluationQualityTests(unittest.TestCase):
         self.assertEqual(report.next_action, "finalize_response")
         self.assertLess(report.scores.route_coherence_score, 0.75)
         self.assertIn("low_route_coherence_score", report.quality_warnings)
+
+    def test_route_time_disabled_preserves_haversine_behavior(self):
+        plan = build_plan()
+
+        report = evaluate(
+            plan,
+            route_time_evaluation_enabled=False,
+            route_time_estimates=[
+                RouteTimeEstimate(
+                    day_index=0,
+                    segment_index=0,
+                    from_name="The Metropolitan Museum of Art",
+                    to_name="Museum of Modern Art",
+                    route_type="transit",
+                    duration_minutes=120,
+                    distance_meters=9000,
+                )
+            ],
+        )
+
+        self.assertTrue(report.passed)
+        self.assertGreaterEqual(report.scores.route_coherence_score, 0.9)
+        self.assertNotIn("route_day_0_long_transfer_120min", report.quality_warnings)
+
+    def test_route_time_enabled_flags_long_segment_duration(self):
+        report = evaluate(
+            build_plan(),
+            route_time_evaluation_enabled=True,
+            route_time_estimates=[
+                RouteTimeEstimate(
+                    day_index=0,
+                    segment_index=0,
+                    from_name="The Metropolitan Museum of Art",
+                    to_name="Museum of Modern Art",
+                    route_type="transit",
+                    duration_minutes=60,
+                    distance_meters=5000,
+                )
+            ],
+        )
+
+        self.assertTrue(report.passed)
+        self.assertLess(report.scores.route_coherence_score, 0.75)
+        self.assertIn("route_day_0_long_transfer_60min", report.quality_warnings)
+        self.assertIn("low_route_coherence_score", report.quality_warnings)
+
+    def test_route_time_enabled_flags_high_daily_transit_total(self):
+        plan = build_plan(overloaded=True)
+        estimates = [
+            RouteTimeEstimate(
+                day_index=0,
+                segment_index=index,
+                from_name=plan.days[0].attractions[index].name,
+                to_name=plan.days[0].attractions[index + 1].name,
+                route_type="transit",
+                duration_minutes=30,
+                distance_meters=3000,
+            )
+            for index in range(len(plan.days[0].attractions) - 1)
+        ]
+
+        report = evaluate(
+            plan,
+            route_time_evaluation_enabled=True,
+            route_time_estimates=estimates,
+        )
+
+        self.assertIn("route_day_0_total_transit_180min", report.quality_warnings)
+
+    def test_failed_route_time_estimate_falls_back_to_haversine(self):
+        report = evaluate(
+            build_plan(far_jump=True),
+            route_time_evaluation_enabled=True,
+            route_time_estimates=[
+                RouteTimeEstimate(
+                    day_index=0,
+                    segment_index=0,
+                    from_name="The Metropolitan Museum of Art",
+                    to_name="Museum of Modern Art",
+                    route_type="transit",
+                    error="RuntimeError",
+                    fallback_reason="provider_error",
+                )
+            ],
+        )
+
+        self.assertTrue(report.passed)
+        self.assertIn("route_time_fallback_day_0_segment_0", report.quality_warnings)
+        self.assertTrue(
+            any(warning.startswith("route_day_0_long_jump_") for warning in report.quality_warnings)
+        )
+        self.assertLess(report.scores.route_coherence_score, 0.75)
 
     def test_pacing_flags_overloaded_day_as_soft_warning(self):
         report = evaluate(build_plan(overloaded=True))

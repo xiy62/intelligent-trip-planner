@@ -196,11 +196,22 @@ class FakeSearchTool:
 
 
 class FakeMapService:
-    def __init__(self, attraction_responses, hotel_responses, meal_responses=None):
+    def __init__(self, attraction_responses, hotel_responses, meal_responses=None, route_responses=None):
         self.tool = FakeSearchTool(attraction_responses, hotel_responses, meal_responses)
+        self.route_responses = list(route_responses or [])
+        self.route_calls = []
 
     def get_langchain_tools(self):
         return [self.tool]
+
+    def plan_route(self, **kwargs):
+        self.route_calls.append(dict(kwargs))
+        if self.route_responses:
+            response = self.route_responses.pop(0)
+            if isinstance(response, Exception):
+                raise response
+            return dict(response)
+        return {"duration": 900, "distance": 1200}
 
 
 class StaticSearchTool:
@@ -214,11 +225,19 @@ class StaticSearchTool:
 
 
 class StaticMapService:
-    def __init__(self, items):
+    def __init__(self, items, route_response=None):
         self.tool = StaticSearchTool(items)
+        self.route_response = route_response or {"duration": 900, "distance": 1200}
+        self.route_calls = []
 
     def get_langchain_tools(self):
         return [self.tool]
+
+    def plan_route(self, **kwargs):
+        self.route_calls.append(dict(kwargs))
+        if isinstance(self.route_response, Exception):
+            raise self.route_response
+        return dict(self.route_response)
 
 
 class FakeWeatherService:
@@ -255,8 +274,20 @@ class FakeWeatherService:
 
 
 class FakeNativeRuntime:
-    def __init__(self, attraction_responses, hotel_responses, planner_responses, meal_responses=None):
-        self.map_service = FakeMapService(attraction_responses, hotel_responses, meal_responses)
+    def __init__(
+        self,
+        attraction_responses,
+        hotel_responses,
+        planner_responses,
+        meal_responses=None,
+        route_responses=None,
+    ):
+        self.map_service = FakeMapService(
+            attraction_responses,
+            hotel_responses,
+            meal_responses,
+            route_responses,
+        )
         self.llm = FakeLLM(planner_responses)
         self.weather_service = FakeWeatherService()
 
@@ -333,6 +364,75 @@ class LangGraphTripPlannerTests(unittest.TestCase):
         snapshot = planner.get_state_snapshot(thread_id)
         self.assertEqual(snapshot.values["final_plan"].city, "New York")
         self.assertEqual(snapshot.values["metrics"].evaluation_pass_count, 1)
+        self.assertEqual(runtime.map_service.route_calls, [])
+
+    def test_route_time_collection_uses_fake_map_provider_when_enabled(self):
+        original_route_time_enabled = settings.route_time_evaluation_enabled
+        original_segment_thresholds = settings.max_segment_minutes_by_mode
+        original_daily_thresholds = settings.max_daily_transit_minutes_by_mode
+        try:
+            settings.route_time_evaluation_enabled = True
+            settings.max_segment_minutes_by_mode = {
+                "walking": 30,
+                "transit": 45,
+                "driving": 35,
+                "bicycling": 30,
+            }
+            settings.max_daily_transit_minutes_by_mode = {
+                "walking": 90,
+                "transit": 150,
+                "driving": 120,
+                "bicycling": 120,
+            }
+            runtime = FakeNativeRuntime(
+                attraction_responses=[ATTRACTIONS_ALL],
+                hotel_responses=[HOTELS_ALL],
+                planner_responses=[build_valid_plan_json()],
+                route_responses=[
+                    {"duration": 3600, "distance": 5000},
+                    {"duration": 900, "distance": 1200},
+                ],
+            )
+            planner = runtime.build_planner()
+            state = planner.invoke_graph(build_request())
+        finally:
+            settings.route_time_evaluation_enabled = original_route_time_enabled
+            settings.max_segment_minutes_by_mode = original_segment_thresholds
+            settings.max_daily_transit_minutes_by_mode = original_daily_thresholds
+
+        report = state["evaluation_report"]
+
+        self.assertEqual(len(runtime.map_service.route_calls), 2)
+        self.assertEqual(runtime.map_service.route_calls[0]["route_type"], "transit")
+        self.assertEqual(state["route_time_estimates"][0].duration_minutes, 60)
+        self.assertIn("route_day_0_long_transfer_60min", report.quality_warnings)
+        self.assertIn("low_route_coherence_score", report.quality_warnings)
+
+    def test_route_time_collection_respects_provider_call_cap(self):
+        original_route_time_enabled = settings.route_time_evaluation_enabled
+        original_max_route_calls = settings.max_route_time_evaluations_per_trip
+        try:
+            settings.route_time_evaluation_enabled = True
+            settings.max_route_time_evaluations_per_trip = 1
+            runtime = FakeNativeRuntime(
+                attraction_responses=[ATTRACTIONS_ALL],
+                hotel_responses=[HOTELS_ALL],
+                planner_responses=[build_valid_plan_json()],
+                route_responses=[
+                    {"duration": 900, "distance": 1200},
+                    {"duration": 900, "distance": 1200},
+                ],
+            )
+            planner = runtime.build_planner()
+            state = planner.invoke_graph(build_request())
+        finally:
+            settings.route_time_evaluation_enabled = original_route_time_enabled
+            settings.max_route_time_evaluations_per_trip = original_max_route_calls
+
+        self.assertEqual(len(runtime.map_service.route_calls), 1)
+        self.assertEqual(len(state["route_time_estimates"]), 2)
+        self.assertEqual(state["route_time_estimates"][1].fallback_reason, "route_time_call_cap_reached")
+        self.assertIn("route_time_fallback_day_1_segment_0", state["evaluation_report"].quality_warnings)
 
     def test_meal_retrieval_grounding_and_metadata_enrichment(self):
         plan_json = build_valid_plan_json().replace(

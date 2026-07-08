@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from math import asin, cos, radians, sin, sqrt
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from ..models.langgraph_state import (
     AttractionCandidate,
@@ -14,6 +14,7 @@ from ..models.langgraph_state import (
     HotelCandidate,
     MealCandidate,
     RAGChunk,
+    RouteTimeEstimate,
     RetryState,
     UnsupportedEntity,
 )
@@ -34,6 +35,20 @@ GENERIC_MEAL_NAME_TERMS = (
     "museum cafe",
     "hotel breakfast",
 )
+
+DEFAULT_MAX_SEGMENT_MINUTES_BY_MODE = {
+    "walking": 30,
+    "transit": 45,
+    "driving": 35,
+    "bicycling": 30,
+}
+
+DEFAULT_MAX_DAILY_TRANSIT_MINUTES_BY_MODE = {
+    "walking": 90,
+    "transit": 150,
+    "driving": 120,
+    "bicycling": 120,
+}
 
 
 def normalize_entity_name(value: str) -> str:
@@ -199,6 +214,57 @@ def route_distance_threshold_km(transportation: str) -> float:
     return 15.0
 
 
+def route_type_for_transportation(transportation: str) -> str:
+    """Map request/day transportation text to provider route modes."""
+    normalized = normalized_text(transportation)
+    if any(term in normalized for term in ("transit", "publictransit", "subway", "bus", "metro", "地铁", "公交")):
+        return "transit"
+    if any(term in normalized for term in ("car", "drive", "driving", "taxi", "rideshare", "uber", "lyft", "自驾", "打车")):
+        return "driving"
+    if any(term in normalized for term in ("bike", "cycling", "bicycling", "bicycle", "骑行")):
+        return "bicycling"
+    return "walking"
+
+
+def threshold_for_route_type(thresholds: Optional[Dict[str, int]], route_type: str, default_value: int) -> int:
+    """Return a route-time threshold using a canonical route type with aliases."""
+    values = thresholds or {}
+    aliases = {
+        "transit": ("transit", "public_transit", "public transit"),
+        "driving": ("driving", "drive", "car", "taxi"),
+        "bicycling": ("bicycling", "cycling", "bike"),
+        "walking": ("walking", "walk"),
+    }
+    for key in aliases.get(route_type, (route_type,)):
+        if key in values:
+            try:
+                return int(values[key])
+            except (TypeError, ValueError):
+                break
+    return default_value
+
+
+def route_time_score(duration_minutes: float, threshold_minutes: int) -> float:
+    """Score one route-time segment against a mode-specific maximum."""
+    if threshold_minutes <= 0 or duration_minutes <= threshold_minutes:
+        return 1.0
+    excess_ratio = min(1.0, (duration_minutes - threshold_minutes) / threshold_minutes)
+    return max(0.0, 1.0 - 0.7 - (0.3 * excess_ratio))
+
+
+def route_estimate_key(day_index: int, segment_index: int) -> str:
+    """Stable key for a same-day attraction transfer estimate."""
+    return f"{day_index}:{segment_index}"
+
+
+def estimate_map_by_segment(route_time_estimates: Optional[List[RouteTimeEstimate]]) -> Dict[str, RouteTimeEstimate]:
+    """Index route-time estimates by day and segment."""
+    estimates: Dict[str, RouteTimeEstimate] = {}
+    for estimate in route_time_estimates or []:
+        estimates[route_estimate_key(estimate.day_index, estimate.segment_index)] = estimate
+    return estimates
+
+
 def evaluate_pacing_quality(draft_plan: TripPlan) -> tuple[float, List[str]]:
     """Score whether each day is reasonably paced for a real itinerary."""
     day_scores: List[float] = []
@@ -231,34 +297,87 @@ def evaluate_pacing_quality(draft_plan: TripPlan) -> tuple[float, List[str]]:
     return round(sum(day_scores) / len(day_scores), 4), warnings
 
 
-def evaluate_route_coherence(draft_plan: TripPlan, request: TripRequest) -> tuple[float, List[str]]:
+def evaluate_haversine_route_segment(day_index: int, transportation: str, origin: Location | None, destination: Location | None) -> tuple[float, List[str]]:
+    """Score one same-day attraction transfer using coordinate distance."""
+    warnings: List[str] = []
+    threshold_km = route_distance_threshold_km(transportation)
+    if origin is None or destination is None:
+        warnings.append(f"route_day_{day_index}_missing_coordinates")
+        return 0.5, warnings
+    distance_km = haversine_km(origin, destination)
+    if distance_km <= threshold_km:
+        return 1.0, warnings
+    excess_ratio = min(1.0, (distance_km - threshold_km) / threshold_km)
+    warnings.append(f"route_day_{day_index}_long_jump_{round(distance_km, 1)}km")
+    return max(0.0, 1.0 - 0.7 - (0.3 * excess_ratio)), warnings
+
+
+def evaluate_route_coherence(
+    draft_plan: TripPlan,
+    request: TripRequest,
+    route_time_estimates: Optional[List[RouteTimeEstimate]] = None,
+    route_time_evaluation_enabled: bool = False,
+    max_segment_minutes_by_mode: Optional[Dict[str, int]] = None,
+    max_daily_transit_minutes_by_mode: Optional[Dict[str, int]] = None,
+) -> tuple[float, List[str]]:
     """Score whether same-day attraction ordering is geographically coherent."""
     warnings: List[str] = []
     segment_scores: List[float] = []
-    threshold_km = route_distance_threshold_km(request.transportation)
+    estimates_by_segment = estimate_map_by_segment(route_time_estimates)
     for day in draft_plan.days:
         attractions = day.attractions
         if len(attractions) <= 1:
             continue
-        comparable_segments = 0
+        comparable_segments = len(attractions) - 1
+        daily_route_minutes = 0.0
+        daily_route_estimate_count = 0
+        route_type = route_type_for_transportation(day.transportation or request.transportation)
         for index in range(len(attractions) - 1):
             origin = attractions[index].location
             destination = attractions[index + 1].location
-            if origin is None or destination is None:
-                continue
-            comparable_segments += 1
-            distance_km = haversine_km(origin, destination)
-            if distance_km <= threshold_km:
-                segment_scores.append(1.0)
-            else:
-                excess_ratio = min(1.0, (distance_km - threshold_km) / threshold_km)
-                segment_scores.append(max(0.0, 1.0 - 0.7 - (0.3 * excess_ratio)))
-                warnings.append(
-                    f"route_day_{day.day_index}_long_jump_{round(distance_km, 1)}km"
+            estimate = estimates_by_segment.get(route_estimate_key(day.day_index, index))
+            if (
+                route_time_evaluation_enabled
+                and estimate is not None
+                and not estimate.error
+                and estimate.duration_minutes is not None
+                and estimate.duration_minutes > 0
+            ):
+                duration = float(estimate.duration_minutes)
+                segment_threshold = threshold_for_route_type(
+                    max_segment_minutes_by_mode,
+                    route_type,
+                    DEFAULT_MAX_SEGMENT_MINUTES_BY_MODE[route_type],
                 )
-        if comparable_segments == 0 and len(attractions) > 1:
-            warnings.append(f"route_day_{day.day_index}_missing_coordinates")
-            segment_scores.append(0.5)
+                segment_scores.append(route_time_score(duration, segment_threshold))
+                daily_route_minutes += duration
+                daily_route_estimate_count += 1
+                if duration > segment_threshold:
+                    warnings.append(
+                        f"route_day_{day.day_index}_long_transfer_{round(duration)}min"
+                    )
+            else:
+                if route_time_evaluation_enabled:
+                    warnings.append(f"route_time_fallback_day_{day.day_index}_segment_{index}")
+                score, segment_warnings = evaluate_haversine_route_segment(
+                    day.day_index,
+                    day.transportation or request.transportation,
+                    origin,
+                    destination,
+                )
+                segment_scores.append(score)
+                warnings.extend(segment_warnings)
+        if route_time_evaluation_enabled and daily_route_estimate_count:
+            daily_threshold = threshold_for_route_type(
+                max_daily_transit_minutes_by_mode,
+                route_type,
+                DEFAULT_MAX_DAILY_TRANSIT_MINUTES_BY_MODE[route_type],
+            )
+            if daily_route_minutes > daily_threshold:
+                warnings.append(
+                    f"route_day_{day.day_index}_total_transit_{round(daily_route_minutes)}min"
+                )
+                segment_scores.append(route_time_score(daily_route_minutes, daily_threshold))
     if not segment_scores:
         return 1.0, warnings
     return round(sum(segment_scores) / len(segment_scores), 4), warnings
@@ -387,6 +506,10 @@ def evaluate_trip_plan(
     retry_counts: RetryState,
     max_retries: int,
     candidate_meals: Optional[List[MealCandidate]] = None,
+    route_time_estimates: Optional[List[RouteTimeEstimate]] = None,
+    route_time_evaluation_enabled: bool = False,
+    max_segment_minutes_by_mode: Optional[Dict[str, int]] = None,
+    max_daily_transit_minutes_by_mode: Optional[Dict[str, int]] = None,
     quality_retry_enabled: bool = False,
     min_pacing_score: float = 0.75,
     min_route_coherence_score: float = 0.75,
@@ -587,7 +710,14 @@ def evaluate_trip_plan(
         hard_failures.append("retrieval_grounding_meals")
 
     scores.pacing_score, pacing_warnings = evaluate_pacing_quality(draft_plan)
-    scores.route_coherence_score, route_warnings = evaluate_route_coherence(draft_plan, request)
+    scores.route_coherence_score, route_warnings = evaluate_route_coherence(
+        draft_plan,
+        request,
+        route_time_estimates=route_time_estimates,
+        route_time_evaluation_enabled=route_time_evaluation_enabled,
+        max_segment_minutes_by_mode=max_segment_minutes_by_mode,
+        max_daily_transit_minutes_by_mode=max_daily_transit_minutes_by_mode,
+    )
     scores.preference_match_score, preference_warnings = evaluate_preference_match(
         draft_plan, request, rag_chunks
     )
