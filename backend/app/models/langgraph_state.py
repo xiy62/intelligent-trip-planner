@@ -18,6 +18,7 @@ class RequestContext(BaseModel):
     travel_days: int
     transportation: str
     accommodation: str
+    country_code: str = "US"
     preferences: List[str] = Field(default_factory=list)
     free_text_input: str = ""
     memory_context: str = ""

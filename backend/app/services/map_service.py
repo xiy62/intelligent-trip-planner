@@ -29,7 +29,13 @@ class BaseMapProvider(ABC):
         """Return provider and supported tool metadata."""
 
     @abstractmethod
-    def search_poi(self, keywords: str, city: str, citylimit: bool = True) -> List[POIInfo]:
+    def search_poi(
+        self,
+        keywords: str,
+        city: str,
+        citylimit: bool = True,
+        country_code: Optional[str] = None,
+    ) -> List[POIInfo]:
         """Search places and return normalized POI records."""
 
     @abstractmethod
@@ -39,6 +45,7 @@ class BaseMapProvider(ABC):
         city: str,
         citylimit: bool = True,
         page_size: int = 10,
+        country_code: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """Search places and return provider-neutral raw dictionaries."""
 
@@ -85,8 +92,22 @@ class GoogleMapsService(BaseMapProvider):
             "tools": ["search_poi", "get_poi_detail", "plan_route", "geocode"],
         }
 
-    def search_poi(self, keywords: str, city: str, citylimit: bool = True) -> List[POIInfo]:
-        return [self._to_poi_info(item) for item in self.search_poi_raw(keywords, city, citylimit)]
+    def search_poi(
+        self,
+        keywords: str,
+        city: str,
+        citylimit: bool = True,
+        country_code: Optional[str] = None,
+    ) -> List[POIInfo]:
+        return [
+            self._to_poi_info(item)
+            for item in self.search_poi_raw(
+                keywords,
+                city,
+                citylimit,
+                country_code=country_code,
+            )
+        ]
 
     def search_poi_raw(
         self,
@@ -94,6 +115,7 @@ class GoogleMapsService(BaseMapProvider):
         city: str,
         citylimit: bool = True,
         page_size: int = 10,
+        country_code: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         query = f"{keywords} in {city}" if city else keywords
         payload: Dict[str, Any] = {
@@ -101,8 +123,9 @@ class GoogleMapsService(BaseMapProvider):
             "pageSize": max(1, min(page_size, 20)),
             "languageCode": "en",
         }
-        if citylimit:
-            payload["regionCode"] = "US"
+        region_code = self._normalize_region_code(country_code)
+        if citylimit and region_code:
+            payload["regionCode"] = region_code
         data = self._post_json(
             f"{GOOGLE_PLACES_BASE_URL}/places:searchText",
             payload,
@@ -236,8 +259,21 @@ class GoogleMapsService(BaseMapProvider):
         city: str,
         citylimit: bool = True,
         page_size: int = 10,
+        country_code: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        return self.search_poi_raw(keywords, city, citylimit=citylimit, page_size=page_size)
+        return self.search_poi_raw(
+            keywords,
+            city,
+            citylimit=citylimit,
+            page_size=page_size,
+            country_code=country_code,
+        )
+
+    def _normalize_region_code(self, country_code: Optional[str]) -> str:
+        normalized = (country_code or "US").strip().upper()
+        if len(normalized) == 2 and normalized.isalpha():
+            return normalized
+        return ""
 
     def _normalize_place(self, item: Dict[str, Any]) -> Dict[str, Any]:
         display = item.get("displayName") or {}

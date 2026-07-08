@@ -92,6 +92,7 @@ export default function Home() {
         transportation: values.transportation,
         accommodation: values.accommodation,
         preferences: values.preferences.map(String),
+        country_code: 'US',
         free_text_input: values.free_text_input || '',
         profile_id: profileId,
         conversation_id: sessionStorage.getItem(CONVERSATION_STORAGE_KEY) || undefined

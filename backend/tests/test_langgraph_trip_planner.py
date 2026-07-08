@@ -178,8 +178,10 @@ class FakeSearchTool:
         self.attraction_rounds = [parse_candidate_response(item) for item in attraction_responses]
         self.hotel_items = parse_candidate_response(hotel_responses[0])
         self.attraction_calls = 0
+        self.calls = []
 
     def invoke(self, payload):
+        self.calls.append(dict(payload))
         keyword = payload["keywords"].lower()
         if "hotel" in keyword or "inn" in keyword:
             return list(self.hotel_items)
@@ -382,6 +384,23 @@ class LangGraphTripPlannerTests(unittest.TestCase):
         self.assertNotIn("Solo New York", names)
         self.assertIn("Central Park", names)
         self.assertIn("Metropolitan Museum of Art", names)
+
+    def test_map_retrieval_passes_request_country_code(self):
+        runtime = FakeNativeRuntime(
+            attraction_responses=[ATTRACTIONS_ALL],
+            hotel_responses=[HOTELS_ALL],
+            planner_responses=[build_valid_plan_json()],
+        )
+        planner = runtime.build_planner()
+        request = build_request().model_copy(update={"country_code": "JP"})
+
+        planner.retrieve_attractions({"request": request})
+        planner.retrieve_hotels({"request": request})
+
+        self.assertTrue(runtime.map_service.tool.calls)
+        self.assertTrue(
+            all(call["country_code"] == "JP" for call in runtime.map_service.tool.calls)
+        )
 
     def test_retry_exhaustion_falls_back(self):
         runtime = FakeNativeRuntime(

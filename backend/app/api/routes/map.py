@@ -17,10 +17,11 @@ async def search_poi(
     keywords: str = Query(..., description="Search keywords", examples=["museum"]),
     city: str = Query(..., description="City", examples=["New York"]),
     citylimit: bool = Query(True, description="Restrict results to the requested city"),
+    country_code: str = Query("US", min_length=2, max_length=2, description="2-letter region bias code"),
 ):
     """Search city POIs through the configured map provider."""
     try:
-        pois = get_map_service().search_poi(keywords, city, citylimit)
+        pois = get_map_service().search_poi(keywords, city, citylimit, country_code=country_code)
         return POISearchResponse(success=True, message="POI search succeeded", data=pois)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"POI search failed: {exc}") from exc

@@ -64,6 +64,7 @@ class FakePhotoResponse:
 
 class FakeClient:
     attempts = 0
+    post_payloads = []
 
     def __init__(self, timeout):
         self.timeout = timeout
@@ -76,6 +77,7 @@ class FakeClient:
 
     def post(self, url, json=None, headers=None):
         FakeClient.attempts += 1
+        FakeClient.post_payloads.append(json or {})
         if FakeClient.attempts == 1:
             raise httpx.ConnectTimeout("timeout")
         if "computeRoutes" in url:
@@ -141,6 +143,7 @@ class GoogleMapsServiceTests(unittest.TestCase):
         original_client = map_service.httpx.Client
         original_sleep = map_service.time.sleep
         FakeClient.attempts = 0
+        FakeClient.post_payloads = []
         map_service.httpx.Client = FakeClient
         map_service.time.sleep = lambda _: None
         try:
@@ -157,6 +160,43 @@ class GoogleMapsServiceTests(unittest.TestCase):
         self.assertEqual(items[0]["website_url"], "https://www.centralparknyc.org/")
         self.assertEqual(items[0]["photo_names"], ["places/test-place/photos/photo-1"])
         self.assertIn("/api/map/photo?photo_name=", items[0]["image_url"])
+        self.assertEqual(FakeClient.post_payloads[-1]["regionCode"], "US")
+
+    def test_search_poi_uses_request_country_code_for_region_bias(self):
+        service = GoogleMapsService.__new__(GoogleMapsService)
+        service.api_key = "test-key"
+        original_client = map_service.httpx.Client
+        original_sleep = map_service.time.sleep
+        FakeClient.attempts = 1
+        FakeClient.post_payloads = []
+        map_service.httpx.Client = FakeClient
+        map_service.time.sleep = lambda _: None
+        try:
+            service.search_poi_raw("park", "Tokyo", country_code="jp")
+            service.search_poi_raw("park", "Tokyo", country_code="JPN")
+        finally:
+            map_service.httpx.Client = original_client
+            map_service.time.sleep = original_sleep
+
+        self.assertEqual(FakeClient.post_payloads[0]["regionCode"], "JP")
+        self.assertNotIn("regionCode", FakeClient.post_payloads[1])
+
+    def test_search_poi_defaults_missing_country_code_to_us(self):
+        service = GoogleMapsService.__new__(GoogleMapsService)
+        service.api_key = "test-key"
+        original_client = map_service.httpx.Client
+        original_sleep = map_service.time.sleep
+        FakeClient.attempts = 1
+        FakeClient.post_payloads = []
+        map_service.httpx.Client = FakeClient
+        map_service.time.sleep = lambda _: None
+        try:
+            service.search_poi_raw("park", "New York")
+        finally:
+            map_service.httpx.Client = original_client
+            map_service.time.sleep = original_sleep
+
+        self.assertEqual(FakeClient.post_payloads[0]["regionCode"], "US")
 
     def test_request_surfaces_persistent_timeout_after_retry_budget(self):
         service = GoogleMapsService.__new__(GoogleMapsService)

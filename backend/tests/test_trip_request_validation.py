@@ -44,6 +44,24 @@ class TripRequestValidationTests(unittest.TestCase):
         self.assertEqual(request.preferences, ["历史文化", "美食"])
         self.assertEqual(request.free_text_input, "希望行程不要太赶")
 
+    def test_country_code_defaults_to_us_and_normalizes_uppercase(self):
+        default_request = TripRequest(**valid_payload())
+        self.assertEqual(default_request.country_code, "US")
+
+        payload = valid_payload()
+        payload["country_code"] = " jp "
+        request = TripRequest(**payload)
+
+        self.assertEqual(request.country_code, "JP")
+
+    def test_rejects_invalid_country_code(self):
+        for invalid_country_code in ("", "   ", "USA", "1P", "JPN"):
+            with self.subTest(country_code=invalid_country_code):
+                payload = valid_payload()
+                payload["country_code"] = invalid_country_code
+                with self.assertRaises(ValidationError):
+                    TripRequest(**payload)
+
     def test_rejects_blank_required_fields(self):
         for field in ("city", "transportation", "accommodation"):
             with self.subTest(field=field):

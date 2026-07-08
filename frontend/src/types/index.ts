@@ -127,6 +127,7 @@ export interface TripFormData {
   transportation: string
   accommodation: string
   preferences: string[]
+  country_code?: string
   free_text_input: string
   profile_id?: string
   conversation_id?: string

@@ -27,6 +27,13 @@ class TripRequest(BaseModel):
         description="Travel preference labels",
         example=["Museums", "Food"],
     )
+    country_code: str = Field(
+        default="US",
+        min_length=2,
+        max_length=2,
+        description="2-letter ISO-style country code used for map search region bias",
+        example="US",
+    )
     free_text_input: Optional[str] = Field(
         default="", max_length=1000, description="Additional user requirements", example="Keep the itinerary relaxed and include museums."
     )
@@ -51,6 +58,21 @@ class TripRequest(BaseModel):
         if value is None:
             return value
         return value.strip() if isinstance(value, str) else value
+
+    @field_validator("country_code", mode="before")
+    @classmethod
+    def normalize_country_code(cls, value):
+        """Normalize 2-letter country codes used for map region bias."""
+        if value is None:
+            return "US"
+        if not isinstance(value, str):
+            return value
+        normalized = value.strip().upper()
+        if not normalized:
+            raise ValueError("country_code must not be blank")
+        if len(normalized) != 2 or not normalized.isalpha():
+            raise ValueError("country_code must be a 2-letter country code")
+        return normalized
 
     @field_validator("preferences", mode="before")
     @classmethod
@@ -103,6 +125,7 @@ class TripRequest(BaseModel):
                 "transportation": "Public transit",
                 "accommodation": "Mid-range hotel",
                 "preferences": ["Museums", "Food"],
+                "country_code": "US",
                 "free_text_input": "Keep the itinerary relaxed."
             }
         }
@@ -113,6 +136,7 @@ class POISearchRequest(BaseModel):
     keywords: str = Field(..., description="Search keywords", example="museum")
     city: str = Field(..., description="City", example="New York")
     citylimit: bool = Field(default=True, description="Whether to restrict results to the requested city")
+    country_code: str = Field(default="US", min_length=2, max_length=2, description="2-letter region bias code")
 
 
 class RouteRequest(BaseModel):

@@ -240,6 +240,7 @@ class LangGraphTripPlanner:
             travel_days=request.travel_days,
             transportation=request.transportation,
             accommodation=request.accommodation,
+            country_code=request.country_code,
             preferences=list(request.preferences),
             free_text_input=request.free_text_input or "",
             memory_context=memory_summary,
@@ -272,7 +273,13 @@ class LangGraphTripPlanner:
         seen = set()
         for term in build_attraction_search_terms(request, retry_counts.retrieve_attractions):
             for item in self.search_poi_tool.invoke(
-                {"keywords": term, "city": request.city, "citylimit": True, "page_size": 8}
+                {
+                    "keywords": term,
+                    "city": request.city,
+                    "citylimit": True,
+                    "page_size": 8,
+                    "country_code": request.country_code,
+                }
             ):
                 if self._is_non_attraction_poi(item, request.city):
                     continue
@@ -308,7 +315,13 @@ class LangGraphTripPlanner:
         seen = set()
         for term in build_hotel_search_terms(request):
             for item in self.search_poi_tool.invoke(
-                {"keywords": term, "city": request.city, "citylimit": True, "page_size": 8}
+                {
+                    "keywords": term,
+                    "city": request.city,
+                    "citylimit": True,
+                    "page_size": 8,
+                    "country_code": request.country_code,
+                }
             ):
                 candidate = HotelCandidate(
                     name=str(item.get("name", "")),
