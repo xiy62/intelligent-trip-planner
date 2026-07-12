@@ -87,6 +87,14 @@ class ItineraryMaterializer:
         allowed_hotels = set(logistics.hotel_ids)
         allowed_meals = set(logistics.meal_ids)
 
+        if draft.transportation_estimate < 0:
+            failures.append(self._failure("invalid_cost", "transportation_estimate",
+                                          "transportation estimate cannot be negative"))
+        for source_id, value in logistics.cost_assumptions.items():
+            if value < 0:
+                failures.append(self._failure("invalid_cost", "logistics.cost_assumptions",
+                                              "hotel estimate cannot be negative", source_id))
+
         for day_pos, day in enumerate(draft.days):
             attractions: List[Attraction] = []
             meals: List[Meal] = []
@@ -134,6 +142,10 @@ class ItineraryMaterializer:
 
             for item_pos, item in enumerate(day.meal_items):
                 path = f"days.{day_pos}.meals.{item_pos}"
+                if item.estimated_cost < 0:
+                    failures.append(self._failure("invalid_cost", path, "meal estimate cannot be negative",
+                                                  item.source_id or ""))
+                    continue
                 if item.source_id:
                     entity = self._resolve(registry, item.source_id, "meal", path, failures)
                     if entity is None:
@@ -166,7 +178,7 @@ class ItineraryMaterializer:
                     if day.hotel_id not in allowed_hotels:
                         failures.append(self._failure("unapproved_id", path, "hotel is not allowed by current proposal", day.hotel_id))
                     else:
-                        estimate = max(0, int(logistics.cost_assumptions.get(day.hotel_id, 0)))
+                        estimate = int(logistics.cost_assumptions.get(day.hotel_id, 0))
                         status = "estimated" if day.hotel_id in logistics.cost_assumptions else "unknown"
                         incomplete = incomplete or status == "unknown"
                         hotel_total += estimate

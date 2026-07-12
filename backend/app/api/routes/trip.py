@@ -112,6 +112,9 @@ async def health_check():
             "planner_name": summary["planner_name"],
             "workflow": summary["workflow"],
             "nodes": summary["nodes"],
+            "agent_roles": summary.get("agent_roles", []),
+            "tool_budgets": summary.get("tool_budgets", {}),
+            "retry_budgets": summary.get("retry_budgets", {}),
         }
     except Exception as exc:
         raise HTTPException(status_code=503, detail=f"Planner unavailable: {exc}") from exc

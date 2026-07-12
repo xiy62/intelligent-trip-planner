@@ -1,0 +1,32 @@
+[
+  {
+    "case_id": "new-york-museums-transit",
+    "city": "New York",
+    "start_date": "2026-09-14",
+    "end_date": "2026-09-15",
+    "travel_days": 2,
+    "transportation": "Public transit",
+    "accommodation": "Mid-range hotel",
+    "preferences": ["Museums", "Art"]
+  },
+  {
+    "case_id": "los-angeles-coast-driving",
+    "city": "Los Angeles",
+    "start_date": "2026-09-14",
+    "end_date": "2026-09-15",
+    "travel_days": 2,
+    "transportation": "Driving",
+    "accommodation": "Mid-range hotel",
+    "preferences": ["Coast", "Scenic views"]
+  },
+  {
+    "case_id": "chicago-food-transit",
+    "city": "Chicago",
+    "start_date": "2026-09-14",
+    "end_date": "2026-09-15",
+    "travel_days": 2,
+    "transportation": "Public transit",
+    "accommodation": "Mid-range hotel",
+    "preferences": ["Food", "Architecture"]
+  }
+]

@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_base_url: str = "https://api.openai.com/v1"
     openai_model: str = "gpt-4o-mini"
+    experience_model: str = ""
+    logistics_model: str = ""
+    composer_model: str = ""
 
     log_level: str = "INFO"
 

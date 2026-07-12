@@ -13,7 +13,7 @@ T = TypeVar("T", bound=BaseModel)
 def invoke_structured(llm: Any, schema: Type[T], prompt: str) -> T:
     """Invoke a model with a Pydantic contract, with a JSON fallback for test doubles."""
     if hasattr(llm, "with_structured_output"):
-        value = llm.with_structured_output(schema).invoke(prompt)
+        value = llm.with_structured_output(schema, method="function_calling").invoke(prompt)
         return value if isinstance(value, schema) else schema.model_validate(value)
     response = llm.invoke(prompt)
     value = getattr(response, "content", response)
@@ -28,4 +28,3 @@ def invoke_structured(llm: Any, schema: Type[T], prompt: str) -> T:
         if text.startswith("json"):
             text = text[4:].strip()
     return schema.model_validate(json.loads(text))
-

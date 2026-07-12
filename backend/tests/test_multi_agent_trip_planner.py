@@ -2,7 +2,8 @@ import json
 import unittest
 
 from app.agents.multi_agent_trip_planner import MultiAgentTripPlanner
-from app.models.langgraph_state import RAGChunk
+from app.models.langgraph_state import EvaluationReport, RAGChunk, RouteFailureDetail
+from app.models.multi_agent import AgentRetryState, CandidateRegistry
 from app.models.schemas import TripRequest, WeatherInfo
 
 
@@ -100,6 +101,61 @@ class MultiAgentTripPlannerTests(unittest.TestCase):
         self.assertEqual(state["final_plan"].days[0].meals[0].name, "Registry Cafe")
         self.assertFalse(state["materialization_failures"])
         self.assertEqual(planner.health_summary()["workflow"], "langgraph_multi_agent")
+
+    def test_failure_owner_routing_and_retry_budgets_are_deterministic(self):
+        planner = object.__new__(MultiAgentTripPlanner)
+        attraction_report = EvaluationReport(
+            passed=False,
+            hard_failures=["schema_correctness"],
+            materialization_failures=[{"code": "unknown_id", "path": "days.0.attractions.0", "source_id": "bad"}],
+        )
+        state = {"candidate_registry": CandidateRegistry(run_id="run-1"),
+                 "materialization_failures": attraction_report.materialization_failures,
+                 "agent_retry_state": AgentRetryState(experience_attempts=1, logistics_attempts=1,
+                                                       composer_attempts=1)}
+        self.assertEqual(planner._failure_owner(state, attraction_report), "experience")
+        attraction_report.failure_owner = "experience"
+        state["evaluation_report"] = attraction_report
+        self.assertEqual(planner._route_multi_result(state), "experience_retry")
+        state["agent_retry_state"].experience_attempts = 2
+        self.assertEqual(planner._route_multi_result(state), "fallback_response")
+
+    def test_missing_route_data_does_not_trigger_llm_retry(self):
+        planner = object.__new__(MultiAgentTripPlanner)
+        report = EvaluationReport(passed=False, route_failure_details=[
+            RouteFailureDetail(day_index=0, segment_indices=[0], kind="missing_route_data")
+        ])
+        state = {"materialization_failures": [], "agent_retry_state": AgentRetryState()}
+        self.assertIsNone(planner._failure_owner(state, report))
+
+    def test_route_problem_escalates_from_composer_to_logistics_candidate_set(self):
+        planner = object.__new__(MultiAgentTripPlanner)
+        report = EvaluationReport(passed=False, quality_warnings=[
+            "route_day_0_long_transfer_90min", "low_route_coherence_score"
+        ])
+        first_state = {"materialization_failures": [],
+                       "agent_retry_state": AgentRetryState(composer_attempts=1)}
+        report.route_failure_details = planner._route_failure_details(first_state, report)
+        self.assertEqual(report.route_failure_details[0].kind, "ordering_problem")
+        self.assertEqual(planner._failure_owner(first_state, report), "composer")
+        second_state = {"materialization_failures": [],
+                        "agent_retry_state": AgentRetryState(composer_attempts=2)}
+        report.route_failure_details = planner._route_failure_details(second_state, report)
+        self.assertEqual(report.route_failure_details[0].kind, "candidate_set_problem")
+        self.assertEqual(planner._failure_owner(second_state, report), "logistics")
+
+    def test_factory_has_no_single_agent_mode_branch(self):
+        from app.agents import planner_factory
+
+        original = planner_factory.MultiAgentTripPlanner
+        sentinel = object()
+        try:
+            planner_factory.reset_trip_planner_agent()
+            planner_factory.MultiAgentTripPlanner = lambda **kwargs: sentinel
+            self.assertIs(planner_factory.get_trip_planner_agent(), sentinel)
+        finally:
+            planner_factory.MultiAgentTripPlanner = original
+            planner_factory.reset_trip_planner_agent()
 
 
 if __name__ == "__main__":

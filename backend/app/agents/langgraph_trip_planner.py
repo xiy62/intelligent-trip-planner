@@ -1161,14 +1161,3 @@ class LangGraphTripPlanner:
             ),
             budget=None,
         )
-
-
-_langgraph_trip_planner: Optional[LangGraphTripPlanner] = None
-
-
-def get_trip_planner_agent() -> LangGraphTripPlanner:
-    """Return a singleton LangGraph planner."""
-    global _langgraph_trip_planner
-    if _langgraph_trip_planner is None:
-        _langgraph_trip_planner = LangGraphTripPlanner(rag_mode=get_settings().rag_mode)
-    return _langgraph_trip_planner

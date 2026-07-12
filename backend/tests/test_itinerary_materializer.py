@@ -86,6 +86,17 @@ class ItineraryMaterializerTests(unittest.TestCase):
                                                      draft=invalid, weather_info=self.weather)
         self.assertIn("wrong_entity_type", {failure.code for failure in result.failures})
 
+    def test_rejects_invalid_duration_and_negative_costs_as_structured_failures(self):
+        invalid = self.draft(transportation_estimate=-1)
+        invalid.days[0].attraction_items[0].visit_duration = 0
+        invalid.days[0].meal_items[0].estimated_cost = -5
+        result = ItineraryMaterializer().materialize(request=self.request, registry=self.registry,
+                                                     experience=self.experience, logistics=self.logistics,
+                                                     draft=invalid, weather_info=self.weather)
+        codes = {failure.code for failure in result.failures}
+        self.assertIn("invalid_duration", codes)
+        self.assertIn("invalid_cost", codes)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -33,6 +33,19 @@ def get_llm():
     return _llm_instance
 
 
+def get_role_llm(role: str):
+    """Return an optional role-specific model, falling back to the shared deterministic model."""
+    settings = get_settings()
+    model = getattr(settings, f"{role}_model", "")
+    if not model:
+        return get_llm()
+    from langchain_openai import ChatOpenAI
+
+    api_key = os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY") or settings.openai_api_key
+    base_url = os.getenv("LLM_BASE_URL") or os.getenv("OPENAI_BASE_URL") or settings.openai_base_url
+    return ChatOpenAI(api_key=api_key, base_url=base_url, model=model, temperature=0)
+
+
 def reset_llm():
     """Reset the shared LLM instance."""
     global _llm_instance

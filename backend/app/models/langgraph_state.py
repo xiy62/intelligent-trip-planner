@@ -159,6 +159,12 @@ class EvidenceLink(BaseModel):
     match_reason: str = ""
 
 
+class RouteFailureDetail(BaseModel):
+    day_index: int
+    segment_indices: List[int] = Field(default_factory=list)
+    kind: Literal["ordering_problem", "candidate_set_problem", "missing_route_data"]
+
+
 class EvaluationReport(BaseModel):
     """Graph evaluation result used for routing and debugging."""
 
@@ -170,6 +176,10 @@ class EvaluationReport(BaseModel):
     unsupported_entities: List[UnsupportedEntity] = Field(default_factory=list)
     unsupported_claims: List[str] = Field(default_factory=list)
     evidence_links: List[EvidenceLink] = Field(default_factory=list)
+    failure_owner: Optional[Literal["experience", "logistics", "composer"]] = None
+    revision_target: Optional[Literal["experience", "logistics", "composer"]] = None
+    materialization_failures: List[Dict[str, Any]] = Field(default_factory=list)
+    route_failure_details: List[RouteFailureDetail] = Field(default_factory=list)
     next_action: Literal[
         "finalize_response",
         "plan_itinerary",
@@ -309,3 +319,4 @@ class TripGraphState(TypedDict, total=False):
     agent_retry_state: AgentRetryState
     agent_metrics: AgentMetrics
     materialization_failures: List[Dict[str, Any]]
+    agent_error: Dict[str, Any]

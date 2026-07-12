@@ -87,9 +87,9 @@ class LogisticsProposal(ProposalBase):
 
 class DraftAttraction(BaseModel):
     source_id: str
-    visit_duration: int = Field(ge=15, le=720)
+    visit_duration: int
     description: str = ""
-    ticket_price: int = Field(default=0, ge=0)
+    ticket_price: int = 0
     cost_status: Literal["known", "estimated", "unknown"] = "unknown"
 
 
@@ -98,7 +98,7 @@ class DraftMeal(BaseModel):
     source_id: Optional[str] = None
     generic_name: Optional[str] = None
     description: str = ""
-    estimated_cost: int = Field(default=0, ge=0)
+    estimated_cost: int = 0
     cost_status: Literal["known", "estimated", "unknown"] = "unknown"
 
 
@@ -116,7 +116,7 @@ class IDBasedItineraryDraft(ProposalBase):
     logistics_version: int = Field(ge=1)
     days: List[DraftDay] = Field(default_factory=list)
     overall_suggestions: str = ""
-    transportation_estimate: int = Field(default=0, ge=0)
+    transportation_estimate: int = 0
 
 
 class AgentFeedback(BaseModel):
@@ -144,4 +144,3 @@ class AgentMetrics(BaseModel):
     targeted_retries: List[AgentRole] = Field(default_factory=list)
     invalid_source_ids: List[str] = Field(default_factory=list)
     handoff_trace: List[Dict[str, Any]] = Field(default_factory=list)
-
