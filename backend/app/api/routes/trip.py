@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from ..dependencies import require_admin_token
-from ...agents.langgraph_trip_planner import get_trip_planner_agent
+from ...agents.planner_factory import get_trip_planner_agent
 from ...models.schemas import MemoryClearRequest, MemoryClearResponse, TripPlanResponse, TripRequest, ValidationSummary
 from ...services.memory_service import get_memory_service
 from ...services.observability_service import get_observability_service

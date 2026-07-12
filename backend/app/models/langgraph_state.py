@@ -271,6 +271,7 @@ class TripGraphState(TypedDict, total=False):
     decision_trace: Annotated[List[str], merge_decision_trace]
     metrics: Annotated[RunMetrics, merge_run_metrics]
     final_plan: Optional[TripPlan]
+    run_id: str
     conversation_id: str
     memory_applied: bool
     memory_summary: str

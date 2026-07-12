@@ -208,16 +208,18 @@ class LangGraphTripPlanner:
 
     def invoke_graph(self, request: TripRequest, thread_id: Optional[str] = None) -> TripGraphState:
         """Run the graph and return the final state for debugging/tests."""
-        conversation_id = thread_id or request.conversation_id or str(uuid4())
+        run_id = thread_id or str(uuid4())
+        conversation_id = request.conversation_id or str(uuid4())
         initial_state: TripGraphState = {
             "request": request,
+            "run_id": run_id,
             "conversation_id": conversation_id,
             "memory_applied": False,
             "memory_summary": "",
             "memory_profile": {},
             "memory_conflicts": [],
         }
-        config = {"configurable": {"thread_id": conversation_id}}
+        config = {"configurable": {"thread_id": run_id}}
         return self.graph.invoke(initial_state, config=config)
 
     def get_state_snapshot(self, thread_id: str):

@@ -366,6 +366,20 @@ class LangGraphTripPlannerTests(unittest.TestCase):
         self.assertEqual(snapshot.values["metrics"].evaluation_pass_count, 1)
         self.assertEqual(runtime.map_service.route_calls, [])
 
+    def test_generate_uses_fresh_run_id_separate_from_conversation_id(self):
+        runtime = FakeNativeRuntime(
+            attraction_responses=[ATTRACTIONS_ALL],
+            hotel_responses=[HOTELS_ALL],
+            planner_responses=[build_valid_plan_json()],
+        )
+        planner = runtime.build_planner()
+        request = build_request().model_copy(update={"conversation_id": "product-session"})
+        first = planner.invoke_graph(request)
+        second = planner.invoke_graph(request)
+        self.assertEqual(first["conversation_id"], "product-session")
+        self.assertEqual(second["conversation_id"], "product-session")
+        self.assertNotEqual(first["run_id"], second["run_id"])
+
     def test_route_time_collection_uses_fake_map_provider_when_enabled(self):
         original_route_time_enabled = settings.route_time_evaluation_enabled
         original_segment_thresholds = settings.max_segment_minutes_by_mode
