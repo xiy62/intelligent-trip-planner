@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 import statistics
 import sys
@@ -20,6 +21,7 @@ from app.agents.multi_agent_trip_planner import MultiAgentTripPlanner
 from app.config import get_settings
 from app.models.schemas import TripRequest
 from app.services.llm_service import get_llm
+from app.services.rag_service import get_rag_service
 
 REQUEST_FIELDS = ("city", "start_date", "end_date", "travel_days", "transportation",
                   "accommodation", "preferences", "free_text_input")
@@ -133,6 +135,58 @@ def run_one(planner, llm, case, case_index, repeat):
             "final_ids": ids_by_type(plan)}
 
 
+def prewarm_parallel_rag(rag_service, rag_mode, max_workers):
+    """Initialize the shared read-only Chroma handle before worker threads can race."""
+    if max_workers > 1 and rag_mode == "chroma_retrieval":
+        rag_service._get_vectorstore()
+
+
+def build_worker(rag_mode, llm_backend=None, rag_service=None):
+    llm = CountingLLM(llm_backend or get_llm())
+    return MultiAgentTripPlanner(llm=llm, rag_mode=rag_mode, rag_service=rag_service), llm
+
+
+def safe_run_one(planner, llm, case, case_index, repeat, *, runner=run_one):
+    try:
+        return runner(planner, llm, case, case_index, repeat)
+    except Exception as exc:
+        return {"case_index": case_index, "repeat": repeat, "status": "runtime_error",
+                "passed": False, "error_type": type(exc).__name__, "error": str(exc)[:500]}
+
+
+def execute_order(cases, order, *, max_workers, worker_factory, runner=run_one, on_result=None):
+    """Execute workflows with isolated parallel workers and deterministic result ordering."""
+    if max_workers < 1:
+        raise ValueError("max_workers must be at least 1")
+    results_by_position = {}
+
+    def record(position, row):
+        results_by_position[position] = row
+        ordered_rows = [results_by_position[index] for index in sorted(results_by_position)]
+        if on_result is not None:
+            on_result(ordered_rows, row)
+
+    if max_workers == 1:
+        planner, llm = worker_factory()
+        for position, (case_index, repeat) in enumerate(order):
+            row = safe_run_one(planner, llm, cases[case_index - 1], case_index, repeat, runner=runner)
+            record(position, row)
+        return [results_by_position[index] for index in range(len(order))]
+
+    def isolated_workflow(position, case_index, repeat):
+        planner, llm = worker_factory()
+        row = safe_run_one(planner, llm, cases[case_index - 1], case_index, repeat, runner=runner)
+        return position, row
+
+    with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="multi-benchmark") as executor:
+        futures = [executor.submit(isolated_workflow, position, case_index, repeat)
+                   for position, (case_index, repeat) in enumerate(order)]
+        for future in as_completed(futures):
+            position, row = future.result()
+            record(position, row)
+    return [results_by_position[index] for index in range(len(order))]
+
+
 def compare_rows(first, second):
     all_first = sum((first["final_ids"][key] for key in ("attraction", "hotel", "meal")), [])
     all_second = sum((second["final_ids"][key] for key in ("attraction", "hotel", "meal")), [])
@@ -231,12 +285,17 @@ def main():
     parser.add_argument("--output", default="benchmarks/results/multi_agent_12case_stability_2x.json")
     parser.add_argument("--repeat-count", type=int, choices=(1, 2), default=2)
     parser.add_argument("--reference-result", default="")
+    parser.add_argument("--max-workers", type=int, default=1,
+                        help="Parallel workflow workers; 1 preserves sequential execution")
     args = parser.parse_args()
     dataset, output = ROOT / args.dataset, ROOT / args.output
     cases = json.loads(dataset.read_text())
-    llm = CountingLLM(get_llm())
-    planner = MultiAgentTripPlanner(llm=llm, rag_mode=get_settings().rag_mode)
-    rows = []
+    if args.max_workers < 1:
+        parser.error("--max-workers must be at least 1")
+    rag_mode = get_settings().rag_mode
+    llm_backend = get_llm()
+    rag_service = get_rag_service()
+    prewarm_parallel_rag(rag_service, rag_mode, args.max_workers)
     order = [(index, 1) for index in range(1, 13)]
     if args.repeat_count == 2:
         order += [(index, 2) for index in range(12, 0, -1)]
@@ -244,16 +303,27 @@ def main():
     reference_rows = []
     if args.reference_result:
         reference_rows = json.loads((ROOT / args.reference_result).read_text()).get("results", [])
-    for run_index, (case_index, repeat) in enumerate(order, 1):
-        print(f"[{run_index}/{total_runs}] case={case_index} repeat={repeat}", flush=True)
-        try:
-            row = run_one(planner, llm, cases[case_index - 1], case_index, repeat)
-        except Exception as exc:
-            row = {"case_index": case_index, "repeat": repeat, "status": "runtime_error",
-                   "passed": False, "error_type": type(exc).__name__, "error": str(exc)[:500]}
-        rows.append(row)
+    benchmark_started = time.perf_counter()
+    completion_count = 0
+    completion_order = []
+    payload = {}
+
+    def persist(rows, row):
+        nonlocal completion_count, payload
+        completion_count += 1
+        completion_order.append({"case_index": row["case_index"], "repeat": row["repeat"]})
+        print(f"[{completion_count}/{total_runs}] case={row['case_index']} repeat={row['repeat']} "
+              f"status={row['status']} passed={row.get('passed')}", flush=True)
         completed = [item for item in rows if item["status"] == "completed"]
         summary = summarize(completed)
+        elapsed_ms = (time.perf_counter() - benchmark_started) * 1000
+        summed_latency_ms = sum(item.get("latency_ms", 0) for item in completed)
+        summary["benchmark_wall_time_ms"] = round(elapsed_ms, 3)
+        summary["summed_workflow_latency_ms"] = round(summed_latency_ms, 3)
+        summary["effective_parallelism"] = round(summed_latency_ms / elapsed_ms, 4) if elapsed_ms else 0.0
+        summary["throughput_workflows_per_minute"] = (
+            round(len(rows) * 60_000 / elapsed_ms, 4) if elapsed_ms else 0.0
+        )
         if reference_rows:
             summary["reference_overlap"] = compare_with_reference(completed, reference_rows)
             all_validated = len(completed) == total_runs and summary["pass_rate"] == 1.0
@@ -263,10 +333,15 @@ def main():
                                      "passed": all_validated and overall_above_half}
         payload = {"benchmark": f"multi_agent_12case_stability_{args.repeat_count}x",
                    "reference_result": args.reference_result or None,
+                   "execution": {"mode": "parallel" if args.max_workers > 1 else "sequential",
+                                 "max_workers": args.max_workers,
+                                 "completion_order": list(completion_order)},
                    "summary": summary, "results": rows}
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(payload, indent=2) + "\n")
-        print(f"  status={row['status']} passed={row.get('passed')}", flush=True)
+
+    execute_order(cases, order, max_workers=args.max_workers,
+                  worker_factory=lambda: build_worker(rag_mode, llm_backend, rag_service), on_result=persist)
     print(json.dumps(payload["summary"], indent=2), flush=True)
 
 
