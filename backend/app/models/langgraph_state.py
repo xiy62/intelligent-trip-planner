@@ -6,6 +6,15 @@ from typing import Annotated, Any, Dict, List, Literal, Optional, TypedDict
 
 from pydantic import BaseModel, Field
 
+from .multi_agent import (
+    AgentFeedback,
+    AgentMetrics,
+    AgentRetryState,
+    CandidateRegistry,
+    ExperienceProposal,
+    IDBasedItineraryDraft,
+    LogisticsProposal,
+)
 from .schemas import Location, TripPlan, TripRequest, WeatherInfo
 
 
@@ -292,3 +301,11 @@ class TripGraphState(TypedDict, total=False):
     memory_summary: str
     memory_profile: Dict[str, Any]
     memory_conflicts: List[Dict[str, Any]]
+    candidate_registry: CandidateRegistry
+    experience_proposal: ExperienceProposal
+    logistics_proposal: LogisticsProposal
+    id_draft: IDBasedItineraryDraft
+    agent_feedback: AgentFeedback
+    agent_retry_state: AgentRetryState
+    agent_metrics: AgentMetrics
+    materialization_failures: List[Dict[str, Any]]
