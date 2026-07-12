@@ -132,9 +132,9 @@ class MultiAgentTripPlanner(LangGraphTripPlanner):
     def run_logistics_agent(self, state: TripGraphState) -> TripGraphState:
         started = time.perf_counter()
         registry = state["candidate_registry"].model_copy(deep=True)
-        cluster_count = len(state["experience_proposal"].clusters)
-        hotel_limit = min(3, 1 + cluster_count)
-        meal_limit = min(4, max(2, cluster_count))
+        anchor_count = min(2, len(state["experience_proposal"].core_attraction_ids))
+        hotel_limit = min(3, 1 + anchor_count)
+        meal_limit = min(4, 2 + anchor_count)
         gateway = ToolGateway(registry=registry,
                               tools={"hotel_search": self._gateway_map_search,
                                      "meal_search": self._gateway_map_search},

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any, Callable, List, Optional
 
 from pydantic import BaseModel, Field
@@ -9,12 +10,15 @@ from pydantic import BaseModel, Field
 from ..models.langgraph_state import RAGChunk
 from ..models.multi_agent import (
     AgentFeedback,
+    CandidateObservation,
     CandidateRegistry,
+    ExperienceCluster,
     ExperienceProposal,
     RegistryEntity,
     registry_source_id,
 )
 from ..models.schemas import TripRequest
+from .candidate_ranking import alias_map, compact_candidates, normalize_text, pace_target, resolve_aliases, shortlist
 from .structured_llm import invoke_structured
 from .tool_gateway import ToolGateway, ToolGatewayError
 
@@ -23,6 +27,21 @@ class ExperienceResearchPlan(BaseModel):
     attraction_queries: List[str] = Field(default_factory=list, max_length=3)
     rag_query: str = ""
     detail_source_ids: List[str] = Field(default_factory=list, max_length=2)
+
+
+class ExperienceAliasCluster(BaseModel):
+    name: str
+    attraction_aliases: List[str] = Field(default_factory=list)
+    rationale: str = ""
+
+
+class ExperienceAliasProposal(BaseModel):
+    clusters: List[ExperienceAliasCluster] = Field(default_factory=list, max_length=4)
+    core_attraction_aliases: List[str] = Field(default_factory=list)
+    optional_attraction_aliases: List[str] = Field(default_factory=list)
+    rag_chunk_ids: List[str] = Field(default_factory=list)
+    uncovered_preferences: List[str] = Field(default_factory=list)
+    evidence_sufficient: bool = True
 
 
 class ExperienceAgentResult(BaseModel):
@@ -78,12 +97,16 @@ class ExperienceAgent:
 
         rag_chunks: List[RAGChunk] = []
         try:
-            for query in research.attraction_queries[:3]:
+            anchor = normalize_text(" ".join(request.preferences) + " attractions") or "top attractions"
+            supplemental = sorted({normalize_text(query) for query in research.attraction_queries if normalize_text(query) and normalize_text(query) != anchor})[:2]
+            queries = [(anchor, "base_anchor"), *[(query, "supplemental") for query in supplemental]]
+            for query_index, (query, source_type) in enumerate(queries):
                 items = self.gateway.call(
                     "experience", "attraction_search", query_key=query,
                     query=query, city=request.city, country_code=request.country_code,
                 )
-                self.gateway.register("experience", self._registry_entities(items))
+                self.gateway.register("experience", self._registry_entities(
+                    items, source_type=source_type, query=query, query_index=query_index))
             if research.rag_query:
                 result = self.gateway.call(
                     "experience", "rag_search", query_key=research.rag_query,
@@ -98,7 +121,8 @@ class ExperienceAgent:
                     "experience", "place_detail", query_key=source_id,
                     source_id=entity.provider_id or entity.source_id,
                 )
-                entities = self._registry_entities([detail])
+                entities = self._registry_entities([detail], source_type="place_details",
+                                                   query=source_id, query_index=0)
                 if entities:
                     self.gateway.register("experience", entities)
         except ToolGatewayError as exc:
@@ -118,30 +142,49 @@ class ExperienceAgent:
 
     def _build_proposal(self, request: TripRequest, rag_chunks: List[RAGChunk], context: dict,
                         attempt: int) -> ExperienceProposal:
-        allowed = self._attraction_ids()
+        ranked = shortlist(self.gateway.registry, "attraction", request, limit=12)
+        aliases = alias_map(ranked, "A")
+        target = min(len(ranked), pace_target(request))
+        core_count = min(target, max(2, math.ceil(target * 0.6)))
+        optional_count = min(max(0, len(ranked) - core_count), max(0, target - core_count + 2))
         prompt = (
             "You are the Experience specialist. Create at most four thematic clusters. "
-            "Use only attraction IDs and RAG chunk IDs listed below; do not assign dates.\n"
-            f"request={request.model_dump()}\nregistry_ids={allowed}\n"
+            "Use only A aliases below; do not assign dates. Select exactly the requested core and optional counts.\n"
+            f"request={request.model_dump()}\ntarget={target} core_count={core_count} optional_count={optional_count}\n"
+            f"candidates={compact_candidates(ranked, aliases)}\n"
             f"rag_chunk_ids={[chunk.chunk_id for chunk in rag_chunks]}\nrevision={context}"
         )
         try:
-            proposal = invoke_structured(self.llm, ExperienceProposal, prompt)
+            alias_proposal = invoke_structured(self.llm, ExperienceAliasProposal, prompt)
         except Exception as exc:
             raise ExperienceAgentError("structured_output", str(exc)) from exc
-        proposal.run_id = self.gateway.registry.run_id
-        proposal.version = (context["previous_proposal"] or {}).get("version", 0) + 1
-        invalid = proposal.allowed_attraction_ids - set(allowed)
-        invalid_rag = set(proposal.rag_chunk_ids) - {chunk.chunk_id for chunk in rag_chunks}
-        if invalid or invalid_rag:
-            raise ExperienceAgentError("invalid_source_id", f"invalid IDs: {sorted(invalid | invalid_rag)}")
-        if not proposal.allowed_attraction_ids:
-            raise ExperienceAgentError("no_attraction_evidence", "proposal selected no attractions")
+        try:
+            core = resolve_aliases(alias_proposal.core_attraction_aliases, aliases, expected_prefix="A")
+            optional = resolve_aliases(alias_proposal.optional_attraction_aliases, aliases, expected_prefix="A")
+            if len(core) != core_count or len(optional) != optional_count or set(core) & set(optional):
+                raise ValueError("invalid attraction cardinality")
+            clusters = [ExperienceCluster(name=item.name,
+                                           attraction_ids=resolve_aliases(item.attraction_aliases, aliases, expected_prefix="A"),
+                                           rationale=item.rationale)
+                        for item in alias_proposal.clusters]
+        except ValueError as exc:
+            raise ExperienceAgentError("invalid_source_id", str(exc)) from exc
+        invalid_rag = set(alias_proposal.rag_chunk_ids) - {chunk.chunk_id for chunk in rag_chunks}
+        if invalid_rag:
+            raise ExperienceAgentError("invalid_source_id", f"invalid RAG IDs: {sorted(invalid_rag)}")
+        proposal = ExperienceProposal(run_id=self.gateway.registry.run_id,
+                                      version=(context["previous_proposal"] or {}).get("version", 0) + 1,
+                                      clusters=clusters, rag_chunk_ids=alias_proposal.rag_chunk_ids,
+                                      uncovered_preferences=alias_proposal.uncovered_preferences,
+                                      evidence_sufficient=alias_proposal.evidence_sufficient,
+                                      core_attraction_ids=core, optional_attraction_ids=optional,
+                                      target_attractions=target)
         return proposal
 
     def _fallback(self, request: TripRequest, attempt: int) -> ExperienceAgentResult:
         items, rag_chunks = self.deterministic_fallback(request) if self.deterministic_fallback else ([], [])
-        self.gateway.register("experience", self._registry_entities(items))
+        self.gateway.register("experience", self._registry_entities(
+            items, source_type="base_anchor", query="deterministic fallback", query_index=0))
         ids = self._attraction_ids()
         if not ids:
             raise ExperienceAgentError("no_attraction_evidence", "agent and fallback found no attractions")
@@ -154,13 +197,17 @@ class ExperienceAgent:
             rag_chunk_ids=[chunk.chunk_id for chunk in rag_chunks],
             uncovered_preferences=list(request.preferences),
             evidence_sufficient=False,
+            core_attraction_ids=ids[:max(2, min(len(ids), pace_target(request)))],
+            optional_attraction_ids=[],
+            target_attractions=min(len(ids), pace_target(request)),
         )
         return ExperienceAgentResult(proposal=proposal, rag_chunks=rag_chunks,
                                      used_deterministic_fallback=True)
 
-    def _registry_entities(self, items: Any) -> List[RegistryEntity]:
+    def _registry_entities(self, items: Any, *, source_type: str, query: str,
+                           query_index: int) -> List[RegistryEntity]:
         entities = []
-        for item in list(items or []):
+        for provider_rank, item in enumerate(list(items or []), 1):
             if not isinstance(item, dict):
                 continue
             provider_id = str(item.get("id") or item.get("provider_id") or item.get("source_id") or "")
@@ -172,10 +219,22 @@ class ExperienceAgent:
                                             address=str(item.get("address") or ""),
                                             location=item.get("location") or None,
                                             rating=item.get("rating"), maps_url=item.get("maps_url"),
+                                            user_rating_count=item.get("user_rating_count"),
                                             website_url=item.get("website_url"), image_url=item.get("image_url"),
                                             photo_names=list(item.get("photo_names") or []),
                                             metadata={"category": item.get("type") or "Attraction"},
-                                            registered_by="experience"))
+                                            registered_by="experience",
+                                            observations=[CandidateObservation(
+                                                source_type=source_type, normalized_query=normalize_text(query),
+                                                query_index=query_index, provider_rank=provider_rank,
+                                                provider_id=provider_id, name=name,
+                                                address=str(item.get("address") or ""),
+                                                location=item.get("location") or None, rating=item.get("rating"),
+                                                user_rating_count=item.get("user_rating_count"),
+                                                maps_url=item.get("maps_url"), website_url=item.get("website_url"),
+                                                image_url=item.get("image_url"),
+                                                photo_names=list(item.get("photo_names") or []),
+                                                metadata={"category": item.get("type") or "Attraction"})]))
         return entities
 
     def _attraction_ids(self) -> List[str]:

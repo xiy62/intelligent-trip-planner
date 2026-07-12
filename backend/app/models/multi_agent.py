@@ -30,6 +30,7 @@ class RegistryEntity(BaseModel):
     address: str = ""
     location: Optional[Location] = None
     rating: Optional[float] = None
+    user_rating_count: Optional[int] = None
     provider: str = "google_maps"
     maps_url: Optional[str] = None
     website_url: Optional[str] = None
@@ -37,6 +38,29 @@ class RegistryEntity(BaseModel):
     photo_names: List[str] = Field(default_factory=list)
     metadata: Dict[str, Any] = Field(default_factory=dict)
     registered_by: AgentRole
+    observations: List["CandidateObservation"] = Field(default_factory=list)
+    query_provenance: List[str] = Field(default_factory=list)
+    best_provider_rank: Optional[int] = None
+    relevance_score: float = 0.0
+    score_components: Dict[str, float] = Field(default_factory=dict)
+
+
+class CandidateObservation(BaseModel):
+    source_type: Literal["place_details", "base_anchor", "supplemental"]
+    normalized_query: str = ""
+    query_index: int = 0
+    provider_rank: int = Field(default=1, ge=1)
+    provider_id: str
+    name: str = ""
+    address: str = ""
+    location: Optional[Location] = None
+    rating: Optional[float] = None
+    user_rating_count: Optional[int] = None
+    maps_url: Optional[str] = None
+    website_url: Optional[str] = None
+    image_url: Optional[str] = None
+    photo_names: List[str] = Field(default_factory=list)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
 class CandidateRegistry(BaseModel):
@@ -52,8 +76,34 @@ class CandidateRegistry(BaseModel):
         existing = self.entities.get(entity.source_id)
         if existing is not None and existing.registered_by != actor:
             raise ValueError("an agent cannot overwrite another agent's registry entity")
+        if existing is not None:
+            entity = self._merge(existing, entity)
         self.entities[entity.source_id] = entity
         self.revision += 1
+
+    @staticmethod
+    def _merge(existing: RegistryEntity, incoming: RegistryEntity) -> RegistryEntity:
+        observations = list(existing.observations) + list(incoming.observations)
+        unique = {item.model_dump_json(): item for item in observations}
+        observations = sorted(unique.values(), key=CandidateRegistry._observation_key)
+        merged = existing.model_copy(deep=True)
+        merged.observations = observations
+        for field in ("name", "address", "location", "rating", "user_rating_count", "maps_url",
+                      "website_url", "image_url", "photo_names", "metadata"):
+            for observation in observations:
+                value = getattr(observation, field)
+                if value not in (None, "", [], {}):
+                    setattr(merged, field, value)
+                    break
+        merged.query_provenance = sorted({item.normalized_query for item in observations if item.normalized_query})
+        ranks = [item.provider_rank for item in observations]
+        merged.best_provider_rank = min(ranks) if ranks else None
+        return merged
+
+    @staticmethod
+    def _observation_key(item: CandidateObservation) -> tuple:
+        priority = {"place_details": 0, "base_anchor": 1, "supplemental": 2}[item.source_type]
+        return (priority, item.query_index, item.provider_rank, item.provider_id)
 
     def summary(self) -> Dict[str, Any]:
         by_type = {kind: 0 for kind in ("attraction", "hotel", "meal")}
@@ -78,10 +128,14 @@ class ExperienceProposal(ProposalBase):
     rag_chunk_ids: List[str] = Field(default_factory=list)
     uncovered_preferences: List[str] = Field(default_factory=list)
     evidence_sufficient: bool = True
+    core_attraction_ids: List[str] = Field(default_factory=list)
+    optional_attraction_ids: List[str] = Field(default_factory=list)
+    target_attractions: int = 0
 
     @property
     def allowed_attraction_ids(self) -> set[str]:
-        return {source_id for cluster in self.clusters for source_id in cluster.attraction_ids}
+        explicit = set(self.core_attraction_ids) | set(self.optional_attraction_ids)
+        return explicit or {source_id for cluster in self.clusters for source_id in cluster.attraction_ids}
 
 
 class LogisticsProposal(ProposalBase):
@@ -92,6 +146,7 @@ class LogisticsProposal(ProposalBase):
     infeasible_pairs: List[List[str]] = Field(default_factory=list)
     unknowns: List[str] = Field(default_factory=list)
     cost_assumptions: Dict[str, int] = Field(default_factory=dict)
+    primary_hotel_id: Optional[str] = None
 
 
 class DraftAttraction(BaseModel):

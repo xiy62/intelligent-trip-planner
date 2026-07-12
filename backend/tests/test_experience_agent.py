@@ -41,15 +41,16 @@ class ExperienceAgentTests(unittest.TestCase):
                               budgets={"attraction_search": 3, "rag_search": 1, "place_detail": 2})
         llm = FakeLLM([
             {"attraction_queries": ["museum", "museum"], "rag_query": "museum planning"},
-            {"version": 99, "run_id": "wrong", "clusters": [{"name": "Art", "attraction_ids": ["attraction:a1"]}],
+            {"clusters": [{"name": "Art", "attraction_aliases": ["A1"]}],
+             "core_attraction_aliases": ["A1"], "optional_attraction_aliases": [],
              "rag_chunk_ids": ["r1"], "uncovered_preferences": [], "evidence_sufficient": True},
         ])
         result = ExperienceAgent(llm=llm, gateway=gateway).run(request=request())
         self.assertEqual(result.proposal.run_id, "run-1")
         self.assertEqual(result.proposal.version, 1)
         self.assertEqual(result.proposal.allowed_attraction_ids, {"attraction:a1"})
-        self.assertEqual(calls, ["museum"])
-        self.assertEqual(gateway.call_counts["attraction_search"], 1)
+        self.assertEqual(calls, ["museums attractions", "museum"])
+        self.assertEqual(gateway.call_counts["attraction_search"], 2)
         self.assertEqual(len(llm.calls), 2)
 
     def test_transient_provider_failure_uses_deterministic_fallback(self):
@@ -75,7 +76,8 @@ class ExperienceAgentTests(unittest.TestCase):
                               budgets={"attraction_search": 3})
         llm = FakeLLM([
             {"attraction_queries": ["museum"]},
-            {"version": 1, "run_id": "run-1", "clusters": [{"name": "Bad", "attraction_ids": ["invented"]}]},
+            {"clusters": [{"name": "Bad", "attraction_aliases": ["A99"]}],
+             "core_attraction_aliases": ["A99"], "optional_attraction_aliases": []},
         ])
         with self.assertRaises(ExperienceAgentError) as context:
             ExperienceAgent(llm=llm, gateway=gateway).run(request=request())
