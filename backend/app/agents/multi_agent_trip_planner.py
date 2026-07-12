@@ -368,9 +368,10 @@ class MultiAgentTripPlanner(LangGraphTripPlanner):
                           "logistics_agent", "composer_agent", "canonical_materializer",
                           "collect_route_times", "evaluate_itinerary", "finalize_response", "fallback_response"]}
 
-    def _gateway_map_search(self, *, query: str, city: str, country_code: str, **_: Any):
+    def _gateway_map_search(self, *, query: str, city: str, country_code: str,
+                            page_size: int = 8, **_: Any):
         return self.search_poi_tool.invoke({"keywords": query, "city": city, "citylimit": True,
-                                            "page_size": 8, "country_code": country_code})
+                                            "page_size": page_size, "country_code": country_code})
 
     def _gateway_rag_search(self, *, request: TripRequest, **_: Any):
         return self.rag_service.retrieve_chunks(request, rag_mode=self.rag_mode, attraction_candidates=[])

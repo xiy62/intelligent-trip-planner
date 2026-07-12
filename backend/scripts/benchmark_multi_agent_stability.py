@@ -133,52 +133,65 @@ def run_one(planner, llm, case, case_index, repeat):
             "final_ids": ids_by_type(plan)}
 
 
+def compare_rows(first, second):
+    all_first = sum((first["final_ids"][key] for key in ("attraction", "hotel", "meal")), [])
+    all_second = sum((second["final_ids"][key] for key in ("attraction", "hotel", "meal")), [])
+    first_pool = (layer_ids(first, "experience", "candidate_pool_ids")
+                  + layer_ids(first, "logistics", "hotel_pool_ids")
+                  + layer_ids(first, "logistics", "meal_pool_ids"))
+    second_pool = (layer_ids(second, "experience", "candidate_pool_ids")
+                   + layer_ids(second, "logistics", "hotel_pool_ids")
+                   + layer_ids(second, "logistics", "meal_pool_ids"))
+    first_shortlist = (layer_ids(first, "experience", "shortlist_ids")
+                       + layer_ids(first, "logistics", "hotel_shortlist_ids")
+                       + layer_ids(first, "logistics", "meal_shortlist_ids"))
+    second_shortlist = (layer_ids(second, "experience", "shortlist_ids")
+                        + layer_ids(second, "logistics", "hotel_shortlist_ids")
+                        + layer_ids(second, "logistics", "meal_shortlist_ids"))
+    first_proposal = (layer_ids(first, "experience", "core_ids")
+                      + layer_ids(first, "experience", "optional_ids")
+                      + [value for value in [layer_ids(first, "logistics", "primary_hotel_id")] if value]
+                      + layer_ids(first, "logistics", "selected_meal_ids"))
+    second_proposal = (layer_ids(second, "experience", "core_ids")
+                       + layer_ids(second, "experience", "optional_ids")
+                       + [value for value in [layer_ids(second, "logistics", "primary_hotel_id")] if value]
+                       + layer_ids(second, "logistics", "selected_meal_ids"))
+    return {"case_index": first["case_index"], "candidate_pool": jaccard(first_pool, second_pool),
+            "ranked_shortlist": jaccard(first_shortlist, second_shortlist),
+            "proposal": jaccard(first_proposal, second_proposal),
+            "overall": jaccard(all_first, all_second),
+            "attraction": jaccard(first["final_ids"]["attraction"], second["final_ids"]["attraction"]),
+            "hotel_exact": first["final_ids"]["hotel"] == second["final_ids"]["hotel"],
+            "meal": jaccard(first["final_ids"]["meal"], second["final_ids"]["meal"]),
+            "day_assignment": jaccard(first["final_ids"]["day_assignment"], second["final_ids"]["day_assignment"]),
+            "route_order": route_similarity(first["final_ids"]["route_order"], second["final_ids"]["route_order"])}
+
+
+def overlap_summary(pairs):
+    def average(key):
+        return statistics.mean(item[key] for item in pairs) if pairs else 0.0
+    return {"validated_pair_count": len(pairs),
+            "candidate_pool_jaccard": average("candidate_pool"),
+            "ranked_shortlist_jaccard": average("ranked_shortlist"),
+            "proposal_jaccard": average("proposal"), "overall_jaccard": average("overall"),
+            "attraction_jaccard": average("attraction"), "primary_hotel_exact_match": average("hotel_exact"),
+            "meal_jaccard": average("meal"), "day_assignment_jaccard": average("day_assignment"),
+            "route_order_similarity": average("route_order"), "pairs": pairs}
+
+
 def summarize(rows):
     pairs = []
     for case_index in range(1, 13):
         values = sorted([row for row in rows if row["case_index"] == case_index], key=lambda row: row["repeat"])
         if len(values) != 2 or not all(row["passed"] for row in values):
             continue
-        first, second = values
-        all_first = sum((first["final_ids"][key] for key in ("attraction", "hotel", "meal")), [])
-        all_second = sum((second["final_ids"][key] for key in ("attraction", "hotel", "meal")), [])
-        first_pool = (layer_ids(first, "experience", "candidate_pool_ids")
-                      + layer_ids(first, "logistics", "hotel_pool_ids")
-                      + layer_ids(first, "logistics", "meal_pool_ids"))
-        second_pool = (layer_ids(second, "experience", "candidate_pool_ids")
-                       + layer_ids(second, "logistics", "hotel_pool_ids")
-                       + layer_ids(second, "logistics", "meal_pool_ids"))
-        first_shortlist = (layer_ids(first, "experience", "shortlist_ids")
-                           + layer_ids(first, "logistics", "hotel_shortlist_ids")
-                           + layer_ids(first, "logistics", "meal_shortlist_ids"))
-        second_shortlist = (layer_ids(second, "experience", "shortlist_ids")
-                            + layer_ids(second, "logistics", "hotel_shortlist_ids")
-                            + layer_ids(second, "logistics", "meal_shortlist_ids"))
-        first_proposal = (layer_ids(first, "experience", "core_ids")
-                          + layer_ids(first, "experience", "optional_ids")
-                          + [value for value in [layer_ids(first, "logistics", "primary_hotel_id")] if value]
-                          + layer_ids(first, "logistics", "selected_meal_ids"))
-        second_proposal = (layer_ids(second, "experience", "core_ids")
-                           + layer_ids(second, "experience", "optional_ids")
-                           + [value for value in [layer_ids(second, "logistics", "primary_hotel_id")] if value]
-                           + layer_ids(second, "logistics", "selected_meal_ids"))
-        pairs.append({"case_index": case_index, "candidate_pool": jaccard(first_pool, second_pool),
-                      "ranked_shortlist": jaccard(first_shortlist, second_shortlist),
-                      "proposal": jaccard(first_proposal, second_proposal),
-                      "overall": jaccard(all_first, all_second),
-                      "attraction": jaccard(first["final_ids"]["attraction"], second["final_ids"]["attraction"]),
-                      "hotel_exact": first["final_ids"]["hotel"] == second["final_ids"]["hotel"],
-                      "meal": jaccard(first["final_ids"]["meal"], second["final_ids"]["meal"]),
-                      "day_assignment": jaccard(first["final_ids"]["day_assignment"], second["final_ids"]["day_assignment"]),
-                      "route_order": route_similarity(first["final_ids"]["route_order"], second["final_ids"]["route_order"])})
-    def average(key):
-        return statistics.mean(item[key] for item in pairs) if pairs else 0.0
+        pairs.append(compare_rows(*values))
     llm_calls = [row.get("budget_usage", {}).get("global_used", {}).get("llm", 0) for row in rows]
     map_calls = [row.get("budget_usage", {}).get("global_used", {}).get("maps", 0) for row in rows]
     rag_calls = [row.get("budget_usage", {}).get("global_used", {}).get("rag", 0) for row in rows]
     violations = [{"case_index": row["case_index"], "repeat": row["repeat"],
                    "violations": budget_violations(row)} for row in rows if budget_violations(row)]
-    return {"completed_runs": len(rows), "pass_rate": sum(row["passed"] for row in rows) / max(1, len(rows)),
+    summary = {"completed_runs": len(rows), "pass_rate": sum(row["passed"] for row in rows) / max(1, len(rows)),
             "fallback_rate": sum(row["fallback"] for row in rows) / max(1, len(rows)),
             "agent_error_count": sum(bool(row["agent_error"]) for row in rows),
             "unsupported_entity_count": sum(row["unsupported_entities"] for row in rows),
@@ -186,13 +199,6 @@ def summarize(rows):
             "canonical_field_hallucination_count": 0,
             "retrieval_recall_at_4": statistics.mean(row["retrieval_recall"] for row in rows) if rows else 0,
             "forbidden_retrieval_count": sum(len(row["forbidden_retrieval_ids"]) for row in rows),
-            "validated_pair_count": len(pairs),
-            "candidate_pool_jaccard": average("candidate_pool"),
-            "ranked_shortlist_jaccard": average("ranked_shortlist"),
-            "proposal_jaccard": average("proposal"), "overall_jaccard": average("overall"),
-            "attraction_jaccard": average("attraction"), "primary_hotel_exact_match": average("hotel_exact"),
-            "meal_jaccard": average("meal"), "day_assignment_jaccard": average("day_assignment"),
-            "route_order_similarity": average("route_order"),
             "avg_llm_calls": statistics.mean(llm_calls) if llm_calls else 0,
             "avg_maps_calls": statistics.mean(map_calls) if map_calls else 0,
             "max_llm_calls": max(llm_calls, default=0), "max_maps_calls": max(map_calls, default=0),
@@ -200,31 +206,64 @@ def summarize(rows):
             "per_workflow_budget_violation_count": len(violations),
             "per_workflow_budget_violations": violations,
             "avg_tokens": statistics.mean(row["token_usage"]["total_tokens"] for row in rows) if rows else 0,
-            "avg_latency_ms": statistics.mean(row["latency_ms"] for row in rows) if rows else 0,
-            "pairs": pairs}
+            "avg_latency_ms": statistics.mean(row["latency_ms"] for row in rows) if rows else 0}
+    summary.update(overlap_summary(pairs))
+    return summary
+
+
+def compare_with_reference(rows, reference_rows):
+    pairs = []
+    for current in rows:
+        if not current.get("passed"):
+            continue
+        for reference in reference_rows:
+            if reference.get("case_index") == current.get("case_index") and reference.get("passed"):
+                pair = compare_rows(current, reference)
+                pair["current_repeat"] = current.get("repeat")
+                pair["reference_repeat"] = reference.get("repeat")
+                pairs.append(pair)
+    return overlap_summary(pairs)
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", default="benchmarks/trip_requests.rag_benchmark.json")
     parser.add_argument("--output", default="benchmarks/results/multi_agent_12case_stability_2x.json")
+    parser.add_argument("--repeat-count", type=int, choices=(1, 2), default=2)
+    parser.add_argument("--reference-result", default="")
     args = parser.parse_args()
     dataset, output = ROOT / args.dataset, ROOT / args.output
     cases = json.loads(dataset.read_text())
     llm = CountingLLM(get_llm())
     planner = MultiAgentTripPlanner(llm=llm, rag_mode=get_settings().rag_mode)
     rows = []
-    order = [(index, 1) for index in range(1, 13)] + [(index, 2) for index in range(12, 0, -1)]
+    order = [(index, 1) for index in range(1, 13)]
+    if args.repeat_count == 2:
+        order += [(index, 2) for index in range(12, 0, -1)]
+    total_runs = len(order)
+    reference_rows = []
+    if args.reference_result:
+        reference_rows = json.loads((ROOT / args.reference_result).read_text()).get("results", [])
     for run_index, (case_index, repeat) in enumerate(order, 1):
-        print(f"[{run_index}/24] case={case_index} repeat={repeat}", flush=True)
+        print(f"[{run_index}/{total_runs}] case={case_index} repeat={repeat}", flush=True)
         try:
             row = run_one(planner, llm, cases[case_index - 1], case_index, repeat)
         except Exception as exc:
             row = {"case_index": case_index, "repeat": repeat, "status": "runtime_error",
                    "passed": False, "error_type": type(exc).__name__, "error": str(exc)[:500]}
         rows.append(row)
-        payload = {"benchmark": "multi_agent_12case_stability_2x", "baseline": "multi_agent_12case_ab_2x_after_fix.json",
-                   "summary": summarize([item for item in rows if item["status"] == "completed"]), "results": rows}
+        completed = [item for item in rows if item["status"] == "completed"]
+        summary = summarize(completed)
+        if reference_rows:
+            summary["reference_overlap"] = compare_with_reference(completed, reference_rows)
+            all_validated = len(completed) == total_runs and summary["pass_rate"] == 1.0
+            overall_above_half = summary["reference_overlap"]["overall_jaccard"] > 0.5
+            summary["acceptance"] = {"all_workflows_validated": all_validated,
+                                     "overall_jaccard_gt_0_5": overall_above_half,
+                                     "passed": all_validated and overall_above_half}
+        payload = {"benchmark": f"multi_agent_12case_stability_{args.repeat_count}x",
+                   "reference_result": args.reference_result or None,
+                   "summary": summary, "results": rows}
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(payload, indent=2) + "\n")
         print(f"  status={row['status']} passed={row.get('passed')}", flush=True)

@@ -98,13 +98,11 @@ class ExperienceAgent:
 
         rag_chunks: List[RAGChunk] = []
         try:
-            anchor = normalize_text(" ".join(request.preferences) + " attractions") or "top attractions"
-            supplemental = sorted({normalize_text(query) for query in research.attraction_queries if normalize_text(query) and normalize_text(query) != anchor})[:2]
-            queries = [(anchor, "base_anchor"), *[(query, "supplemental") for query in supplemental]]
+            queries = self._attraction_queries(request, research.attraction_queries)
             for query_index, (query, source_type) in enumerate(queries):
                 items = self.gateway.call(
                     "experience", "attraction_search", query_key=query,
-                    query=query, city=request.city, country_code=request.country_code,
+                    query=query, city=request.city, country_code=request.country_code, page_size=12,
                 )
                 self.gateway.register("experience", self._registry_entities(
                     items, source_type=source_type, query=query, query_index=query_index))
@@ -260,8 +258,27 @@ class ExperienceAgent:
     @staticmethod
     def _research_prompt(request: TripRequest, context: dict) -> str:
         return (
-            "You are a bounded Experience research agent. Return up to three attraction queries, "
+            "You are a bounded Experience research agent. Return up to two backup attraction queries, "
             "one optional RAG query, and up to two existing source IDs for details. "
+            "The runtime executes deterministic city/preference queries first and uses backup queries only "
+            "when fewer than two distinct preference queries exist. "
             "Current request overrides memory. Do not produce an itinerary.\n"
             f"request={request.model_dump()}\nrevision={context}"
         )
+
+    @staticmethod
+    def _attraction_queries(request: TripRequest, research_queries: List[str]) -> List[tuple[str, str]]:
+        """Build an arrival-order-independent anchor plus two stable supplemental queries."""
+        city = normalize_text(request.city)
+        preferences = sorted({normalize_text(value) for value in request.preferences if normalize_text(value)})
+        anchor_terms = " ".join(preferences)
+        anchor = normalize_text(f"{city} {anchor_terms} attractions") or "top attractions"
+        deterministic = [normalize_text(f"{city} {value} attractions") for value in preferences]
+        backups = sorted({normalize_text(value) for value in research_queries if normalize_text(value)})
+        supplemental = []
+        for query in [*deterministic, *backups]:
+            if query != anchor and query not in supplemental:
+                supplemental.append(query)
+            if len(supplemental) == 2:
+                break
+        return [(anchor, "base_anchor"), *[(query, "supplemental") for query in supplemental]]

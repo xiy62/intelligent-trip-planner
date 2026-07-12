@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any, List, Optional
 
 from ..models.multi_agent import AgentFeedback, ExperienceProposal, IDBasedItineraryDraft, LogisticsProposal
@@ -43,11 +44,21 @@ class ComposerAgent:
             "version": experience.version, "target": experience.target_attractions,
             "core": [reverse_a[item] for item in experience.core_attraction_ids],
             "optional": [reverse_a[item] for item in experience.optional_attraction_ids],
+            "clusters": [
+                {"name": cluster.name,
+                 "attractions": [reverse_a[item] for item in cluster.attraction_ids if item in reverse_a]}
+                for cluster in experience.clusters
+                if any(item in reverse_a for item in cluster.attraction_ids)
+            ],
         }
         compact_logistics = {
             "version": logistics.version, "primary_hotel": reverse_h.get(logistics.primary_hotel_id or ""),
             "hotels": list(hotel_aliases), "meals": list(meal_aliases),
         }
+        per_day_limit = max(1, math.ceil(experience.target_attractions / max(1, request.travel_days)))
+        base_count, remainder = divmod(experience.target_attractions, max(1, request.travel_days))
+        initial_distribution = [base_count + (1 if index < remainder else 0)
+                                for index in range(request.travel_days)]
         prompt = (
             "You are the tool-free Composer. Build the exact ordered request date set with continuous zero-based "
             "day indices. Use only IDs in the two proposals. Named meals require a meal source ID; otherwise use "
@@ -55,9 +66,14 @@ class ComposerAgent:
             "cost estimates, but never provider names, addresses, coordinates, ratings, or links.\n"
             "Return A/H/M aliases in source_id and hotel_id fields. Use every core A alias, use the primary H alias every day, "
             "use each A alias at most once globally, and use each M alias at most once globally. Assign selected M aliases "
-            "in the listed order; after they are exhausted, use source_id=null with a generic_name.\n"
+            "in the listed order; after they are exhausted, every remaining meal must use source_id=null with a generic_name. "
+            "Before returning JSON, count all non-null M aliases across every day and verify that no alias occurs twice.\n"
+            "For the initial draft, follow initial_attractions_per_day exactly, keep each visit duration between 90 and 120 "
+            "minutes, and group attractions from the same thematic cluster on the same day when possible. Never put more "
+            "than max_attractions_per_day on one day. A route/pacing revision may remove optional attractions, but never core ones.\n"
             f"request={request.model_dump()}\nexperience={compact_experience}\n"
-            f"logistics={compact_logistics}\nweather={[item.model_dump() for item in weather_info]}\n"
+            f"logistics={compact_logistics}\ninitial_attractions_per_day={initial_distribution}\n"
+            f"max_attractions_per_day={per_day_limit}\nweather={[item.model_dump() for item in weather_info]}\n"
             f"revision={context}"
         )
         try:

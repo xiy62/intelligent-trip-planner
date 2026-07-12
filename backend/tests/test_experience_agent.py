@@ -49,7 +49,7 @@ class ExperienceAgentTests(unittest.TestCase):
         self.assertEqual(result.proposal.run_id, "run-1")
         self.assertEqual(result.proposal.version, 1)
         self.assertEqual(result.proposal.allowed_attraction_ids, {"attraction:a1"})
-        self.assertEqual(calls, ["museums attractions", "museum"])
+        self.assertEqual(calls, ["new york museums attractions", "museum"])
         self.assertEqual(gateway.call_counts["attraction_search"], 2)
         self.assertEqual(len(llm.calls), 2)
 
