@@ -2,7 +2,7 @@
 
 from datetime import datetime
 import re
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -171,6 +171,9 @@ class Attraction(BaseModel):
     maps_url: Optional[str] = Field(default=None, description="Map provider URL")
     website_url: Optional[str] = Field(default=None, description="Official website URL")
     ticket_price: int = Field(default=0, description="Ticket price")
+    cost_status: Optional[Literal["known", "estimated", "unknown"]] = Field(
+        default=None, description="Whether the displayed cost is known, estimated, or unavailable"
+    )
 
 
 class Meal(BaseModel):
@@ -185,6 +188,7 @@ class Meal(BaseModel):
     maps_url: Optional[str] = Field(default=None, description="Map provider URL")
     website_url: Optional[str] = Field(default=None, description="Official website URL")
     poi_id: Optional[str] = Field(default="", description="POI ID")
+    cost_status: Optional[Literal["known", "estimated", "unknown"]] = None
 
 
 class Hotel(BaseModel):
@@ -201,6 +205,7 @@ class Hotel(BaseModel):
     maps_url: Optional[str] = Field(default=None, description="Map provider URL")
     website_url: Optional[str] = Field(default=None, description="Official website URL")
     poi_id: Optional[str] = Field(default="", description="POI ID")
+    cost_status: Optional[Literal["known", "estimated", "unknown"]] = None
 
 
 class DayPlan(BaseModel):
@@ -246,6 +251,8 @@ class Budget(BaseModel):
     total_meals: int = Field(default=0, description="Total meal cost")
     total_transportation: int = Field(default=0, description="Total transportation cost")
     total: int = Field(default=0, description="Total estimated cost")
+    estimate_incomplete: bool = Field(default=False, description="True when one or more costs are unknown")
+    currency: str = Field(default="USD", description="ISO-style estimate currency")
 
 
 class TripPlan(BaseModel):

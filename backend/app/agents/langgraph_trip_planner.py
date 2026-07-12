@@ -208,16 +208,18 @@ class LangGraphTripPlanner:
 
     def invoke_graph(self, request: TripRequest, thread_id: Optional[str] = None) -> TripGraphState:
         """Run the graph and return the final state for debugging/tests."""
-        conversation_id = thread_id or request.conversation_id or str(uuid4())
+        run_id = thread_id or str(uuid4())
+        conversation_id = request.conversation_id or str(uuid4())
         initial_state: TripGraphState = {
             "request": request,
+            "run_id": run_id,
             "conversation_id": conversation_id,
             "memory_applied": False,
             "memory_summary": "",
             "memory_profile": {},
             "memory_conflicts": [],
         }
-        config = {"configurable": {"thread_id": conversation_id}}
+        config = {"configurable": {"thread_id": run_id}}
         return self.graph.invoke(initial_state, config=config)
 
     def get_state_snapshot(self, thread_id: str):
@@ -315,9 +317,15 @@ class LangGraphTripPlanner:
                 candidate = AttractionCandidate(
                     name=str(item.get("name", "")),
                     address=str(item.get("address", "")),
+                    location=item.get("location") or None,
                     source="google_maps",
                     source_id=str(item.get("id", "")),
                     raw_text=json.dumps(item, ensure_ascii=False),
+                    rating=item.get("rating"),
+                    maps_url=item.get("maps_url"),
+                    website_url=item.get("website_url"),
+                    image_url=item.get("image_url"),
+                    photo_names=list(item.get("photo_names") or []),
                 )
                 normalized = self._normalize_entity_name(candidate.name)
                 if not normalized or normalized in seen:
@@ -355,9 +363,15 @@ class LangGraphTripPlanner:
                 candidate = HotelCandidate(
                     name=str(item.get("name", "")),
                     address=str(item.get("address", "")),
+                    location=item.get("location") or None,
                     source="google_maps",
                     source_id=str(item.get("id", "")),
                     raw_text=json.dumps(item, ensure_ascii=False),
+                    rating=item.get("rating"),
+                    maps_url=item.get("maps_url"),
+                    website_url=item.get("website_url"),
+                    image_url=item.get("image_url"),
+                    photo_names=list(item.get("photo_names") or []),
                 )
                 normalized = self._normalize_entity_name(candidate.name)
                 if not normalized or normalized in seen:
@@ -395,9 +409,15 @@ class LangGraphTripPlanner:
                 candidate = MealCandidate(
                     name=str(item.get("name", "")),
                     address=str(item.get("address", "")),
+                    location=item.get("location") or None,
                     source="google_maps",
                     source_id=str(item.get("id", "")),
                     raw_text=json.dumps(item, ensure_ascii=False),
+                    rating=item.get("rating"),
+                    maps_url=item.get("maps_url"),
+                    website_url=item.get("website_url"),
+                    image_url=item.get("image_url"),
+                    photo_names=list(item.get("photo_names") or []),
                 )
                 normalized = self._normalize_entity_name(candidate.name)
                 if not normalized or normalized in seen:
@@ -1141,14 +1161,3 @@ class LangGraphTripPlanner:
             ),
             budget=None,
         )
-
-
-_langgraph_trip_planner: Optional[LangGraphTripPlanner] = None
-
-
-def get_trip_planner_agent() -> LangGraphTripPlanner:
-    """Return a singleton LangGraph planner."""
-    global _langgraph_trip_planner
-    if _langgraph_trip_planner is None:
-        _langgraph_trip_planner = LangGraphTripPlanner(rag_mode=get_settings().rag_mode)
-    return _langgraph_trip_planner

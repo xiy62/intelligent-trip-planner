@@ -6,6 +6,16 @@ from typing import Annotated, Any, Dict, List, Literal, Optional, TypedDict
 
 from pydantic import BaseModel, Field
 
+from .multi_agent import (
+    AgentFeedback,
+    AgentMetrics,
+    AgentRetryState,
+    CandidateRegistry,
+    CallBudgetLedger,
+    ExperienceProposal,
+    IDBasedItineraryDraft,
+    LogisticsProposal,
+)
 from .schemas import Location, TripPlan, TripRequest, WeatherInfo
 
 
@@ -34,6 +44,11 @@ class AttractionCandidate(BaseModel):
     source: str = "google_maps"
     source_id: str = ""
     raw_text: str = ""
+    rating: Optional[float] = None
+    maps_url: Optional[str] = None
+    website_url: Optional[str] = None
+    image_url: Optional[str] = None
+    photo_names: List[str] = Field(default_factory=list)
 
 
 class HotelCandidate(BaseModel):
@@ -45,6 +60,11 @@ class HotelCandidate(BaseModel):
     source: str = "google_maps"
     source_id: str = ""
     raw_text: str = ""
+    rating: Optional[float] = None
+    maps_url: Optional[str] = None
+    website_url: Optional[str] = None
+    image_url: Optional[str] = None
+    photo_names: List[str] = Field(default_factory=list)
 
 
 class MealCandidate(BaseModel):
@@ -56,6 +76,11 @@ class MealCandidate(BaseModel):
     source: str = "google_maps"
     source_id: str = ""
     raw_text: str = ""
+    rating: Optional[float] = None
+    maps_url: Optional[str] = None
+    website_url: Optional[str] = None
+    image_url: Optional[str] = None
+    photo_names: List[str] = Field(default_factory=list)
 
 
 class RouteTimeEstimate(BaseModel):
@@ -135,6 +160,12 @@ class EvidenceLink(BaseModel):
     match_reason: str = ""
 
 
+class RouteFailureDetail(BaseModel):
+    day_index: int
+    segment_indices: List[int] = Field(default_factory=list)
+    kind: Literal["ordering_problem", "candidate_set_problem", "missing_route_data"]
+
+
 class EvaluationReport(BaseModel):
     """Graph evaluation result used for routing and debugging."""
 
@@ -146,6 +177,10 @@ class EvaluationReport(BaseModel):
     unsupported_entities: List[UnsupportedEntity] = Field(default_factory=list)
     unsupported_claims: List[str] = Field(default_factory=list)
     evidence_links: List[EvidenceLink] = Field(default_factory=list)
+    failure_owner: Optional[Literal["experience", "logistics", "composer"]] = None
+    revision_target: Optional[Literal["experience", "logistics", "composer"]] = None
+    materialization_failures: List[Dict[str, Any]] = Field(default_factory=list)
+    route_failure_details: List[RouteFailureDetail] = Field(default_factory=list)
     next_action: Literal[
         "finalize_response",
         "plan_itinerary",
@@ -271,8 +306,19 @@ class TripGraphState(TypedDict, total=False):
     decision_trace: Annotated[List[str], merge_decision_trace]
     metrics: Annotated[RunMetrics, merge_run_metrics]
     final_plan: Optional[TripPlan]
+    run_id: str
     conversation_id: str
     memory_applied: bool
     memory_summary: str
     memory_profile: Dict[str, Any]
     memory_conflicts: List[Dict[str, Any]]
+    candidate_registry: CandidateRegistry
+    experience_proposal: ExperienceProposal
+    logistics_proposal: LogisticsProposal
+    id_draft: IDBasedItineraryDraft
+    agent_feedback: AgentFeedback
+    agent_retry_state: AgentRetryState
+    agent_metrics: AgentMetrics
+    materialization_failures: List[Dict[str, Any]]
+    agent_error: Dict[str, Any]
+    call_budget_ledger: CallBudgetLedger

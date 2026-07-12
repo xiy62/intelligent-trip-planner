@@ -133,7 +133,7 @@ class GoogleMapsService(BaseMapProvider):
                 "X-Goog-Api-Key": self.api_key,
                 "X-Goog-FieldMask": (
                     "places.id,places.displayName,places.formattedAddress,"
-                    "places.location,places.types,places.rating,"
+                    "places.location,places.types,places.rating,places.userRatingCount,"
                     "places.nationalPhoneNumber,places.priceLevel,"
                     "places.googleMapsUri,places.websiteUri,places.photos"
                 ),
@@ -220,7 +220,7 @@ class GoogleMapsService(BaseMapProvider):
                 "X-Goog-Api-Key": self.api_key,
                 "X-Goog-FieldMask": (
                     "id,displayName,formattedAddress,location,types,"
-                    "rating,nationalPhoneNumber,websiteUri,googleMapsUri,priceLevel,photos"
+                    "rating,userRatingCount,nationalPhoneNumber,websiteUri,googleMapsUri,priceLevel,photos"
                 ),
             },
         )
@@ -297,6 +297,7 @@ class GoogleMapsService(BaseMapProvider):
             },
             "tel": item.get("nationalPhoneNumber") or None,
             "rating": item.get("rating"),
+            "user_rating_count": item.get("userRatingCount"),
             "maps_url": item.get("googleMapsUri") or None,
             "website_url": item.get("websiteUri") or None,
             "photo_names": photo_names,

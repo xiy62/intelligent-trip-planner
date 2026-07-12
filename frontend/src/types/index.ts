@@ -19,6 +19,7 @@ export interface Attraction {
   maps_url?: string
   website_url?: string
   ticket_price?: number
+  cost_status?: 'known' | 'estimated' | 'unknown'
 }
 
 export interface Meal {
@@ -32,6 +33,7 @@ export interface Meal {
   maps_url?: string
   website_url?: string
   poi_id?: string
+  cost_status?: 'known' | 'estimated' | 'unknown'
 }
 
 export interface Hotel {
@@ -47,6 +49,7 @@ export interface Hotel {
   maps_url?: string
   website_url?: string
   poi_id?: string
+  cost_status?: 'known' | 'estimated' | 'unknown'
 }
 
 export interface Budget {
@@ -55,6 +58,8 @@ export interface Budget {
   total_meals: number
   total_transportation: number
   total: number
+  estimate_incomplete?: boolean
+  currency?: string
 }
 
 export interface DayPlan {
@@ -174,6 +179,7 @@ export interface ObservabilityRun {
   city: string
   travel_days: number
   rag_mode: string
+  workflow_name: string
   started_at: number
   ended_at: number
   end_to_end_ms: number
@@ -192,6 +198,17 @@ export interface ObservabilityRun {
   retry_counts: Record<string, number>
   retrieved_rag_sources: Record<string, any>[]
   benchmark_metadata: Record<string, any>
+  agent_metrics: {
+    by_agent?: Record<string, { attempts: number; latency_ms: number; token_usage: number; tool_calls: Record<string, number> }>
+    targeted_retries?: string[]
+    invalid_source_ids?: string[]
+    handoff_trace?: Record<string, any>[]
+  }
+  proposal_versions: Record<string, number | null>
+  tool_usage: Record<string, Record<string, number>>
+  handoff_trace: Record<string, any>[]
+  materialization_failures: Record<string, any>[]
+  invalid_source_ids: string[]
   created_at: number
 }
 

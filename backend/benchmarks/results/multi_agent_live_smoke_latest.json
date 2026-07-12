@@ -1,0 +1,451 @@
+{
+  "benchmark": "three_case_live_smoke",
+  "temperature": 0,
+  "statistical_claim_allowed": false,
+  "results": [
+    {
+      "case_id": "chicago-food-transit",
+      "workflow": "multi_agent_active",
+      "status": "completed",
+      "latency_ms": 15969.53,
+      "passed": true,
+      "fallback": false,
+      "hard_failures": [],
+      "source_ids": [
+        "ChIJ-UsJsFTTD4gR9wNj_lK4NEQ",
+        "ChIJ-XdXNKUsDogRW-m5g5Siao8",
+        "ChIJ-_f2zLAsDogRW1N7RqPtGQU",
+        "ChIJ30jHOnwrDogRQw_DDTtlamU",
+        "ChIJ4SxqR6ItDogRmD1bdg3rOA8",
+        "ChIJ5a8ra6QsDogRENtJLAp40AE",
+        "ChIJ66pPfAAtDogRGjYeIbnOWzo",
+        "ChIJ7zwFga8sDogR48o0MWz4Jes",
+        "ChIJ8cuHyVPTD4gRhzoXDrCy6ks",
+        "ChIJ9f8w5LEsDogRprv-ARPREMs",
+        "ChIJEUAV9zMtDogRJbm6cdw59JE",
+        "ChIJF774nd4tDogRWPjaRHqyj5I",
+        "ChIJFQmOzY4tDogRmsV7K4xZdoA",
+        "ChIJHy_uxjQtDogREgbDgcjizn8",
+        "ChIJL3osJJksDogRodsJu9TjTQA",
+        "ChIJL71T8K0sDogRUY9njEkS42M",
+        "ChIJMViM4dssDogRdmIJH2z_Q10",
+        "ChIJNQDApFTTD4gR98gbv_BeznA",
+        "ChIJNSyfBKssDogRK-i5oSveSTI",
+        "ChIJNwurA68sDogRuBWSUEHR6qw",
+        "ChIJO-S6va4sDogRPJQe4l7DSgk",
+        "ChIJOxc99b4sDogReRG3-qoMN5Q",
+        "ChIJR3RYJKksDogR72dJV-gaDIg",
+        "ChIJS-Hf_a4sDogRmcrVlxAacIU",
+        "ChIJS0kqaTItDogRXIgU7nCVHKQ",
+        "ChIJSW8nmrcsDogRYwMxB61GsXk",
+        "ChIJUdmKarAsDogRexPkv_0AQEA",
+        "ChIJV_AiLE7TD4gROpVZbcDiURQ",
+        "ChIJV_s6ILEsDogRR_5H7mQn4nw",
+        "ChIJX-RTBqksDogRRh_Q4ynbf_8",
+        "ChIJXWmIuKMsDogRU9zDFF0QQ5M",
+        "ChIJXZob1gWuD4gRKrOCrK38pDI",
+        "ChIJY73MNVPTD4gR61-AxyJIXUo",
+        "ChIJYTTn_a4sDogRVVaRtalmGH4",
+        "ChIJYYPembcsDogRJ5-HAODe1w4",
+        "ChIJZ00Yu4QsDogR4wNixDtDd_4",
+        "ChIJ_WkBLrMsDogR0cFQJVbq0Kc",
+        "ChIJbQekZ7AsDogRABWOdM9cQRQ",
+        "ChIJbz_TYaorDogRgAG-I7FKEM0",
+        "ChIJdYOdBNorDogRV2PUh5HdHdk",
+        "ChIJffQ3o_vTD4gRHKoNCh6S7jc",
+        "ChIJh3i0BqYsDogR6yp0y6TFlOQ",
+        "ChIJhXoAwj4tDogR1RPu8wuWlkQ",
+        "ChIJi4emla0sDogRqSznxCiJFk0",
+        "ChIJj3c_ZFIrDogReYb4CRZb21g",
+        "ChIJjRpESoEpDogRjTxay37la68",
+        "ChIJk3AZRbAsDogRiM7ZXEqdnWc",
+        "ChIJkxpiZassDogRnKmyfgDoyWw",
+        "ChIJl8NTEawsDogRwXH-IVDyH2A",
+        "ChIJn3m9mK0sDogRAHQIHudMC1M",
+        "ChIJnfQVFrcsDogRvnzFm69g8Qw",
+        "ChIJp6p38scsDogRGuXI3DnqDfU",
+        "ChIJrzSN9rgsDogRFjlYTd0u-Jk",
+        "ChIJs8mbNsUsDogRUnpg-b_IK5E",
+        "ChIJu8FZLVQrDogRohBDnZav9u8",
+        "ChIJuTHCJVPTD4gR_-KiOJ4h5Uc",
+        "ChIJua_pjZgsDogR_RPj0hIZHhA",
+        "ChIJufo-n88sDogRT_JGk4egawU",
+        "ChIJv-CygqQsDogRfgd52uaGbCI",
+        "ChIJweP0T-8tDogRurGwYuicGNg",
+        "ChIJx11WoWzTD4gRr2-RP6xmsaY",
+        "ChIJxVjCGassDogROayz_ZoQJaM",
+        "ChIJy0ULzq4sDogRdY17hBdGy5A",
+        "ChIJyx6-KGbTD4gR1ISDCCcsgKw"
+      ],
+      "agent_metrics": {
+        "by_agent": {
+          "experience": {
+            "attempts": 1,
+            "latency_ms": 5453.628458082676,
+            "token_usage": 0,
+            "tool_calls": {
+              "attraction_search": 3,
+              "rag_search": 1
+            }
+          },
+          "logistics": {
+            "attempts": 1,
+            "latency_ms": 6141.54520817101,
+            "token_usage": 0,
+            "tool_calls": {
+              "hotel_search": 3,
+              "meal_search": 3
+            }
+          },
+          "composer": {
+            "attempts": 1,
+            "latency_ms": 4355.587875004858,
+            "token_usage": 0,
+            "tool_calls": {}
+          }
+        },
+        "targeted_retries": [],
+        "invalid_source_ids": [],
+        "handoff_trace": [
+          {
+            "from": "experience",
+            "to": "logistics",
+            "proposal_version": 1
+          },
+          {
+            "from": "logistics",
+            "to": "composer",
+            "proposal_version": 1
+          },
+          {
+            "from": "composer",
+            "to": "canonical_materializer",
+            "proposal_version": 1
+          }
+        ]
+      },
+      "proposal_versions": {
+        "experience": 1,
+        "logistics": 1,
+        "composer": 1
+      },
+      "agent_error": null
+    },
+    {
+      "case_id": "chicago-food-transit",
+      "workflow": "single_benchmark_baseline",
+      "status": "completed",
+      "latency_ms": 26412.107,
+      "passed": true,
+      "fallback": false,
+      "hard_failures": [],
+      "source_ids": [],
+      "agent_metrics": {},
+      "proposal_versions": {
+        "experience": null,
+        "logistics": null,
+        "composer": null
+      }
+    },
+    {
+      "case_id": "los-angeles-coast-driving",
+      "workflow": "multi_agent_active",
+      "status": "completed",
+      "latency_ms": 20920.804,
+      "passed": true,
+      "fallback": false,
+      "hard_failures": [],
+      "source_ids": [
+        "ChIJ1asLRlSwwoARcbzH4K6wTPc",
+        "ChIJ1c-IyT7GwoARIYcIK2TyJ3k",
+        "ChIJ2y1Dpbm6woARP3MtcSoZ8OI",
+        "ChIJ4V4DBfXHwoARx3FMc9CBMRg",
+        "ChIJ4cPZaB-_woARtEolLtFFYus",
+        "ChIJ54-aIqXHwoAR2LbBhhiuj7M",
+        "ChIJ82TS9be6woAR4221FNcp-K0",
+        "ChIJ8QbxZYTHwoAR9RMDcjmVra4",
+        "ChIJ8XoN8dWkwoAR7B6j3YDYcKU",
+        "ChIJ8XqPTRox3YARhCGeo-EUHCM",
+        "ChIJAQAQ-nm-woARpvrBAefAhM8",
+        "ChIJAVYwcOuzwoARaHLW6B2Kq8s",
+        "ChIJB-QGt4XHwoARLFm11PoAZnw",
+        "ChIJBQzSwKO7woAR0v_z1Ae-rOc",
+        "ChIJBx8nTcSkwoAR1bDfXdfVf20",
+        "ChIJD4hSDp9M3YAR4ZQ_AIZKwN8",
+        "ChIJDQ7D_yCfwoARwWk9ZsGldwM",
+        "ChIJE80IjrXHwoARZo6wiQusTrc",
+        "ChIJE84vfpm6woARlSChHKhRytU",
+        "ChIJE_xTqJWkwoARsz96qpZpw6E",
+        "ChIJEyEItUvGwoARG0tjUzw4XeQ",
+        "ChIJEz1I84K4woARzSOwF86sb5c",
+        "ChIJIY3KTlNN3YARwkk9gr6vi5k",
+        "ChIJJxloG2HGwoARrnxMRe2L_ik",
+        "ChIJL-2UZhzpwoARO3W2Ts_E-Qg",
+        "ChIJLaqddXikwoAR-lw_8UVHtak",
+        "ChIJMcgqL-i_woARtlyjQREYQt0",
+        "ChIJMy3ypJW9woARGaNGhSm2XzU",
+        "ChIJN1t7xlPHwoARk4BjW2tKVYY",
+        "ChIJN4KVwkfGwoARd235b3GLiYo",
+        "ChIJP3KS1qjHwoARmnyVWVRhiVw",
+        "ChIJP4jgd-ezwoARZFkuipwzZW0",
+        "ChIJQeW6uFy-woARCYCQSMK6NIo",
+        "ChIJSQMEnZSzwoARMQOntYmwWZI",
+        "ChIJSRvZ1yHGwoARcLrfvc-APl4",
+        "ChIJTTc3vhmWwoARPoFbeLUeBeM",
+        "ChIJVZTrRqO6woARHhxoiIenFjU",
+        "ChIJX9JVNI65woARAltGGdhSBAA",
+        "ChIJXVodUFfHwoARe63Z7LSuUnY",
+        "ChIJX_1RSsm6woAR0p-V1DEzqKI",
+        "ChIJYXw7tXm7woARYojoyTPkkWE",
+        "ChIJZ3M0MBxM3YAR6kuf6N7vQHs",
+        "ChIJZcc0uoK4woAR_ZeG-BhgkGw",
+        "ChIJ_72WeFC_woARaXeiD_y7hy8",
+        "ChIJ___D30fHwoARymR_1Ylhtto",
+        "ChIJaaVmRuS_woARqvPd_6h7xeo",
+        "ChIJd7MIZznGwoARUsT5czDo4OY",
+        "ChIJe3Co23m-woARnmd-Dgr6uTI",
+        "ChIJeRhEtqvHwoARn4vexuEKGnQ",
+        "ChIJeciEAPa7woARn30jNcXOM3s",
+        "ChIJf5M4-pm6woAR9aGAl3iDhnM",
+        "ChIJg4Tqa7PHwoARrWA-2kwYfDE",
+        "ChIJgR6jrls96IARK5jsg2fUeiQ",
+        "ChIJh2Ge9Zm6woARvXJCvl4zQVY",
+        "ChIJk1R_FwO_woARGMOiMiXmMwU",
+        "ChIJlaZnTEu5woAR_5HiQKAH4UE",
+        "ChIJmRr_HrTHwoARjigvltPYgzo",
+        "ChIJn2IUCKC0woARmZBXFBOsAz0",
+        "ChIJo2tILd6zwoARXs0n1mHkOGU",
+        "ChIJq0gBNIyjwoARsS_bVAJ7CrM",
+        "ChIJqaA5zt-4woARHGIEp3XlsZo",
+        "ChIJqbKnF0vGwoARREUrVhYGqTU",
+        "ChIJt37HtsC8woARLi6S2eMbe_o",
+        "ChIJv4yVGknGwoARC_5zwy3zU5M",
+        "ChIJv7e_5NWkwoAREVzPwE9caTw",
+        "ChIJvVvovUvGwoARYrOMSp23rpQ",
+        "ChIJwzhreZXpwoARdlYr_7FKeCA",
+        "ChIJxYxUSsm6woARub40b7qFwAk",
+        "ChIJywjU6WG_woAR3NrWwrEH_3M"
+      ],
+      "agent_metrics": {
+        "by_agent": {
+          "experience": {
+            "attempts": 1,
+            "latency_ms": 6430.717624956742,
+            "token_usage": 0,
+            "tool_calls": {
+              "attraction_search": 3,
+              "rag_search": 1
+            }
+          },
+          "logistics": {
+            "attempts": 1,
+            "latency_ms": 10062.764625065029,
+            "token_usage": 0,
+            "tool_calls": {
+              "hotel_search": 3,
+              "meal_search": 4
+            }
+          },
+          "composer": {
+            "attempts": 1,
+            "latency_ms": 4408.613957930356,
+            "token_usage": 0,
+            "tool_calls": {}
+          }
+        },
+        "targeted_retries": [],
+        "invalid_source_ids": [],
+        "handoff_trace": [
+          {
+            "from": "experience",
+            "to": "logistics",
+            "proposal_version": 1
+          },
+          {
+            "from": "logistics",
+            "to": "composer",
+            "proposal_version": 1
+          },
+          {
+            "from": "composer",
+            "to": "canonical_materializer",
+            "proposal_version": 1
+          }
+        ]
+      },
+      "proposal_versions": {
+        "experience": 1,
+        "logistics": 1,
+        "composer": 1
+      },
+      "agent_error": null
+    },
+    {
+      "case_id": "los-angeles-coast-driving",
+      "workflow": "single_benchmark_baseline",
+      "status": "completed",
+      "latency_ms": 29664.078,
+      "passed": true,
+      "fallback": false,
+      "hard_failures": [],
+      "source_ids": [],
+      "agent_metrics": {},
+      "proposal_versions": {
+        "experience": null,
+        "logistics": null,
+        "composer": null
+      }
+    },
+    {
+      "case_id": "new-york-museums-transit",
+      "workflow": "multi_agent_active",
+      "status": "completed",
+      "latency_ms": 20031.226,
+      "passed": true,
+      "fallback": false,
+      "hard_failures": [],
+      "source_ids": [
+        "ChIJ-eArMKVZwokRnKTYspOYmuE",
+        "ChIJ0fci9hNawokRJVR9hdTAt80",
+        "ChIJ0yKXaB9awokR6WFqdEE9aBY",
+        "ChIJ5QZ6gKdZwokRBdxQSJKrBqk",
+        "ChIJ7ek7qdRbwokRt3sVsitU9r4",
+        "ChIJ9TRDoBBawokRJgmlJa_UJ0E",
+        "ChIJA-_6LfhYwokROUBMo0Hs8lk",
+        "ChIJAQAAAIVYwokRgjSEms1j39E",
+        "ChIJC1UQPABZwokRtfrQRhle8Fo",
+        "ChIJCwFFZmBZwokR4O1BUs_zrJU",
+        "ChIJD5cnWqpZwokR8h2yqOtN4h0",
+        "ChIJETquaPVZwokRVYYGSKrg4E0",
+        "ChIJH4GkW6ZZwokR9TZqm6sXzXQ",
+        "ChIJHRH97uxYwokR6CBeDyn1jtg",
+        "ChIJHZigegBZwokRWh80A__yZaA",
+        "ChIJK0Nld6ZZwokRyOd9fsyinLY",
+        "ChIJK6bycAH0wokRrSnflfrnkZE",
+        "ChIJKxDbe_lYwokRVf__s8CPn-o",
+        "ChIJKxW9qbVZwokRdp--o2I-RTE",
+        "ChIJKy5pv_RYwokRBaqWbokKqOc",
+        "ChIJKykw-aZZwokRW7K0ykZUxNo",
+        "ChIJM_E9jHdbwokRol-zqevjY1o",
+        "ChIJMdMjiVVYwokRqVlf2umuDqI",
+        "ChIJN3MJ6pRYwokRiXg91flSP8Y",
+        "ChIJNbCb9cZbwokRf6yqmUN7c9M",
+        "ChIJPYSbE4dZwokRm1c0QK3q02k",
+        "ChIJQ6yZIaFZwokRl0jsn5VBk_M",
+        "ChIJT4JpKxhawokRJsGwYfLpp60",
+        "ChIJWT0gUBz2wokRNcAxVUphAAs",
+        "ChIJYY-OM4RZwokRvA7ECx3HRZw",
+        "ChIJZxT3T6RZwokRXXya4HuTCkM",
+        "ChIJ_85dJlZYwokR29NPLSJngR4",
+        "ChIJ_RUJvZZZwokRNUEv3K4nSik",
+        "ChIJ__9LNBZawokREnkOiVx7ydc",
+        "ChIJaz7WYlVYwokR5RBlzAiHxpw",
+        "ChIJb8Jg9pZYwokR-qHGtvSkLzs",
+        "ChIJbd5El_VYwokRFEtA5j2r7Ls",
+        "ChIJbxudM_ZYwokRNZbwXK-_GzE",
+        "ChIJcXq9AZxZwokRZ56WZuGnZkg",
+        "ChIJf-JE3ehZwokRXgoRYPxLMhA",
+        "ChIJg0ZHaSRZwokRHymWtw9gKJk",
+        "ChIJgVtmM_ZYwokRcJJnebe5KX8",
+        "ChIJgwIJ14pZwokRsaE1jN-3W_8",
+        "ChIJi4hYtB32wokR1Npx_Tv7phk",
+        "ChIJjUGQIPhYwokRHeD9KPkNSfE",
+        "ChIJlSsnN_NZwokRD4CVvN0DPYE",
+        "ChIJlaRS3IVZwokR2llMD6dCt-U",
+        "ChIJm9ZmFPtYwokR4GjMlk_y7Fg",
+        "ChIJmSvG_ZFZwokRTOFeiLXzkmA",
+        "ChIJmZ5emqJYwokRuDz79o0coAQ",
+        "ChIJmamBZtVZwokR6phs86DKbP0",
+        "ChIJn-PPbBRawokR3o5lQeBaB_w",
+        "ChIJoSqkgRZawokR_ZAqr3pOMO8",
+        "ChIJoTXWl8dbwokRpKA2BJFVsGA",
+        "ChIJq-KL4aRZwokR0kfko980E8U",
+        "ChIJq38lzVVYwokRDhgb0tE_sC0",
+        "ChIJt7fMLIlZwokRCRtM9bNDg78",
+        "ChIJtVazIfdYwokRgdtzmjoI1zQ",
+        "ChIJt_HATrRbwokREfGhs1PnzwQ",
+        "ChIJzd_ZRgJZwokRnzXTa1YVpko"
+      ],
+      "rag_chunk_ids": [
+        "nyc-museums-landmarks-001-evidence-packet",
+        "nyc-parks-views-003-evidence-packet",
+        "nyc-food-neighborhoods-002-evidence-packet"
+      ],
+      "agent_metrics": {
+        "by_agent": {
+          "experience": {
+            "attempts": 1,
+            "latency_ms": 6961.231166031212,
+            "token_usage": 0,
+            "tool_calls": {
+              "attraction_search": 3,
+              "rag_search": 1
+            }
+          },
+          "logistics": {
+            "attempts": 1,
+            "latency_ms": 9015.54891699925,
+            "token_usage": 0,
+            "tool_calls": {
+              "hotel_search": 3,
+              "meal_search": 4
+            }
+          },
+          "composer": {
+            "attempts": 1,
+            "latency_ms": 4038.0696249194443,
+            "token_usage": 0,
+            "tool_calls": {}
+          }
+        },
+        "targeted_retries": [],
+        "invalid_source_ids": [],
+        "handoff_trace": [
+          {
+            "from": "experience",
+            "to": "logistics",
+            "proposal_version": 1
+          },
+          {
+            "from": "logistics",
+            "to": "composer",
+            "proposal_version": 1
+          },
+          {
+            "from": "composer",
+            "to": "canonical_materializer",
+            "proposal_version": 1
+          }
+        ]
+      },
+      "proposal_versions": {
+        "experience": 1,
+        "logistics": 1,
+        "composer": 1
+      },
+      "agent_error": null,
+      "agent_retry_state": {
+        "experience_attempts": 1,
+        "logistics_attempts": 1,
+        "composer_attempts": 1,
+        "global_revisions": 0
+      }
+    },
+    {
+      "case_id": "new-york-museums-transit",
+      "workflow": "single_benchmark_baseline",
+      "status": "completed",
+      "latency_ms": 14511.482,
+      "passed": true,
+      "fallback": false,
+      "hard_failures": [],
+      "source_ids": [],
+      "agent_metrics": {},
+      "proposal_versions": {
+        "experience": null,
+        "logistics": null,
+        "composer": null
+      }
+    }
+  ]
+}

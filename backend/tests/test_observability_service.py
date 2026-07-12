@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+import sqlite3
 from pathlib import Path
 
 from app.models.langgraph_state import (
@@ -24,6 +25,7 @@ from app.models.schemas import (
     TripRequest,
     WeatherInfo,
 )
+from app.models.multi_agent import AgentMetric, AgentMetrics, ExperienceProposal
 from app.services.observability_service import ObservabilityService
 
 
@@ -184,6 +186,43 @@ class ObservabilityServiceTests(unittest.TestCase):
         summary = self.service.summary()
         self.assertEqual(summary["avg_attribution_coverage_score"], 1.0)
         self.assertEqual(summary["quality_warning_rate"], 1.0)
+
+    def test_multi_agent_fields_and_events_migrate_additively(self):
+        state = {
+            "run_id": "multi-run-1",
+            "request": build_request(),
+            "metrics": build_metrics(passed=True),
+            "evaluation_report": EvaluationReport(passed=True, next_action="finalize_response"),
+            "experience_proposal": ExperienceProposal(run_id="multi-run-1", version=2),
+            "agent_metrics": AgentMetrics(
+                by_agent={"experience": AgentMetric(attempts=2, latency_ms=12.5,
+                                                     tool_calls={"attraction_search": 2})},
+                targeted_retries=["experience"],
+                handoff_trace=[{"from": "experience", "to": "logistics", "proposal_version": 2}],
+            ),
+            "materialization_failures": [],
+            "final_plan": build_plan(),
+        }
+        run_id = self.service.persist_state(state)
+        detail = self.service.get_run_detail(run_id)
+        self.assertEqual(run_id, "multi-run-1")
+        self.assertEqual(detail["workflow_name"], "langgraph_multi_agent")
+        self.assertEqual(detail["proposal_versions"]["experience"], 2)
+        self.assertEqual(detail["tool_usage"]["experience"]["attraction_search"], 2)
+        event_types = {event["event_type"] for event in detail["events"]}
+        self.assertTrue({"agent_start", "agent_tool", "agent_handoff", "agent_retry", "materialization"} <= event_types)
+
+    def test_existing_sqlite_schema_gets_multi_agent_columns_without_rebuild(self):
+        db_path = Path(self.tmpdir.name) / "legacy.sqlite3"
+        with sqlite3.connect(db_path) as conn:
+            conn.execute("CREATE TABLE agent_runs (run_id TEXT PRIMARY KEY, source TEXT DEFAULT '', city TEXT DEFAULT '', created_at REAL DEFAULT 0, evaluation_history_json TEXT DEFAULT '[]')")
+        service = ObservabilityService(db_path)
+        service._ensure_schema()
+        with sqlite3.connect(db_path) as conn:
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(agent_runs)")}
+        self.assertTrue({"workflow_name", "agent_metrics_json", "proposal_versions_json",
+                         "tool_usage_json", "handoff_trace_json", "materialization_failures_json",
+                         "invalid_source_ids_json"} <= columns)
 
     def test_failed_run_summary_reports_categorization_and_recovery(self):
         failed_report = EvaluationReport(

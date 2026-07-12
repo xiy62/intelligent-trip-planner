@@ -47,7 +47,7 @@ class ObservabilityService:
         retry_counts = state.get("retry_counts")
         final_plan = state.get("final_plan")
         now = time.time()
-        stored_run_id = run_id or f"{source}-{uuid4()}"
+        stored_run_id = run_id or str(state.get("run_id") or f"{source}-{uuid4()}")
         conversation_id = str(state.get("conversation_id") or getattr(request, "conversation_id", "") or "")
         profile_id = str(getattr(request, "profile_id", "") or "")
         hard_failures = self._aggregate_hard_failures(evaluation_history)
@@ -99,6 +99,33 @@ class ObservabilityService:
                     self._dumps(self.compact_rag_sources(state.get("rag_chunks", []))),
                     self._dumps(benchmark_metadata),
                     now,
+                ),
+            )
+            agent_metrics = state.get("agent_metrics")
+            proposal_versions = {
+                "experience": getattr(state.get("experience_proposal"), "version", None),
+                "logistics": getattr(state.get("logistics_proposal"), "version", None),
+                "composer": getattr(state.get("id_draft"), "version", None),
+            }
+            agent_payload = agent_metrics.model_dump() if agent_metrics is not None else {}
+            tool_usage = {
+                role: value.get("tool_calls", {})
+                for role, value in agent_payload.get("by_agent", {}).items()
+            }
+            conn.execute(
+                """
+                UPDATE agent_runs
+                SET workflow_name = ?, agent_metrics_json = ?, proposal_versions_json = ?,
+                    tool_usage_json = ?, handoff_trace_json = ?,
+                    materialization_failures_json = ?, invalid_source_ids_json = ?
+                WHERE run_id = ?
+                """,
+                (
+                    "langgraph_multi_agent" if state.get("experience_proposal") is not None else "langgraph_single_agent",
+                    self._dumps(agent_payload), self._dumps(proposal_versions), self._dumps(tool_usage),
+                    self._dumps(agent_payload.get("handoff_trace", [])),
+                    self._dumps(state.get("materialization_failures", [])),
+                    self._dumps(agent_payload.get("invalid_source_ids", [])), stored_run_id,
                 ),
             )
             conn.execute("DELETE FROM agent_run_events WHERE run_id = ?", (stored_run_id,))
@@ -349,6 +376,13 @@ class ObservabilityService:
                 "evaluation_history_json",
                 "TEXT NOT NULL DEFAULT '[]'",
             )
+            self._ensure_column(conn, "agent_runs", "workflow_name", "TEXT NOT NULL DEFAULT ''")
+            self._ensure_column(conn, "agent_runs", "agent_metrics_json", "TEXT NOT NULL DEFAULT '{}'")
+            self._ensure_column(conn, "agent_runs", "proposal_versions_json", "TEXT NOT NULL DEFAULT '{}'")
+            self._ensure_column(conn, "agent_runs", "tool_usage_json", "TEXT NOT NULL DEFAULT '{}'")
+            self._ensure_column(conn, "agent_runs", "handoff_trace_json", "TEXT NOT NULL DEFAULT '[]'")
+            self._ensure_column(conn, "agent_runs", "materialization_failures_json", "TEXT NOT NULL DEFAULT '[]'")
+            self._ensure_column(conn, "agent_runs", "invalid_source_ids_json", "TEXT NOT NULL DEFAULT '[]'")
         self._initialized = True
 
     def _build_events(
@@ -360,6 +394,32 @@ class ObservabilityService:
         created_at: float,
     ) -> List[tuple[Any, ...]]:
         events: List[tuple[Any, ...]] = []
+        agent_metrics = state.get("agent_metrics")
+        if agent_metrics is not None:
+            for role, metric in agent_metrics.by_agent.items():
+                events.append((f"{run_id}-agent-start-{role}", run_id, role, metric.attempts,
+                               float(metric.latency_ms), "agent_start",
+                               f"{role}: bounded agent invocation", "{}",
+                               created_at + len(events) * 0.0001))
+                for tool_name, count in metric.tool_calls.items():
+                    events.append((f"{run_id}-agent-tool-{role}-{tool_name}", run_id, role, int(count),
+                                   0.0, "agent_tool", f"{role}: {tool_name} calls={count}",
+                                   self._dumps({"tool": tool_name, "count": count}),
+                                   created_at + len(events) * 0.0001))
+            for index, handoff in enumerate(agent_metrics.handoff_trace):
+                events.append((f"{run_id}-agent-handoff-{index}", run_id, str(handoff.get("from", "")),
+                               index + 1, 0.0, "agent_handoff",
+                               f"{handoff.get('from', '')} -> {handoff.get('to', '')}",
+                               self._dumps(handoff), created_at + len(events) * 0.0001))
+            for index, owner in enumerate(agent_metrics.targeted_retries):
+                events.append((f"{run_id}-agent-retry-{index}", run_id, owner, index + 1, 0.0,
+                               "agent_retry", f"targeted retry: {owner}", "{}",
+                               created_at + len(events) * 0.0001))
+        if state.get("experience_proposal") is not None:
+            failures = list(state.get("materialization_failures", []))
+            events.append((f"{run_id}-materialization", run_id, "canonical_materializer", 1, 0.0,
+                           "materialization", "materialization: failed" if failures else "materialization: success",
+                           self._dumps({"failures": failures}), created_at + len(events) * 0.0001))
         if metrics is not None:
             for node_name, latency_ms in metrics.node_latency_ms.items():
                 attempt = int(metrics.node_attempts.get(node_name, 0))
@@ -450,6 +510,7 @@ class ObservabilityService:
             "city": row["city"],
             "travel_days": row["travel_days"],
             "rag_mode": row["rag_mode"],
+            "workflow_name": row["workflow_name"],
             "started_at": row["started_at"],
             "ended_at": row["ended_at"],
             "end_to_end_ms": row["end_to_end_ms"],
@@ -468,6 +529,12 @@ class ObservabilityService:
             "retry_counts": self._loads(row["retry_counts_json"], {}),
             "retrieved_rag_sources": self._loads(row["retrieved_rag_sources_json"], []),
             "benchmark_metadata": self._loads(row["benchmark_metadata_json"], {}),
+            "agent_metrics": self._loads(row["agent_metrics_json"], {}),
+            "proposal_versions": self._loads(row["proposal_versions_json"], {}),
+            "tool_usage": self._loads(row["tool_usage_json"], {}),
+            "handoff_trace": self._loads(row["handoff_trace_json"], []),
+            "materialization_failures": self._loads(row["materialization_failures_json"], []),
+            "invalid_source_ids": self._loads(row["invalid_source_ids_json"], []),
             "created_at": row["created_at"],
         }
 

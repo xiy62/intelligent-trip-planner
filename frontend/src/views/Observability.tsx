@@ -116,6 +116,7 @@ export default function Observability() {
 
   async function openRun(runId: string) {
     setDrawerOpen(true)
+    setSelectedRun(null)
     setDetailLoading(true)
     try {
       setSelectedRun(await getObservabilityRunDetail(runId))
@@ -210,9 +211,35 @@ export default function Observability() {
               <Descriptions column={1} size="small">
                 <Descriptions.Item label="Run">{selectedRun.run_id}</Descriptions.Item>
                 <Descriptions.Item label="Source">{selectedRun.source}</Descriptions.Item>
+                <Descriptions.Item label="Workflow">{selectedRun.workflow_name || 'legacy'}</Descriptions.Item>
                 <Descriptions.Item label="City">{selectedRun.city}</Descriptions.Item>
                 <Descriptions.Item label="Latency">{Math.round(selectedRun.end_to_end_ms || 0)}ms</Descriptions.Item>
               </Descriptions>
+            </Card>
+
+            <Card size="small" title="Agent Collaboration Timeline">
+              <Timeline
+                items={(selectedRun.events || [])
+                  .filter((event) => ['agent_start', 'agent_tool', 'agent_handoff', 'agent_retry', 'materialization'].includes(event.event_type))
+                  .map((event) => ({
+                    color: event.event_type === 'agent_retry' ? 'orange' : event.event_type === 'materialization' ? 'purple' : 'blue',
+                    children: <div><strong>{event.event_type}</strong> · {event.message}</div>
+                  }))}
+              />
+              {Object.entries(selectedRun.agent_metrics?.by_agent || {}).map(([role, metric]) => (
+                <Descriptions key={role} column={3} size="small" bordered>
+                  <Descriptions.Item label="Agent">{role}</Descriptions.Item>
+                  <Descriptions.Item label="Attempts">{metric.attempts}</Descriptions.Item>
+                  <Descriptions.Item label="Latency">{Math.round(metric.latency_ms || 0)}ms</Descriptions.Item>
+                </Descriptions>
+              ))}
+              <p><strong>Proposal versions:</strong> {JSON.stringify(selectedRun.proposal_versions || {})}</p>
+              {(selectedRun.agent_metrics?.targeted_retries || []).length > 0 && (
+                <p><strong>Retry owners:</strong> {selectedRun.agent_metrics.targeted_retries?.join(', ')}</p>
+              )}
+              {(selectedRun.materialization_failures || []).length > 0 && (
+                <pre>{JSON.stringify(selectedRun.materialization_failures, null, 2)}</pre>
+              )}
             </Card>
 
             <Card size="small" title="Evaluation">
