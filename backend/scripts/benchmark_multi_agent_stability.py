@@ -279,14 +279,19 @@ def compare_with_reference(rows, reference_rows):
     return overlap_summary(pairs)
 
 
-def main():
+def build_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", default="benchmarks/trip_requests.rag_benchmark.json")
     parser.add_argument("--output", default="benchmarks/results/multi_agent_12case_stability_2x.json")
     parser.add_argument("--repeat-count", type=int, choices=(1, 2), default=2)
     parser.add_argument("--reference-result", default="")
-    parser.add_argument("--max-workers", type=int, default=1,
-                        help="Parallel workflow workers; 1 preserves sequential execution")
+    parser.add_argument("--max-workers", type=int, default=2,
+                        help="Parallel workflow workers; use 1 for a sequential control")
+    return parser
+
+
+def main():
+    parser = build_parser()
     args = parser.parse_args()
     dataset, output = ROOT / args.dataset, ROOT / args.output
     cases = json.loads(dataset.read_text())

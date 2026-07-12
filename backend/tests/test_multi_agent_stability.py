@@ -5,6 +5,7 @@ import unittest
 from app.agents.experience_agent import ExperienceAgent
 from app.models.schemas import TripRequest
 from scripts.benchmark_multi_agent_stability import (
+    build_parser,
     compare_with_reference,
     execute_order,
     prewarm_parallel_rag,
@@ -38,6 +39,12 @@ def benchmark_row(*, case_index=1, repeat=1, passed=True, attraction=None, hotel
 
 
 class MultiAgentStabilityTests(unittest.TestCase):
+    def test_cli_defaults_to_two_workers_and_preserves_explicit_controls(self):
+        parser = build_parser()
+        self.assertEqual(parser.parse_args([]).max_workers, 2)
+        self.assertEqual(parser.parse_args(["--max-workers", "1"]).max_workers, 1)
+        self.assertEqual(parser.parse_args(["--max-workers", "3"]).max_workers, 3)
+
     def test_attraction_queries_are_city_scoped_normalized_and_deterministic(self):
         request = TripRequest(
             city="New York",
