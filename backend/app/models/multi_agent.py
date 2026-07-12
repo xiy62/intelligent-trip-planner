@@ -208,3 +208,33 @@ class AgentMetrics(BaseModel):
     targeted_retries: List[AgentRole] = Field(default_factory=list)
     invalid_source_ids: List[str] = Field(default_factory=list)
     handoff_trace: List[Dict[str, Any]] = Field(default_factory=list)
+    early_stop_reasons: Dict[str, str] = Field(default_factory=dict)
+    budget_usage: Dict[str, Any] = Field(default_factory=dict)
+    stability_trace: Dict[str, Any] = Field(default_factory=dict)
+
+
+class CallBudgetLedger(BaseModel):
+    role_limits: Dict[str, Dict[str, int]] = Field(default_factory=lambda: {
+        "experience": {"llm": 4, "maps": 10, "rag": 2},
+        "logistics": {"llm": 2, "maps": 14, "rag": 0},
+        "composer": {"llm": 2, "maps": 0, "rag": 0},
+    })
+    global_limits: Dict[str, int] = Field(default_factory=lambda: {"llm": 8, "maps": 24, "rag": 2})
+    role_used: Dict[str, Dict[str, int]] = Field(default_factory=dict)
+    global_used: Dict[str, int] = Field(default_factory=lambda: {"llm": 0, "maps": 0, "rag": 0})
+    blocked_calls: List[Dict[str, str]] = Field(default_factory=list)
+
+    def consume(self, role: AgentRole, resource: Literal["llm", "maps", "rag"], call_name: str) -> None:
+        used = self.role_used.setdefault(role, {"llm": 0, "maps": 0, "rag": 0})
+        role_limit = self.role_limits[role][resource]
+        global_limit = self.global_limits[resource]
+        if used[resource] >= role_limit or self.global_used[resource] >= global_limit:
+            self.blocked_calls.append({"role": role, "resource": resource, "call": call_name})
+            raise ValueError(f"call budget exhausted: {role}.{resource}")
+        used[resource] += 1
+        self.global_used[resource] += 1
+
+    def snapshot(self) -> Dict[str, Any]:
+        return {"role_limits": self.role_limits, "global_limits": self.global_limits,
+                "role_used": self.role_used, "global_used": self.global_used,
+                "blocked_calls": self.blocked_calls}

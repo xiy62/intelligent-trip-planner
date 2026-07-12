@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from langgraph.graph import END, START, StateGraph
 
@@ -14,7 +14,8 @@ from ..models.langgraph_state import (
     RouteFailureDetail,
     TripGraphState,
 )
-from ..models.multi_agent import AgentFeedback, AgentMetric, AgentMetrics, AgentRetryState, CandidateRegistry
+from ..models.multi_agent import (AgentFeedback, AgentMetric, AgentMetrics, AgentRetryState,
+                                  CallBudgetLedger, CandidateRegistry)
 from ..models.schemas import TripRequest
 from ..services.llm_service import get_role_llm
 from .composer_agent import ComposerAgent
@@ -22,7 +23,7 @@ from .experience_agent import ExperienceAgent
 from .itinerary_materializer import ItineraryMaterializer
 from .langgraph_trip_planner import LangGraphTripPlanner
 from .logistics_agent import LogisticsAgent
-from .tool_gateway import ToolGateway
+from .tool_gateway import BudgetedLLM, ToolGateway
 
 
 class MultiAgentTripPlanner(LangGraphTripPlanner):
@@ -91,29 +92,32 @@ class MultiAgentTripPlanner(LangGraphTripPlanner):
         update = self.prepare_request(state)
         update.update({"candidate_registry": CandidateRegistry(run_id=state["run_id"]),
                        "agent_retry_state": AgentRetryState(), "agent_metrics": AgentMetrics(),
+                       "call_budget_ledger": CallBudgetLedger(),
                        "materialization_failures": [], "route_time_estimates": []})
         return update
 
     def run_experience_agent(self, state: TripGraphState) -> TripGraphState:
         started = time.perf_counter()
         registry = state["candidate_registry"].model_copy(deep=True)
+        ledger = (state.get("call_budget_ledger") or CallBudgetLedger()).model_copy(deep=True)
         gateway = ToolGateway(registry=registry, tools={
             "attraction_search": self._gateway_map_search,
             "rag_search": self._gateway_rag_search,
             "place_detail": self._gateway_place_detail,
-        }, budgets=self.EXPERIENCE_BUDGETS)
+        }, budgets=self.EXPERIENCE_BUDGETS, ledger=ledger)
         retries = (state.get("agent_retry_state") or AgentRetryState()).model_copy(deep=True)
-        attempt = retries.experience_attempts + 1
         feedback = self._feedback(state, "experience")
+        attempt = retries.experience_attempts + 1 if feedback is not None else max(1, retries.experience_attempts)
         try:
-            result = ExperienceAgent(llm=getattr(self, "experience_llm", self.llm), gateway=gateway,
-                                     deterministic_fallback=self._experience_fallback).run(
+            agent = ExperienceAgent(llm=BudgetedLLM(getattr(self, "experience_llm", self.llm), "experience", ledger), gateway=gateway,
+                                    deterministic_fallback=self._experience_fallback)
+            result = agent.run(
                                          request=state["request"], feedback=feedback,
                                          previous=state.get("experience_proposal"), attempt=attempt)
         except Exception as exc:
-            return self._agent_error_update(state, "experience", exc)
+            return self._agent_error_update(state, "experience", exc, ledger=ledger)
         retries.experience_attempts = attempt
-        if attempt > 1:
+        if feedback is not None and attempt > 1:
             retries.global_revisions += 1
         metrics = (state.get("agent_metrics") or AgentMetrics()).model_copy(deep=True)
         metrics.by_agent["experience"] = AgentMetric(attempts=attempt,
@@ -123,34 +127,40 @@ class MultiAgentTripPlanner(LangGraphTripPlanner):
                                       "proposal_version": result.proposal.version})
         if feedback is not None:
             metrics.targeted_retries.append("experience")
+        metrics.early_stop_reasons.update(gateway.early_stop_reasons)
+        metrics.budget_usage = ledger.snapshot()
+        metrics.stability_trace["experience"] = agent.trace
         return {"candidate_registry": registry, "experience_proposal": result.proposal,
                 "rag_chunks": result.rag_chunks, "agent_metrics": metrics,
-                "agent_retry_state": retries, "agent_error": {}, "logistics_proposal": None, "id_draft": None,
+                "agent_retry_state": retries, "agent_error": {}, "call_budget_ledger": ledger,
+                "logistics_proposal": None, "id_draft": None,
                 "draft_plan": None, "route_time_estimates": [], "materialization_failures": [],
                 "decision_trace": self._append_trace(state, "agent_handoff: experience -> logistics")}
 
     def run_logistics_agent(self, state: TripGraphState) -> TripGraphState:
         started = time.perf_counter()
         registry = state["candidate_registry"].model_copy(deep=True)
+        ledger = (state.get("call_budget_ledger") or CallBudgetLedger()).model_copy(deep=True)
         anchor_count = min(2, len(state["experience_proposal"].core_attraction_ids))
         hotel_limit = min(3, 1 + anchor_count)
         meal_limit = min(4, 2 + anchor_count)
         gateway = ToolGateway(registry=registry,
                               tools={"hotel_search": self._gateway_map_search,
                                      "meal_search": self._gateway_map_search},
-                              budgets={"hotel_search": hotel_limit, "meal_search": meal_limit})
+                              budgets={"hotel_search": hotel_limit, "meal_search": meal_limit}, ledger=ledger)
         retries = (state.get("agent_retry_state") or AgentRetryState()).model_copy(deep=True)
-        attempt = retries.logistics_attempts + 1
         feedback = self._feedback(state, "logistics")
+        attempt = retries.logistics_attempts + 1 if feedback is not None else max(1, retries.logistics_attempts)
         try:
-            proposal = LogisticsAgent(llm=getattr(self, "logistics_llm", self.llm), gateway=gateway).run(
+            agent = LogisticsAgent(llm=BudgetedLLM(getattr(self, "logistics_llm", self.llm), "logistics", ledger), gateway=gateway)
+            proposal = agent.run(
                 request=state["request"], experience=state["experience_proposal"],
                 feedback=feedback, previous=state.get("logistics_proposal"),
                 attempt=attempt)
         except Exception as exc:
-            return self._agent_error_update(state, "logistics", exc)
+            return self._agent_error_update(state, "logistics", exc, ledger=ledger)
         retries.logistics_attempts = attempt
-        if attempt > 1:
+        if feedback is not None and attempt > 1:
             retries.global_revisions += 1
         metrics = (state.get("agent_metrics") or AgentMetrics()).model_copy(deep=True)
         metrics.by_agent["logistics"] = AgentMetric(attempts=attempt,
@@ -160,26 +170,31 @@ class MultiAgentTripPlanner(LangGraphTripPlanner):
                                       "proposal_version": proposal.version})
         if feedback is not None:
             metrics.targeted_retries.append("logistics")
+        metrics.early_stop_reasons.update(gateway.early_stop_reasons)
+        metrics.budget_usage = ledger.snapshot()
+        metrics.stability_trace["logistics"] = agent.trace
         return {"candidate_registry": registry, "logistics_proposal": proposal,
                 "agent_metrics": metrics,
-                "agent_retry_state": retries, "agent_error": {}, "id_draft": None, "draft_plan": None,
+                "agent_retry_state": retries, "agent_error": {}, "call_budget_ledger": ledger,
+                "id_draft": None, "draft_plan": None,
                 "route_time_estimates": [], "materialization_failures": [],
                 "decision_trace": self._append_trace(state, "agent_handoff: logistics -> composer")}
 
     def run_composer_agent(self, state: TripGraphState) -> TripGraphState:
         started = time.perf_counter()
         retries = (state.get("agent_retry_state") or AgentRetryState()).model_copy(deep=True)
-        attempt = retries.composer_attempts + 1
+        ledger = (state.get("call_budget_ledger") or CallBudgetLedger()).model_copy(deep=True)
         feedback = self._feedback(state, "composer")
+        attempt = retries.composer_attempts + 1 if feedback is not None else max(1, retries.composer_attempts)
         try:
-            draft = ComposerAgent(llm=getattr(self, "composer_llm", self.llm)).run(
+            draft = ComposerAgent(llm=BudgetedLLM(getattr(self, "composer_llm", self.llm), "composer", ledger)).run(
                 request=state["request"], experience=state["experience_proposal"],
                 logistics=state["logistics_proposal"], weather_info=list(state.get("weather_info", [])),
                 feedback=feedback, previous=state.get("id_draft"), attempt=attempt)
         except Exception as exc:
-            return self._agent_error_update(state, "composer", exc)
+            return self._agent_error_update(state, "composer", exc, ledger=ledger)
         retries.composer_attempts = attempt
-        if attempt > 1:
+        if feedback is not None and attempt > 1:
             retries.global_revisions += 1
         metrics = (state.get("agent_metrics") or AgentMetrics()).model_copy(deep=True)
         metrics.by_agent["composer"] = AgentMetric(attempts=attempt,
@@ -188,8 +203,9 @@ class MultiAgentTripPlanner(LangGraphTripPlanner):
                                       "proposal_version": draft.version})
         if feedback is not None:
             metrics.targeted_retries.append("composer")
+        metrics.budget_usage = ledger.snapshot()
         return {"id_draft": draft, "agent_metrics": metrics, "agent_retry_state": retries,
-                "agent_error": {},
+                "agent_error": {}, "call_budget_ledger": ledger,
                 "draft_plan": None, "route_time_estimates": [], "materialization_failures": [],
                 "decision_trace": self._append_trace(state, "agent_handoff: composer -> materializer")}
 
@@ -243,7 +259,8 @@ class MultiAgentTripPlanner(LangGraphTripPlanner):
             return f"{owner}_retry"
         return "fallback_response"
 
-    def _agent_error_update(self, state: TripGraphState, owner: str, exc: Exception) -> TripGraphState:
+    def _agent_error_update(self, state: TripGraphState, owner: str, exc: Exception,
+                            *, ledger: Optional[CallBudgetLedger] = None) -> TripGraphState:
         metrics = (state.get("agent_metrics") or AgentMetrics()).model_copy(deep=True)
         retries = (state.get("agent_retry_state") or AgentRetryState()).model_copy(deep=True)
         field = f"{owner}_attempts"
@@ -254,10 +271,13 @@ class MultiAgentTripPlanner(LangGraphTripPlanner):
         metric = metrics.by_agent.get(owner, AgentMetric())
         metric.attempts = previous_attempts + 1
         metrics.by_agent[owner] = metric
+        ledger = ledger or (state.get("call_budget_ledger") or CallBudgetLedger()).model_copy(deep=True)
+        metrics.budget_usage = ledger.snapshot()
         return {"agent_error": {"owner": owner, "code": getattr(exc, "code", type(exc).__name__),
                                 "message": str(exc)[:300]},
                 "agent_metrics": metrics,
                 "agent_retry_state": retries,
+                "call_budget_ledger": ledger,
                 "decision_trace": self._append_trace(state, f"agent_error: {owner} bounded failure")}
 
     def evaluate_itinerary(self, state: TripGraphState) -> TripGraphState:

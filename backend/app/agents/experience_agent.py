@@ -69,6 +69,7 @@ class ExperienceAgent:
         self.llm = llm
         self.gateway = gateway
         self.deterministic_fallback = deterministic_fallback
+        self.trace: dict[str, Any] = {}
 
     def run(
         self,
@@ -107,6 +108,9 @@ class ExperienceAgent:
                 )
                 self.gateway.register("experience", self._registry_entities(
                     items, source_type=source_type, query=query, query_index=query_index))
+                if len(self._attraction_ids()) >= 12 and self._preference_coverage(request):
+                    self.gateway.early_stop_reasons["experience"] = "pool_target_and_preference_coverage"
+                    break
             if research.rag_query:
                 result = self.gateway.call(
                     "experience", "rag_search", query_key=research.rag_query,
@@ -179,6 +183,10 @@ class ExperienceAgent:
                                       evidence_sufficient=alias_proposal.evidence_sufficient,
                                       core_attraction_ids=core, optional_attraction_ids=optional,
                                       target_attractions=target)
+        self.trace = {"candidate_pool_ids": sorted(self._attraction_ids()),
+                      "shortlist_ids": [item.source_id for item in ranked],
+                      "alias_map": aliases,
+                      "core_ids": core, "optional_ids": optional}
         return proposal
 
     def _fallback(self, request: TripRequest, attempt: int) -> ExperienceAgentResult:
@@ -240,6 +248,14 @@ class ExperienceAgent:
     def _attraction_ids(self) -> List[str]:
         return [source_id for source_id, entity in self.gateway.registry.entities.items()
                 if entity.entity_type == "attraction" and entity.registered_by == "experience"]
+
+    def _preference_coverage(self, request: TripRequest) -> bool:
+        if not request.preferences:
+            return True
+        text = normalize_text(" ".join(entity.name + " " + str(entity.metadata)
+                                       for entity in self.gateway.registry.entities.values()
+                                       if entity.entity_type == "attraction"))
+        return all(normalize_text(value) in text for value in request.preferences if normalize_text(value))
 
     @staticmethod
     def _research_prompt(request: TripRequest, context: dict) -> str:

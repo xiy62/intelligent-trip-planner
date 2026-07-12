@@ -43,6 +43,7 @@ class LogisticsAgent:
     def __init__(self, *, llm: Any, gateway: ToolGateway):
         self.llm = llm
         self.gateway = gateway
+        self.trace: dict[str, Any] = {}
 
     def run(self, *, request: TripRequest, experience: ExperienceProposal,
             feedback: Optional[AgentFeedback] = None,
@@ -66,11 +67,21 @@ class LogisticsAgent:
                                           query=query, city=request.city, country_code=request.country_code)
                 self.gateway.register("logistics", self._entities(items, "hotel", source_type=source_type,
                                                                   query=query, query_index=query_index))
+                hotels_now = [entity for entity in self.gateway.registry.entities.values()
+                              if entity.entity_type == "hotel"]
+                if len(hotels_now) >= 8 and sum(entity.location is not None for entity in hotels_now) >= 3:
+                    self.gateway.early_stop_reasons["hotels"] = "pool_target_and_coordinate_feasibility"
+                    break
             for query_index, (query, source_type) in enumerate(meal_queries[:max_meal_queries]):
                 items = self.gateway.call("logistics", "meal_search", query_key=query,
                                           query=query, city=request.city, country_code=request.country_code)
                 self.gateway.register("logistics", self._entities(items, "meal", source_type=source_type,
                                                                   query=query, query_index=query_index))
+                meals_now = [entity for entity in self.gateway.registry.entities.values()
+                             if entity.entity_type == "meal"]
+                if len(meals_now) >= 12 and self._meal_coverage(request, meals_now):
+                    self.gateway.early_stop_reasons["meals"] = "pool_target_and_theme_coverage"
+                    break
         except ToolGatewayError as exc:
             raise LogisticsAgentError(exc.code, str(exc)) from exc
 
@@ -93,7 +104,9 @@ class LogisticsAgent:
             f"request={request.model_dump()}\nexperience={experience.model_dump()}\n"
             f"hotels={compact_candidates(hotels_ranked, hotel_aliases)}\n"
             f"meals={compact_candidates(meals_ranked, meal_aliases)}\n"
-            f"Select one primary H alias, at most two H aliases total, and at most {min(6, 2 * request.travel_days)} M aliases.\n"
+            f"Select one primary H alias. hotel_aliases contains only optional alternate hotels: do not repeat "
+            f"primary_hotel_alias there, and select at most one alternate. Select at most "
+            f"{min(6, 2 * request.travel_days)} unique M aliases.\n"
             f"coarse_feasibility={feasibility}\nrevision={context}"
         )
         try:
@@ -102,9 +115,10 @@ class LogisticsAgent:
             raise LogisticsAgentError("structured_output", str(exc)) from exc
         try:
             primary = resolve_aliases([alias_proposal.primary_hotel_alias], hotel_aliases, expected_prefix="H")[0]
-            hotels = resolve_aliases(alias_proposal.hotel_aliases, hotel_aliases, expected_prefix="H")
+            alternate_hotels = resolve_aliases(alias_proposal.hotel_aliases, hotel_aliases, expected_prefix="H")
+            hotels = list(dict.fromkeys([primary, *alternate_hotels]))
             meals = resolve_aliases(alias_proposal.meal_aliases, meal_aliases, expected_prefix="M")
-            if primary not in hotels or len(hotels) > 2 or len(meals) > min(6, 2 * request.travel_days):
+            if len(hotels) > 2 or len(meals) > min(6, 2 * request.travel_days):
                 raise ValueError("invalid logistics cardinality")
             costs = {hotel_aliases[key]: value for key, value in alias_proposal.cost_assumptions.items()
                      if key in hotel_aliases}
@@ -116,6 +130,12 @@ class LogisticsAgent:
                                      primary_hotel_id=primary, constraints=alias_proposal.constraints,
                                      infeasible_pairs=alias_proposal.infeasible_pairs,
                                      unknowns=alias_proposal.unknowns, cost_assumptions=costs)
+        self.trace = {"hotel_pool_ids": sorted(self._ids("hotel")),
+                      "meal_pool_ids": sorted(self._ids("meal")),
+                      "hotel_shortlist_ids": [item.source_id for item in hotels_ranked],
+                      "meal_shortlist_ids": [item.source_id for item in meals_ranked],
+                      "hotel_alias_map": hotel_aliases, "meal_alias_map": meal_aliases,
+                      "primary_hotel_id": primary, "selected_meal_ids": meals}
         return proposal
 
     def _entities(self, items: Any, entity_type: str, *, source_type: str, query: str,
@@ -174,6 +194,15 @@ class LogisticsAgent:
             return None
         return (sum(item.latitude for item in locations) / len(locations),
                 sum(item.longitude for item in locations) / len(locations))
+
+    @staticmethod
+    def _meal_coverage(request: TripRequest, entities: List[RegistryEntity]) -> bool:
+        food_terms = [normalize_text(value) for value in request.preferences
+                      if any(term in normalize_text(value) for term in ("food", "dining", "restaurant", "cafe"))]
+        if not food_terms:
+            return True
+        text = normalize_text(" ".join(entity.name + " " + str(entity.metadata) for entity in entities))
+        return all(term in text for term in food_terms)
 
     @staticmethod
     def _distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:

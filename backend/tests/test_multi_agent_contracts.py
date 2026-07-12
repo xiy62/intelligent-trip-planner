@@ -1,7 +1,7 @@
 import unittest
 
 from app.agents.tool_gateway import ToolGateway, ToolGatewayError
-from app.models.multi_agent import CandidateRegistry, RegistryEntity, registry_source_id
+from app.models.multi_agent import CallBudgetLedger, CandidateRegistry, RegistryEntity, registry_source_id
 
 
 class MultiAgentContractTests(unittest.TestCase):
@@ -60,6 +60,21 @@ class MultiAgentContractTests(unittest.TestCase):
         with self.assertRaises(ToolGatewayError) as context:
             gateway.call("composer", "attraction_search", query_key="museum")
         self.assertEqual(context.exception.code, "tool_not_allowed")
+
+    def test_cumulative_role_and_global_budgets_cannot_reset_between_attempts(self):
+        ledger = CallBudgetLedger(
+            role_limits={"experience": {"llm": 1, "maps": 1, "rag": 1},
+                         "logistics": {"llm": 1, "maps": 1, "rag": 0},
+                         "composer": {"llm": 1, "maps": 0, "rag": 0}},
+            global_limits={"llm": 2, "maps": 1, "rag": 1},
+        )
+        ledger.consume("experience", "maps", "search")
+        with self.assertRaises(ValueError):
+            ledger.consume("experience", "maps", "retry_search")
+        with self.assertRaises(ValueError):
+            ledger.consume("logistics", "maps", "global_search")
+        self.assertEqual(ledger.global_used["maps"], 1)
+        self.assertEqual(len(ledger.blocked_calls), 2)
 
 
 if __name__ == "__main__":

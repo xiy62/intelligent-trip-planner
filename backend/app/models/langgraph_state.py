@@ -11,6 +11,7 @@ from .multi_agent import (
     AgentMetrics,
     AgentRetryState,
     CandidateRegistry,
+    CallBudgetLedger,
     ExperienceProposal,
     IDBasedItineraryDraft,
     LogisticsProposal,
@@ -320,3 +321,4 @@ class TripGraphState(TypedDict, total=False):
     agent_metrics: AgentMetrics
     materialization_failures: List[Dict[str, Any]]
     agent_error: Dict[str, Any]
+    call_budget_ledger: CallBudgetLedger

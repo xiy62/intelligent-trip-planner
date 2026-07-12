@@ -54,7 +54,8 @@ class ComposerAgent:
             "a generic meal name with no address or POI ID. You may author ordering, duration, descriptions and "
             "cost estimates, but never provider names, addresses, coordinates, ratings, or links.\n"
             "Return A/H/M aliases in source_id and hotel_id fields. Use every core A alias, use the primary H alias every day, "
-            "and never repeat an M alias.\n"
+            "use each A alias at most once globally, and use each M alias at most once globally. Assign selected M aliases "
+            "in the listed order; after they are exhausted, use source_id=null with a generic_name.\n"
             f"request={request.model_dump()}\nexperience={compact_experience}\n"
             f"logistics={compact_logistics}\nweather={[item.model_dump() for item in weather_info]}\n"
             f"revision={context}"
@@ -80,8 +81,10 @@ class ComposerAgent:
                     raise ValueError("composer must use primary hotel every day")
             if not set(experience.core_attraction_ids) <= set(used_attractions):
                 raise ValueError("composer omitted core attractions")
-            if len(used_attractions) != len(set(used_attractions)) or len(used_meals) != len(set(used_meals)):
-                raise ValueError("composer duplicated an alias")
+            if len(used_attractions) != len(set(used_attractions)):
+                raise ValueError("composer duplicated an attraction alias; every A alias is globally unique")
+            if len(used_meals) != len(set(used_meals)):
+                raise ValueError("composer duplicated a meal alias; reuse a generic meal with source_id=null")
             if feedback is None and len(used_attractions) != experience.target_attractions:
                 raise ValueError("composer did not meet attraction target")
         except ValueError as exc:
