@@ -12,10 +12,19 @@ AgentRole = Literal["experience", "logistics", "composer"]
 EntityType = Literal["attraction", "hotel", "meal"]
 
 
+def registry_source_id(entity_type: EntityType, provider_id: str) -> str:
+    """Build an entity-type-scoped ID for one request-local registry entry."""
+    normalized = str(provider_id or "").strip()
+    if not normalized:
+        raise ValueError("provider_id must not be blank")
+    return f"{entity_type}:{normalized}"
+
+
 class RegistryEntity(BaseModel):
     """Canonical provider-backed entity stored for one planner run."""
 
     source_id: str
+    provider_id: str = ""
     entity_type: EntityType
     name: str
     address: str = ""

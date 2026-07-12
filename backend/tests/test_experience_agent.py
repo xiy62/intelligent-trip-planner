@@ -41,12 +41,13 @@ class ExperienceAgentTests(unittest.TestCase):
                               budgets={"attraction_search": 3, "rag_search": 1, "place_detail": 2})
         llm = FakeLLM([
             {"attraction_queries": ["museum", "museum"], "rag_query": "museum planning"},
-            {"version": 99, "run_id": "wrong", "clusters": [{"name": "Art", "attraction_ids": ["a1"]}],
+            {"version": 99, "run_id": "wrong", "clusters": [{"name": "Art", "attraction_ids": ["attraction:a1"]}],
              "rag_chunk_ids": ["r1"], "uncovered_preferences": [], "evidence_sufficient": True},
         ])
         result = ExperienceAgent(llm=llm, gateway=gateway).run(request=request())
         self.assertEqual(result.proposal.run_id, "run-1")
         self.assertEqual(result.proposal.version, 1)
+        self.assertEqual(result.proposal.allowed_attraction_ids, {"attraction:a1"})
         self.assertEqual(calls, ["museum"])
         self.assertEqual(gateway.call_counts["attraction_search"], 1)
         self.assertEqual(len(llm.calls), 2)

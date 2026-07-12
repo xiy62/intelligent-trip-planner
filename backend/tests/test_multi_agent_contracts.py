@@ -1,10 +1,14 @@
 import unittest
 
 from app.agents.tool_gateway import ToolGateway, ToolGatewayError
-from app.models.multi_agent import CandidateRegistry, RegistryEntity
+from app.models.multi_agent import CandidateRegistry, RegistryEntity, registry_source_id
 
 
 class MultiAgentContractTests(unittest.TestCase):
+    def test_registry_source_ids_are_scoped_by_entity_type(self):
+        self.assertEqual(registry_source_id("attraction", "shared"), "attraction:shared")
+        self.assertEqual(registry_source_id("hotel", "shared"), "hotel:shared")
+        self.assertEqual(registry_source_id("meal", "shared"), "meal:shared")
     def test_registry_enforces_agent_ownership(self):
         registry = CandidateRegistry(run_id="run-1")
         registry.add(

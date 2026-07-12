@@ -131,7 +131,7 @@ class ItineraryMaterializer:
                         category=str(entity.metadata.get("category") or "Attraction"),
                         rating=entity.rating,
                         photos=list(entity.photo_names),
-                        poi_id=entity.source_id,
+                        poi_id=entity.provider_id or entity.source_id,
                         image_url=entity.image_url,
                         maps_url=entity.maps_url,
                         website_url=entity.website_url,
@@ -155,7 +155,7 @@ class ItineraryMaterializer:
                         continue
                     name, address, location = entity.name, entity.address or None, entity.location
                     image_url, maps_url, website_url = entity.image_url, entity.maps_url, entity.website_url
-                    poi_id = entity.source_id
+                    poi_id = entity.provider_id or entity.source_id
                 elif item.generic_name:
                     name, address, location = item.generic_name, None, None
                     image_url = maps_url = website_url = None
@@ -186,7 +186,7 @@ class ItineraryMaterializer:
                                       price_range="", rating=str(entity.rating or ""), distance="",
                                       type="Hotel", estimated_cost=estimate, image_url=entity.image_url,
                                       maps_url=entity.maps_url, website_url=entity.website_url,
-                                      poi_id=entity.source_id, cost_status=status)
+                                      poi_id=entity.provider_id or entity.source_id, cost_status=status)
 
             days.append(DayPlan(date=day.date, day_index=day.day_index, description=day.description,
                                 transportation=request.transportation, accommodation=request.accommodation,

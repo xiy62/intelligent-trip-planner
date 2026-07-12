@@ -58,11 +58,14 @@ class MultiAgentTripPlanner(LangGraphTripPlanner):
         builder.add_edge("prepare_request", "experience_agent")
         builder.add_edge(["authoritative_weather", "experience_agent"], "research_join")
         builder.add_conditional_edges("research_join", self._route_after_agent,
-                                      {"continue": "logistics_agent", "fallback_response": "fallback_response"})
+                                      {"continue": "logistics_agent", "experience_retry": "experience_retry",
+                                       "fallback_response": "fallback_response"})
         builder.add_conditional_edges("logistics_agent", self._route_after_agent,
-                                      {"continue": "composer_agent", "fallback_response": "fallback_response"})
+                                      {"continue": "composer_agent", "logistics_retry": "logistics_retry",
+                                       "fallback_response": "fallback_response"})
         builder.add_conditional_edges("composer_agent", self._route_after_agent,
-                                      {"continue": "canonical_materializer", "fallback_response": "fallback_response"})
+                                      {"continue": "canonical_materializer", "composer_retry": "composer_retry",
+                                       "fallback_response": "fallback_response"})
         builder.add_edge("canonical_materializer", "collect_route_times")
         builder.add_edge("collect_route_times", "evaluate_itinerary")
         builder.add_conditional_edges("evaluate_itinerary", self._route_multi_result,
@@ -72,11 +75,14 @@ class MultiAgentTripPlanner(LangGraphTripPlanner):
                                        "composer_retry": "composer_retry",
                                        "fallback_response": "fallback_response"})
         builder.add_conditional_edges("experience_retry", self._route_after_agent,
-                                      {"continue": "logistics_agent", "fallback_response": "fallback_response"})
+                                      {"continue": "logistics_agent", "experience_retry": "experience_retry",
+                                       "fallback_response": "fallback_response"})
         builder.add_conditional_edges("logistics_retry", self._route_after_agent,
-                                      {"continue": "composer_agent", "fallback_response": "fallback_response"})
+                                      {"continue": "composer_agent", "logistics_retry": "logistics_retry",
+                                       "fallback_response": "fallback_response"})
         builder.add_conditional_edges("composer_retry", self._route_after_agent,
-                                      {"continue": "canonical_materializer", "fallback_response": "fallback_response"})
+                                      {"continue": "canonical_materializer", "composer_retry": "composer_retry",
+                                       "fallback_response": "fallback_response"})
         builder.add_edge("finalize_response", END)
         builder.add_edge("fallback_response", END)
         return builder.compile(checkpointer=self.checkpointer)
@@ -223,17 +229,36 @@ class MultiAgentTripPlanner(LangGraphTripPlanner):
 
     @staticmethod
     def _route_after_agent(state: TripGraphState) -> str:
-        return "fallback_response" if state.get("agent_error") else "continue"
+        error = state.get("agent_error") or {}
+        if not error:
+            return "continue"
+        owner = error.get("owner")
+        code = error.get("code")
+        retries = state.get("agent_retry_state") or AgentRetryState()
+        attempts = {"experience": retries.experience_attempts,
+                    "logistics": retries.logistics_attempts,
+                    "composer": retries.composer_attempts}
+        retryable = code in {"invalid_source_id", "structured_output"}
+        if owner in attempts and retryable and attempts[owner] < 2 and retries.global_revisions < 3:
+            return f"{owner}_retry"
+        return "fallback_response"
 
     def _agent_error_update(self, state: TripGraphState, owner: str, exc: Exception) -> TripGraphState:
         metrics = (state.get("agent_metrics") or AgentMetrics()).model_copy(deep=True)
+        retries = (state.get("agent_retry_state") or AgentRetryState()).model_copy(deep=True)
+        field = f"{owner}_attempts"
+        previous_attempts = getattr(retries, field)
+        setattr(retries, field, previous_attempts + 1)
+        if previous_attempts > 0:
+            retries.global_revisions += 1
         metric = metrics.by_agent.get(owner, AgentMetric())
-        metric.attempts += 1
+        metric.attempts = previous_attempts + 1
         metrics.by_agent[owner] = metric
         return {"agent_error": {"owner": owner, "code": getattr(exc, "code", type(exc).__name__),
                                 "message": str(exc)[:300]},
                 "agent_metrics": metrics,
-                "decision_trace": self._append_trace(state, f"agent_error: {owner} labeled fallback")}
+                "agent_retry_state": retries,
+                "decision_trace": self._append_trace(state, f"agent_error: {owner} bounded failure")}
 
     def evaluate_itinerary(self, state: TripGraphState) -> TripGraphState:
         update = super().evaluate_itinerary(state)
@@ -300,6 +325,10 @@ class MultiAgentTripPlanner(LangGraphTripPlanner):
 
     @staticmethod
     def _feedback(state: TripGraphState, owner: str):
+        error = state.get("agent_error") or {}
+        if error.get("owner") == owner:
+            return AgentFeedback(owner=owner, codes=[str(error.get("code") or "agent_error")],
+                                 details=[{"message": str(error.get("message") or "")[:300]}])
         report = state.get("evaluation_report")
         if report is None or report.failure_owner != owner:
             return None

@@ -10,6 +10,7 @@ from ..models.multi_agent import (
     ExperienceProposal,
     LogisticsProposal,
     RegistryEntity,
+    registry_source_id,
 )
 from ..models.schemas import TripRequest
 from .structured_llm import invoke_structured
@@ -84,11 +85,12 @@ class LogisticsAgent:
         for item in list(items or []):
             if not isinstance(item, dict):
                 continue
-            source_id = str(item.get("id") or item.get("source_id") or "")
+            provider_id = str(item.get("id") or item.get("provider_id") or item.get("source_id") or "")
             name = str(item.get("name") or "")
-            if not source_id or not name:
+            if not provider_id or not name:
                 continue
-            entities.append(RegistryEntity(source_id=source_id, entity_type=entity_type, name=name,
+            entities.append(RegistryEntity(source_id=registry_source_id(entity_type, provider_id),
+                                            provider_id=provider_id, entity_type=entity_type, name=name,
                                             address=str(item.get("address") or ""), location=item.get("location") or None,
                                             rating=item.get("rating"), maps_url=item.get("maps_url"),
                                             website_url=item.get("website_url"), image_url=item.get("image_url"),
@@ -121,4 +123,3 @@ class LogisticsAgent:
         d_lat, d_lon = radians(lat2 - lat1), radians(lon2 - lon1)
         value = sin(d_lat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(d_lon / 2) ** 2
         return 6371.0 * 2 * asin(sqrt(value))
-

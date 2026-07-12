@@ -12,6 +12,7 @@ from ..models.multi_agent import (
     CandidateRegistry,
     ExperienceProposal,
     RegistryEntity,
+    registry_source_id,
 )
 from ..models.schemas import TripRequest
 from .structured_llm import invoke_structured
@@ -92,8 +93,10 @@ class ExperienceAgent:
             for source_id in research.detail_source_ids[:2]:
                 if source_id not in self.gateway.registry.entities:
                     continue
+                entity = self.gateway.registry.entities[source_id]
                 detail = self.gateway.call(
-                    "experience", "place_detail", query_key=source_id, source_id=source_id,
+                    "experience", "place_detail", query_key=source_id,
+                    source_id=entity.provider_id or entity.source_id,
                 )
                 entities = self._registry_entities([detail])
                 if entities:
@@ -160,11 +163,12 @@ class ExperienceAgent:
         for item in list(items or []):
             if not isinstance(item, dict):
                 continue
-            source_id = str(item.get("id") or item.get("source_id") or "")
+            provider_id = str(item.get("id") or item.get("provider_id") or item.get("source_id") or "")
             name = str(item.get("name") or "")
-            if not source_id or not name:
+            if not provider_id or not name:
                 continue
-            entities.append(RegistryEntity(source_id=source_id, entity_type="attraction", name=name,
+            entities.append(RegistryEntity(source_id=registry_source_id("attraction", provider_id),
+                                            provider_id=provider_id, entity_type="attraction", name=name,
                                             address=str(item.get("address") or ""),
                                             location=item.get("location") or None,
                                             rating=item.get("rating"), maps_url=item.get("maps_url"),

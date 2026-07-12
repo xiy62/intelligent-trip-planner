@@ -8,24 +8,24 @@ from app.models.schemas import TripRequest, WeatherInfo
 
 
 class FakeLLM:
-    def __init__(self):
-        self.responses = [
+    def __init__(self, responses=None):
+        self.responses = list(responses or [
             {"attraction_queries": ["museum"], "rag_query": "museum planning"},
-            {"version": 1, "run_id": "ignored", "clusters": [{"name": "Museums", "attraction_ids": ["a1"]}],
+            {"version": 1, "run_id": "ignored", "clusters": [{"name": "Museums", "attraction_ids": ["attraction:a1"]}],
              "rag_chunk_ids": ["r1"], "evidence_sufficient": True},
             {"version": 1, "run_id": "ignored", "experience_version": 1,
-             "hotel_ids": ["h1"], "meal_ids": ["m1"], "constraints": [], "infeasible_pairs": [],
-             "unknowns": [], "cost_assumptions": {"h1": 200}},
+             "hotel_ids": ["hotel:h1"], "meal_ids": ["meal:m1"], "constraints": [], "infeasible_pairs": [],
+             "unknowns": [], "cost_assumptions": {"hotel:h1": 200}},
             {"version": 1, "run_id": "ignored", "experience_version": 1, "logistics_version": 1,
              "days": [{"date": "2026-06-01", "day_index": 0, "description": "Museum day",
-                       "attraction_items": [{"source_id": "a1", "visit_duration": 120,
+                       "attraction_items": [{"source_id": "attraction:a1", "visit_duration": 120,
                                              "description": "Explore the collection", "ticket_price": 25,
                                              "cost_status": "known"}],
-                       "meal_items": [{"meal_type": "lunch", "source_id": "m1",
+                       "meal_items": [{"meal_type": "lunch", "source_id": "meal:m1",
                                        "estimated_cost": 25, "cost_status": "estimated"}],
-                       "hotel_id": "h1"}],
+                       "hotel_id": "hotel:h1"}],
              "overall_suggestions": "Use public transit.", "transportation_estimate": 15},
-        ]
+        ])
         self.calls = []
 
     def invoke(self, prompt):
@@ -51,8 +51,8 @@ class SearchTool:
 
 
 class FakeMapService:
-    def __init__(self):
-        self.tool = SearchTool()
+    def __init__(self, tool=None):
+        self.tool = tool or SearchTool()
 
     def get_langchain_tools(self):
         return [self.tool]
@@ -99,8 +99,76 @@ class MultiAgentTripPlannerTests(unittest.TestCase):
         self.assertEqual(state["final_plan"].days[0].attractions[0].name, "Registry Museum")
         self.assertEqual(state["final_plan"].days[0].hotel.name, "Registry Hotel")
         self.assertEqual(state["final_plan"].days[0].meals[0].name, "Registry Cafe")
+        self.assertEqual(state["final_plan"].days[0].attractions[0].poi_id, "a1")
+        self.assertEqual(state["final_plan"].days[0].hotel.poi_id, "h1")
+        self.assertEqual(state["final_plan"].days[0].meals[0].poi_id, "m1")
         self.assertFalse(state["materialization_failures"])
         self.assertEqual(planner.health_summary()["workflow"], "langgraph_multi_agent")
+
+    def test_same_provider_id_can_exist_as_attraction_hotel_and_meal(self):
+        class CollidingSearchTool(SearchTool):
+            def invoke(self, payload):
+                query = payload["keywords"].lower()
+                location = {"longitude": -73.98, "latitude": 40.76}
+                if "hotel" in query:
+                    return [{"id": "shared", "name": "Shared Hotel", "location": location}]
+                if any(word in query for word in ("restaurant", "dining", "food")):
+                    return [{"id": "shared", "name": "Shared Cafe", "location": location}]
+                return [{"id": "shared", "name": "Shared Museum", "location": location}]
+
+        responses = [
+            {"attraction_queries": ["museum"], "rag_query": "museum planning"},
+            {"version": 1, "run_id": "ignored", "clusters": [{"name": "Museums", "attraction_ids": ["attraction:shared"]}],
+             "rag_chunk_ids": ["r1"]},
+            {"version": 1, "run_id": "ignored", "experience_version": 1,
+             "hotel_ids": ["hotel:shared"], "meal_ids": ["meal:shared"],
+             "cost_assumptions": {"hotel:shared": 200}},
+            {"version": 1, "run_id": "ignored", "experience_version": 1, "logistics_version": 1,
+             "days": [{"date": "2026-06-01", "day_index": 0, "description": "Day",
+                       "attraction_items": [{"source_id": "attraction:shared", "visit_duration": 120}],
+                       "meal_items": [{"meal_type": "lunch", "source_id": "meal:shared"}],
+                       "hotel_id": "hotel:shared"}]},
+        ]
+        planner = MultiAgentTripPlanner(llm=FakeLLM(responses),
+                                        map_service=FakeMapService(CollidingSearchTool()),
+                                        rag_service=FakeRAGService(), weather_service=FakeWeatherService(),
+                                        memory_service=FakeMemoryService(), rag_mode="local_lightweight")
+        state = planner.invoke_graph(TripRequest(city="New York", start_date="2026-06-01",
+                                                 end_date="2026-06-01", travel_days=1,
+                                                 transportation="Public transit",
+                                                 accommodation="Mid-range hotel", preferences=["Museums"]))
+        self.assertTrue(state["evaluation_report"].passed)
+        self.assertEqual(set(state["candidate_registry"].entities),
+                         {"attraction:shared", "hotel:shared", "meal:shared"})
+        self.assertEqual(state["final_plan"].days[0].attractions[0].poi_id, "shared")
+
+    def test_invalid_experience_id_gets_one_bounded_revision_before_fallback(self):
+        responses = [
+            {"attraction_queries": ["museum"], "rag_query": "museum planning"},
+            {"version": 1, "run_id": "ignored", "clusters": [{"name": "Bad", "attraction_ids": ["attraction:invented"]}]},
+            {"attraction_queries": ["museum"], "rag_query": "museum planning"},
+            {"version": 1, "run_id": "ignored", "clusters": [{"name": "Museums", "attraction_ids": ["attraction:a1"]}],
+             "rag_chunk_ids": ["r1"]},
+            {"version": 1, "run_id": "ignored", "experience_version": 1,
+             "hotel_ids": ["hotel:h1"], "meal_ids": ["meal:m1"], "cost_assumptions": {"hotel:h1": 200}},
+            {"version": 1, "run_id": "ignored", "experience_version": 1, "logistics_version": 1,
+             "days": [{"date": "2026-06-01", "day_index": 0, "description": "Day",
+                       "attraction_items": [{"source_id": "attraction:a1", "visit_duration": 120}],
+                       "meal_items": [{"meal_type": "lunch", "source_id": "meal:m1"}],
+                       "hotel_id": "hotel:h1"}]},
+        ]
+        llm = FakeLLM(responses)
+        planner = MultiAgentTripPlanner(llm=llm, map_service=FakeMapService(),
+                                        rag_service=FakeRAGService(), weather_service=FakeWeatherService(),
+                                        memory_service=FakeMemoryService(), rag_mode="local_lightweight")
+        state = planner.invoke_graph(TripRequest(city="New York", start_date="2026-06-01",
+                                                 end_date="2026-06-01", travel_days=1,
+                                                 transportation="Public transit",
+                                                 accommodation="Mid-range hotel", preferences=["Museums"]))
+        self.assertTrue(state["evaluation_report"].passed)
+        self.assertEqual(state["agent_retry_state"].experience_attempts, 2)
+        self.assertEqual(state["agent_metrics"].targeted_retries, ["experience"])
+        self.assertEqual(len(llm.calls), 6)
 
     def test_failure_owner_routing_and_retry_budgets_are_deterministic(self):
         planner = object.__new__(MultiAgentTripPlanner)
