@@ -394,6 +394,9 @@ export default function Result() {
 
           {tripPlan.budget && (
             <Card variant="borderless" className="budget-card" title="Budget estimate">
+              {tripPlan.budget.estimate_incomplete && (
+                <p className="muted">Partial estimate — some prices were unavailable and are not treated as free.</p>
+              )}
               <div className="budget-grid">
                 <span>Attractions</span><strong>${tripPlan.budget.total_attractions}</strong>
                 <span>Hotels</span><strong>${tripPlan.budget.total_hotels}</strong>
@@ -492,7 +495,7 @@ export default function Result() {
                                 <Descriptions.Item label="Name">{day.hotel.name}</Descriptions.Item>
                                 <Descriptions.Item label="Address">{day.hotel.address}</Descriptions.Item>
                                 <Descriptions.Item label="Type">{day.hotel.type || 'Hotel'}</Descriptions.Item>
-                                <Descriptions.Item label="Price">{day.hotel.price_range || `$${day.hotel.estimated_cost || 0}`}</Descriptions.Item>
+                                <Descriptions.Item label="Price">{day.hotel.cost_status === 'unknown' ? 'Estimate unavailable' : (day.hotel.price_range || `$${day.hotel.estimated_cost || 0}`)}</Descriptions.Item>
                               </Descriptions>
                               <Space wrap className="place-actions">
                                 <Button
@@ -533,6 +536,7 @@ export default function Result() {
                             <div>
                               <strong>{meal.type}:</strong>&nbsp;{meal.name}
                               {meal.description ? ` - ${meal.description}` : ''}
+                              {meal.cost_status === 'unknown' ? ' · Estimate unavailable' : ''}
                             </div>
                             <Button
                               size="small"

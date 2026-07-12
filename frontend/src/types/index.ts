@@ -19,6 +19,7 @@ export interface Attraction {
   maps_url?: string
   website_url?: string
   ticket_price?: number
+  cost_status?: 'known' | 'estimated' | 'unknown'
 }
 
 export interface Meal {
@@ -32,6 +33,7 @@ export interface Meal {
   maps_url?: string
   website_url?: string
   poi_id?: string
+  cost_status?: 'known' | 'estimated' | 'unknown'
 }
 
 export interface Hotel {
@@ -47,6 +49,7 @@ export interface Hotel {
   maps_url?: string
   website_url?: string
   poi_id?: string
+  cost_status?: 'known' | 'estimated' | 'unknown'
 }
 
 export interface Budget {
@@ -55,6 +58,8 @@ export interface Budget {
   total_meals: number
   total_transportation: number
   total: number
+  estimate_incomplete?: boolean
+  currency?: string
 }
 
 export interface DayPlan {

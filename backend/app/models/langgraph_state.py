@@ -34,6 +34,11 @@ class AttractionCandidate(BaseModel):
     source: str = "google_maps"
     source_id: str = ""
     raw_text: str = ""
+    rating: Optional[float] = None
+    maps_url: Optional[str] = None
+    website_url: Optional[str] = None
+    image_url: Optional[str] = None
+    photo_names: List[str] = Field(default_factory=list)
 
 
 class HotelCandidate(BaseModel):
@@ -45,6 +50,11 @@ class HotelCandidate(BaseModel):
     source: str = "google_maps"
     source_id: str = ""
     raw_text: str = ""
+    rating: Optional[float] = None
+    maps_url: Optional[str] = None
+    website_url: Optional[str] = None
+    image_url: Optional[str] = None
+    photo_names: List[str] = Field(default_factory=list)
 
 
 class MealCandidate(BaseModel):
@@ -56,6 +66,11 @@ class MealCandidate(BaseModel):
     source: str = "google_maps"
     source_id: str = ""
     raw_text: str = ""
+    rating: Optional[float] = None
+    maps_url: Optional[str] = None
+    website_url: Optional[str] = None
+    image_url: Optional[str] = None
+    photo_names: List[str] = Field(default_factory=list)
 
 
 class RouteTimeEstimate(BaseModel):

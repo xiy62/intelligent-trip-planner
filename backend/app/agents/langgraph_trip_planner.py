@@ -317,9 +317,15 @@ class LangGraphTripPlanner:
                 candidate = AttractionCandidate(
                     name=str(item.get("name", "")),
                     address=str(item.get("address", "")),
+                    location=item.get("location") or None,
                     source="google_maps",
                     source_id=str(item.get("id", "")),
                     raw_text=json.dumps(item, ensure_ascii=False),
+                    rating=item.get("rating"),
+                    maps_url=item.get("maps_url"),
+                    website_url=item.get("website_url"),
+                    image_url=item.get("image_url"),
+                    photo_names=list(item.get("photo_names") or []),
                 )
                 normalized = self._normalize_entity_name(candidate.name)
                 if not normalized or normalized in seen:
@@ -357,9 +363,15 @@ class LangGraphTripPlanner:
                 candidate = HotelCandidate(
                     name=str(item.get("name", "")),
                     address=str(item.get("address", "")),
+                    location=item.get("location") or None,
                     source="google_maps",
                     source_id=str(item.get("id", "")),
                     raw_text=json.dumps(item, ensure_ascii=False),
+                    rating=item.get("rating"),
+                    maps_url=item.get("maps_url"),
+                    website_url=item.get("website_url"),
+                    image_url=item.get("image_url"),
+                    photo_names=list(item.get("photo_names") or []),
                 )
                 normalized = self._normalize_entity_name(candidate.name)
                 if not normalized or normalized in seen:
@@ -397,9 +409,15 @@ class LangGraphTripPlanner:
                 candidate = MealCandidate(
                     name=str(item.get("name", "")),
                     address=str(item.get("address", "")),
+                    location=item.get("location") or None,
                     source="google_maps",
                     source_id=str(item.get("id", "")),
                     raw_text=json.dumps(item, ensure_ascii=False),
+                    rating=item.get("rating"),
+                    maps_url=item.get("maps_url"),
+                    website_url=item.get("website_url"),
+                    image_url=item.get("image_url"),
+                    photo_names=list(item.get("photo_names") or []),
                 )
                 normalized = self._normalize_entity_name(candidate.name)
                 if not normalized or normalized in seen:
