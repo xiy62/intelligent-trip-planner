@@ -1,40 +1,45 @@
 # Intelligent Trip Planner
 
-A stateful AI trip-planning application that combines live travel services, destination-focused retrieval, structured generation, and an evaluation-driven recovery loop.
+A stateful AI trip-planning application that combines three bounded specialist agents, live travel services, destination-focused retrieval, canonical materialization, and evaluator-owned recovery.
 
-The backend uses **FastAPI**, **LangChain**, and **LangGraph** to coordinate Google Maps place retrieval, hotel retrieval, deterministic weather lookup, Chroma RAG, itinerary generation, validation, retry routing, fallback handling, memory, and local observability. The web client is a **React + Vite + TypeScript** application with Google Maps rendering.
+The backend uses **FastAPI**, **LangChain**, and **LangGraph** to coordinate an Experience Agent, Logistics Agent, and tool-free Composer Agent. Google Maps supplies provider-backed places, Chroma supplies approved destination knowledge, and deterministic code owns weather, canonical provider fields, budgets, validation, retry routing, and fallback. The web client is a **React + Vite + TypeScript** application with Google Maps rendering.
 
 ## Why This Project
 
 Generating an itinerary is not a single prompt problem. A useful plan must align dates, preserve the user's transportation and accommodation choices, use real POIs, incorporate destination-specific guidance, remain internally consistent, and recover when model output is malformed or unsupported.
 
-This project treats trip planning as a typed workflow with explicit reliability controls instead of an opaque LLM call.
+This project treats trip planning as a typed, evidence-bounded multi-agent workflow instead of an opaque LLM call or an unrestricted agent swarm.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
     A[FastAPI request] --> B[prepare_request]
-    B --> C[retrieve_attractions]
-    C --> D[retrieve_hotels]
-    D --> E[retrieve_weather]
-    E --> F[retrieve_rag_context]
-    F --> G[plan_itinerary]
-    G --> H[evaluate_itinerary]
-    H -->|pass| I[finalize_response]
-    H -->|planner issue| G
-    H -->|attraction grounding| C
-    H -->|hotel grounding| D
-    H -->|retry exhausted| J[fallback_response]
+    B --> C[authoritative weather]
+    B --> D[Experience Agent<br/>bounded Maps + RAG]
+    C --> E[research join]
+    D --> E
+    E --> F[Logistics Agent<br/>hotel + meal selection]
+    F --> G[Composer Agent<br/>no external tools]
+    G --> H[canonical materializer]
+    H --> I[route collection]
+    I --> J[deterministic evaluator]
+    J -->|pass| K[finalize response]
+    J -->|attraction/evidence| D
+    J -->|hotel/meal candidates| F
+    J -->|schema/date/pacing/order| G
+    J -->|retry exhausted| L[labeled fallback]
 ```
 
 Core layers:
 
-- **LangGraph orchestration:** typed state, in-memory checkpointing, conditional retries, fallback control flow.
-- **LangChain runtime:** `ChatOpenAI`, structured output parsing, and native Google Maps tool wrappers.
+- **Bounded specialists:** independent model invocations, prompts, typed proposals, tool permissions, and revision budgets for Experience, Logistics, and Composer.
+- **Typed communication:** agents exchange versioned source IDs through `ExperienceProposal`, `LogisticsProposal`, and `IDBasedItineraryDraft`, not an unrestricted shared transcript.
+- **Canonical identity:** prompt-local `A/H/M` aliases resolve into request-local registry IDs; a deterministic materializer supplies names, addresses, coordinates, ratings, and links.
+- **Deterministic recovery:** the evaluator assigns failures to the responsible agent, invalidates stale downstream proposals, and enforces per-role and global call budgets.
 - **RAG:** Chroma with OpenAI `text-embedding-3-small` embeddings over approved destination knowledge.
 - **Deterministic services:** authoritative weather data and direct Google Maps POI retrieval.
-- **Evaluation and observability:** hard validation, soft quality diagnostics, evidence attribution, node latency, retry traces, and SQLite-backed run inspection.
+- **Evaluation and observability:** hard validation, independent canonical-field auditing, evidence attribution, per-agent latency/tool traces, and SQLite-backed run inspection.
 - **Human-in-the-loop ingestion:** source manifest, rule-based extraction, draft review, approved promotion, and index rebuild.
 
 ## Verification And Failure Testing
@@ -46,22 +51,39 @@ The reliability layer separates deterministic validation from model generation:
 - Service resilience tests cover transient Google Maps provider timeouts, exhausted retry budgets, and provider error responses.
 - Graph tests cover malformed planner JSON, targeted grounding retries, retry exhaustion, fallback behavior, authoritative weather, checkpoint state, and current-request alignment.
 
-The backend suite currently contains **52 deterministic unit and API-boundary tests**. CI runs these tests without real external API keys or paid model calls.
+The backend suite currently contains **200+ deterministic unit and API-boundary tests**. CI runs these tests without real external API keys or paid model calls.
 
 ## Verified Internal Benchmark Signals
 
-On a fixed internal 12-request benchmark for the RAG/evaluation layer:
+The fixed internal benchmark uses 12 U.S. trip requests with two repeats per case. These are engineering signals, not production traffic or statistical significance.
 
-| Metric | Result | Denominator / interpretation |
-| --- | ---: | --- |
-| Retrieval recall@4 | 91.67% | Average expected-document recall across 12 labeled requests |
-| Retrieval hit rate | 100% | 12/12 requests retrieved at least one expected document |
-| Hard validation pass rate | 100% | 12/12 final itineraries passed deterministic hard checks |
-| Evidence attribution coverage | 100% | Generated attraction/hotel recommendations mapped to retrieved evidence |
-| Recovery rate for initially failed runs | 100% | 3/3 initially failed generations passed after controlled retries |
-| Fallback rate | 0% | 0/12 requests exhausted the retry budget |
+Controlled Single-vs-Multi A/B:
 
-These are internal benchmark results, not production traffic metrics. The dataset and a sanitized summary are included for reproducibility.
+| Metric | Single baseline | Initial Multi |
+| --- | ---: | ---: |
+| Validated pass rate | 75% | 100% |
+| First-pass validation | 37.5% | 91.7% |
+| Fallback rate | 25% | 0% |
+| Grounding pass rate | 79.2% | 100% |
+| Unsupported entity rate | 4.4% | 0% |
+
+Current Multi stability evidence:
+
+| Metric | Live providers | Fixed-evidence replay |
+| --- | ---: | ---: |
+| Validated workflows | 24/24 | 24/24 |
+| Overall source-ID Jaccard | 0.5688 | 0.7515 |
+| Attraction Jaccard | 0.5694 | 0.6889 |
+| Primary hotel exact match | 0.6667 | 1.0000 |
+| Candidate pool / shortlist Jaccard | 0.8875 / 0.8015 | 1.0000 / 1.0000 |
+| Independent canonical-field mismatches | 0 | 0 |
+| Per-workflow budget violations | 0 | 0 |
+
+Replay freezes normalized registry entities, RAG chunks, and authoritative weather while rerunning agent selection and composition. The live/replay gap localizes provider evidence variance instead of presenting every change as model instability. The live hotel target of 0.75 was not reached in this run; the fixed-evidence result shows that remaining live variance is primarily upstream of the selection policy.
+
+The parallel harness defaults to two isolated workers. In a separate 24-workflow timing comparison, Worker 2 reduced local benchmark wall time by **50.09%** relative to Worker 1. This is a local benchmark improvement, not a production throughput claim.
+
+A sanitized, fingerprinted summary is included at `backend/benchmarks/results/public-summary.json`; full live outputs and normalized evidence snapshots remain local and ignored.
 
 ## Observability Preview
 
@@ -127,6 +149,16 @@ venv/bin/python scripts/build_rag_index.py --rebuild
 venv/bin/python scripts/benchmark_trip_planners.py \
   --dataset benchmarks/trip_requests.rag_benchmark.json \
   --output benchmarks/results/trip_planner_rag_benchmark.json
+
+venv/bin/python scripts/benchmark_multi_agent_stability.py \
+  --repeat-count 2 --max-workers 2 --evidence-mode record \
+  --evidence-snapshot benchmarks/results/multi_agent_evidence_snapshot.json \
+  --output benchmarks/results/multi_agent_live_record.json
+
+venv/bin/python scripts/benchmark_multi_agent_stability.py \
+  --repeat-count 2 --max-workers 2 --evidence-mode replay \
+  --evidence-snapshot benchmarks/results/multi_agent_evidence_snapshot.json \
+  --output benchmarks/results/multi_agent_replay.json
 ```
 
 ```bash
@@ -140,11 +172,12 @@ The repository includes approved seed knowledge and benchmark datasets. Generate
 
 ## Limitations
 
-- The active map provider is Google Maps, but the curated RAG corpus still contains earlier China-focused seed knowledge.
-- US-city RAG coverage is not complete yet; unmatched cities use generic English planning guidance rather than unrelated city chunks.
-- Route coherence uses coordinate-distance heuristics rather than live route-time evaluation.
+- The approved runtime corpus is a small 12-document English U.S. seed set, not complete U.S. coverage.
+- The active stability benchmark has 12 cases and two repeats; it is not a statistical study.
+- Live provider results still introduce hotel, meal, day-assignment, and route-order variance.
+- Route-time evaluation is optional and disabled in the cited stability runs.
 - Soft quality scores are diagnostic signals and do not trigger retries by default.
-- Internal benchmarks are intentionally small and should not be interpreted as production-scale evaluation.
+- Checkpointing and observability use local in-memory/SQLite infrastructure rather than production distributed storage.
 
 ## License
 
