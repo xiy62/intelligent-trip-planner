@@ -19,6 +19,7 @@ from ..models.multi_agent import (AgentFeedback, AgentMetric, AgentMetrics, Agen
 from ..models.schemas import TripRequest
 from ..services.llm_service import get_role_llm
 from .composer_agent import ComposerAgent
+from .evidence_snapshot import WorkflowEvidenceSnapshot
 from .experience_agent import ExperienceAgent
 from .itinerary_materializer import ItineraryMaterializer
 from .langgraph_trip_planner import LangGraphTripPlanner
@@ -32,6 +33,7 @@ class MultiAgentTripPlanner(LangGraphTripPlanner):
     EXPERIENCE_BUDGETS = {"attraction_search": 3, "rag_search": 1, "place_detail": 2}
 
     def __init__(self, *args, **kwargs):
+        self.evidence_snapshot: Optional[WorkflowEvidenceSnapshot] = kwargs.pop("evidence_snapshot", None)
         injected_llm = kwargs.get("llm")
         super().__init__(*args, **kwargs)
         self.experience_llm = injected_llm or get_role_llm("experience")
@@ -113,7 +115,9 @@ class MultiAgentTripPlanner(LangGraphTripPlanner):
                                     deterministic_fallback=self._experience_fallback)
             result = agent.run(
                                          request=state["request"], feedback=feedback,
-                                         previous=state.get("experience_proposal"), attempt=attempt)
+                                         previous=state.get("experience_proposal"), attempt=attempt,
+                                         evidence_override=(self.evidence_snapshot.experience
+                                                            if self.evidence_snapshot else None))
         except Exception as exc:
             return self._agent_error_update(state, "experience", exc, ledger=ledger)
         retries.experience_attempts = attempt
@@ -156,7 +160,8 @@ class MultiAgentTripPlanner(LangGraphTripPlanner):
             proposal = agent.run(
                 request=state["request"], experience=state["experience_proposal"],
                 feedback=feedback, previous=state.get("logistics_proposal"),
-                attempt=attempt)
+                attempt=attempt,
+                evidence_override=(self.evidence_snapshot.logistics if self.evidence_snapshot else None))
         except Exception as exc:
             return self._agent_error_update(state, "logistics", exc, ledger=ledger)
         retries.logistics_attempts = attempt
@@ -367,6 +372,18 @@ class MultiAgentTripPlanner(LangGraphTripPlanner):
                 "nodes": ["prepare_request", "authoritative_weather", "experience_agent",
                           "logistics_agent", "composer_agent", "canonical_materializer",
                           "collect_route_times", "evaluate_itinerary", "finalize_response", "fallback_response"]}
+
+    def retrieve_weather(self, state: TripGraphState) -> TripGraphState:
+        if self.evidence_snapshot is None:
+            return super().retrieve_weather(state)
+        started = time.perf_counter()
+        metrics = self._record_node_metrics(state, "retrieve_weather", started)
+        return {
+            "weather_info": [item.model_copy(deep=True) for item in self.evidence_snapshot.weather_info],
+            "retry_counts": self._increment_retry_count(state, "retrieve_weather"),
+            "metrics": metrics,
+            "decision_trace": self._append_trace(state, "retrieve_weather: replayed normalized snapshot"),
+        }
 
     def _gateway_map_search(self, *, query: str, city: str, country_code: str,
                             page_size: int = 8, **_: Any):

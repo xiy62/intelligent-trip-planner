@@ -17,6 +17,7 @@ from ..models.multi_agent import (
 )
 from ..models.schemas import TripRequest
 from .candidate_ranking import alias_map, compact_candidates, normalize_text, resolve_aliases, shortlist
+from .evidence_snapshot import AgentEvidenceSnapshot
 from .structured_llm import invoke_structured
 from .tool_gateway import ToolGateway, ToolGatewayError
 
@@ -47,7 +48,8 @@ class LogisticsAgent:
 
     def run(self, *, request: TripRequest, experience: ExperienceProposal,
             feedback: Optional[AgentFeedback] = None,
-            previous: Optional[LogisticsProposal] = None, attempt: int = 1) -> LogisticsProposal:
+            previous: Optional[LogisticsProposal] = None, attempt: int = 1,
+            evidence_override: Optional[AgentEvidenceSnapshot] = None) -> LogisticsProposal:
         if attempt < 1 or attempt > self.MAX_ATTEMPTS:
             raise LogisticsAgentError("retry_budget_exhausted", "logistics attempt budget exhausted")
         anchor_entities = [self.gateway.registry.entities[source_id] for source_id in experience.core_attraction_ids
@@ -62,7 +64,16 @@ class LogisticsAgent:
                         ("local restaurants", "supplemental")] + [
             (normalize_text(f"food near {name}"), "supplemental") for name in anchor_names]
         try:
-            for query_index, (query, source_type) in enumerate(hotel_queries[:max_hotel_queries]):
+            if evidence_override is not None:
+                for entity in evidence_override.entities:
+                    replayed = entity.model_copy(deep=True)
+                    replayed.registered_by = "logistics"
+                    self.gateway.registry.add(replayed, actor="logistics")
+                if not self._ids("hotel") or not self._ids("meal"):
+                    raise LogisticsAgentError("snapshot_mismatch", "replay snapshot lacks hotel or meal evidence")
+            for query_index, (query, source_type) in enumerate(
+                [] if evidence_override is not None else hotel_queries[:max_hotel_queries]
+            ):
                 items = self.gateway.call("logistics", "hotel_search", query_key=query,
                                           query=query, city=request.city, country_code=request.country_code)
                 self.gateway.register("logistics", self._entities(items, "hotel", source_type=source_type,
@@ -72,7 +83,9 @@ class LogisticsAgent:
                 if len(hotels_now) >= 8 and sum(entity.location is not None for entity in hotels_now) >= 3:
                     self.gateway.early_stop_reasons["hotels"] = "pool_target_and_coordinate_feasibility"
                     break
-            for query_index, (query, source_type) in enumerate(meal_queries[:max_meal_queries]):
+            for query_index, (query, source_type) in enumerate(
+                [] if evidence_override is not None else meal_queries[:max_meal_queries]
+            ):
                 items = self.gateway.call("logistics", "meal_search", query_key=query,
                                           query=query, city=request.city, country_code=request.country_code)
                 self.gateway.register("logistics", self._entities(items, "meal", source_type=source_type,
@@ -136,6 +149,8 @@ class LogisticsAgent:
                       "meal_shortlist_ids": [item.source_id for item in meals_ranked],
                       "hotel_alias_map": hotel_aliases, "meal_alias_map": meal_aliases,
                       "primary_hotel_id": primary, "selected_meal_ids": meals}
+        if evidence_override is not None:
+            self.trace["evidence_mode"] = "replay"
         return proposal
 
     def _entities(self, items: Any, entity_type: str, *, source_type: str, query: str,

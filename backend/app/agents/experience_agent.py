@@ -19,6 +19,7 @@ from ..models.multi_agent import (
 )
 from ..models.schemas import TripRequest
 from .candidate_ranking import alias_map, compact_candidates, normalize_text, pace_target, resolve_aliases, shortlist
+from .evidence_snapshot import ExperienceEvidenceSnapshot
 from .structured_llm import invoke_structured
 from .tool_gateway import ToolGateway, ToolGatewayError
 
@@ -78,6 +79,7 @@ class ExperienceAgent:
         feedback: Optional[AgentFeedback] = None,
         previous: Optional[ExperienceProposal] = None,
         attempt: int = 1,
+        evidence_override: Optional[ExperienceEvidenceSnapshot] = None,
     ) -> ExperienceAgentResult:
         if attempt < 1 or attempt > self.MAX_ATTEMPTS:
             raise ExperienceAgentError("retry_budget_exhausted", "experience attempt budget exhausted")
@@ -87,6 +89,18 @@ class ExperienceAgent:
             "remaining_attempts": self.MAX_ATTEMPTS - attempt,
             "registry_summary": self.gateway.registry.summary(),
         }
+        if evidence_override is not None:
+            for entity in evidence_override.entities:
+                replayed = entity.model_copy(deep=True)
+                replayed.registered_by = "experience"
+                self.gateway.registry.add(replayed, actor="experience")
+            rag_chunks = [item.model_copy(deep=True) for item in evidence_override.rag_chunks]
+            if not self._attraction_ids():
+                raise ExperienceAgentError("snapshot_mismatch", "replay snapshot contains no attraction evidence")
+            proposal = self._build_proposal(request, rag_chunks, revision_context, attempt)
+            self.trace["evidence_mode"] = "replay"
+            return ExperienceAgentResult(proposal=proposal, rag_chunks=rag_chunks)
+
         try:
             research = invoke_structured(
                 self.llm,

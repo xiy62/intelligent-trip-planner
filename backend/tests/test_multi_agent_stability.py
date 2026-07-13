@@ -45,6 +45,9 @@ class MultiAgentStabilityTests(unittest.TestCase):
         self.assertEqual(parser.parse_args([]).max_workers, 2)
         self.assertEqual(parser.parse_args(["--max-workers", "1"]).max_workers, 1)
         self.assertEqual(parser.parse_args(["--max-workers", "3"]).max_workers, 3)
+        self.assertEqual(parser.parse_args([]).evidence_mode, "live")
+        self.assertEqual(parser.parse_args(["--evidence-mode", "record"]).evidence_mode, "record")
+        self.assertEqual(parser.parse_args(["--evidence-mode", "replay"]).evidence_mode, "replay")
 
     def test_attraction_queries_are_city_scoped_normalized_and_deterministic(self):
         request = TripRequest(
