@@ -16,7 +16,7 @@ from ..models.multi_agent import (
     registry_source_id,
 )
 from ..models.schemas import TripRequest
-from .candidate_ranking import alias_map, compact_candidates, normalize_text, resolve_aliases, shortlist
+from .candidate_ranking import alias_map, compact_candidates, normalize_text, rank_entities, resolve_aliases, shortlist
 from .evidence_snapshot import AgentEvidenceSnapshot
 from .structured_llm import invoke_structured
 from .tool_gateway import ToolGateway, ToolGatewayError
@@ -40,6 +40,7 @@ class LogisticsAliasProposal(BaseModel):
 
 class LogisticsAgent:
     MAX_ATTEMPTS = 2
+    PRIMARY_HOTEL_DOMINANCE_RATIO = 0.08
 
     def __init__(self, *, llm: Any, gateway: ToolGateway):
         self.llm = llm
@@ -52,9 +53,7 @@ class LogisticsAgent:
             evidence_override: Optional[AgentEvidenceSnapshot] = None) -> LogisticsProposal:
         if attempt < 1 or attempt > self.MAX_ATTEMPTS:
             raise LogisticsAgentError("retry_budget_exhausted", "logistics attempt budget exhausted")
-        anchor_entities = [self.gateway.registry.entities[source_id] for source_id in experience.core_attraction_ids
-                           if source_id in self.gateway.registry.entities]
-        anchor_names = sorted({entity.name for entity in anchor_entities})[:2]
+        stable_attractions, anchor_names, centroid = self._stable_attraction_context(request)
         max_hotel_queries = min(3, 1 + len(anchor_names))
         max_meal_queries = min(4, max(2, 2 + len(anchor_names)))
         hotel_queries = [(normalize_text(f"{request.accommodation} hotel"), "base_anchor")] + [
@@ -98,12 +97,32 @@ class LogisticsAgent:
         except ToolGatewayError as exc:
             raise LogisticsAgentError(exc.code, str(exc)) from exc
 
-        centroid = self._centroid(anchor_entities)
-        hotels_ranked = shortlist(self.gateway.registry, "hotel", request, limit=6, centroid=centroid)
+        all_hotels_ranked = rank_entities(self.gateway.registry, "hotel", request, centroid=centroid)
+        hotels_with_coordinates = [item for item in all_hotels_ranked if item.location is not None]
+        hotels_ranked = (hotels_with_coordinates or all_hotels_ranked)[:6]
         meals_ranked = shortlist(self.gateway.registry, "meal", request, limit=12, centroid=centroid)
+        if not hotels_ranked:
+            raise LogisticsAgentError("no_hotel_evidence", "no eligible hotel evidence")
         hotel_aliases = alias_map(hotels_ranked, "H")
         meal_aliases = alias_map(meals_ranked, "M")
         feasibility = self._coarse_feasibility(experience, [item.source_id for item in hotels_ranked + meals_ranked])
+        top_score = hotels_ranked[0].relevance_score
+        second_score = hotels_ranked[1].relevance_score if len(hotels_ranked) > 1 else None
+        dominance_ratio = (1.0 if second_score is None else
+                           max(0.0, (top_score - second_score) / max(top_score, 1e-6)))
+        deterministic_primary = len(hotels_ranked) == 1 or dominance_ratio >= self.PRIMARY_HOTEL_DOMINANCE_RATIO
+        competitive_hotels = [
+            item for item in hotels_ranked
+            if (top_score - item.relevance_score) / max(top_score, 1e-6) <= self.PRIMARY_HOTEL_DOMINANCE_RATIO
+        ]
+        reverse_hotel_aliases = {source_id: alias for alias, source_id in hotel_aliases.items()}
+        competitive_aliases = [reverse_hotel_aliases[item.source_id] for item in competitive_hotels]
+        selection_policy = {
+            "mode": "deterministic_dominant" if deterministic_primary else "agent_competitive",
+            "locked_primary_alias": "H1" if deterministic_primary else None,
+            "competitive_primary_aliases": competitive_aliases,
+            "dominance_ratio": round(dominance_ratio, 6),
+        }
         context = {
             "previous_proposal": previous.model_dump() if previous else None,
             "feedback": feedback.model_dump() if feedback else None,
@@ -120,6 +139,10 @@ class LogisticsAgent:
             f"Select one primary H alias. hotel_aliases contains only optional alternate hotels: do not repeat "
             f"primary_hotel_alias there, and select at most one alternate. Select at most "
             f"{min(6, 2 * request.travel_days)} unique M aliases.\n"
+            f"primary_hotel_policy={selection_policy}. When locked_primary_alias is present, echo it; otherwise "
+            f"choose only from competitive_primary_aliases. In agent_competitive mode, default to the first "
+            f"competitive alias (the deterministic score leader). Choose another competitive alias only when a "
+            f"specific request constraint makes it better, and record that reason in constraints.\n"
             f"coarse_feasibility={feasibility}\nrevision={context}"
         )
         try:
@@ -127,8 +150,18 @@ class LogisticsAgent:
         except Exception as exc:
             raise LogisticsAgentError("structured_output", str(exc)) from exc
         try:
-            primary = resolve_aliases([alias_proposal.primary_hotel_alias], hotel_aliases, expected_prefix="H")[0]
+            agent_primary = resolve_aliases([alias_proposal.primary_hotel_alias], hotel_aliases,
+                                            expected_prefix="H")[0]
+            if deterministic_primary:
+                primary = hotels_ranked[0].source_id
+            else:
+                competitive_ids = {item.source_id for item in competitive_hotels}
+                if agent_primary not in competitive_ids:
+                    raise ValueError("primary hotel alias is outside the competitive score band")
+                primary = agent_primary
             alternate_hotels = resolve_aliases(alias_proposal.hotel_aliases, hotel_aliases, expected_prefix="H")
+            if primary in alternate_hotels:
+                raise ValueError("primary hotel cannot be repeated as an alternate")
             hotels = list(dict.fromkeys([primary, *alternate_hotels]))
             meals = resolve_aliases(alias_proposal.meal_aliases, meal_aliases, expected_prefix="M")
             if len(hotels) > 2 or len(meals) > min(6, 2 * request.travel_days):
@@ -148,6 +181,14 @@ class LogisticsAgent:
                       "hotel_shortlist_ids": [item.source_id for item in hotels_ranked],
                       "meal_shortlist_ids": [item.source_id for item in meals_ranked],
                       "hotel_alias_map": hotel_aliases, "meal_alias_map": meal_aliases,
+                      "hotel_ranked_candidates": [
+                          {"source_id": item.source_id, "score": item.relevance_score,
+                           "score_components": item.score_components} for item in hotels_ranked
+                      ],
+                      "primary_hotel_selection_mode": selection_policy["mode"],
+                      "primary_hotel_dominance_ratio": selection_policy["dominance_ratio"],
+                      "competitive_hotel_ids": [item.source_id for item in competitive_hotels],
+                      "agent_selected_primary_hotel_id": agent_primary,
                       "primary_hotel_id": primary, "selected_meal_ids": meals}
         if evidence_override is not None:
             self.trace["evidence_mode"] = "replay"
@@ -186,6 +227,11 @@ class LogisticsAgent:
     def _ids(self, entity_type: str) -> List[str]:
         return [source_id for source_id, entity in self.gateway.registry.entities.items()
                 if entity.entity_type == entity_type]
+
+    def _stable_attraction_context(self, request: TripRequest):
+        ranked = shortlist(self.gateway.registry, "attraction", request, limit=6)
+        anchor_names = [item.name for item in ranked[:2]]
+        return ranked, anchor_names, self._centroid(ranked)
 
     def _coarse_feasibility(self, experience: ExperienceProposal, logistics_ids: List[str]) -> dict:
         attraction_ids = list(experience.allowed_attraction_ids)

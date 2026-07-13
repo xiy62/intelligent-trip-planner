@@ -106,6 +106,8 @@ class MultiAgentTripPlannerTests(unittest.TestCase):
         self.assertEqual(planner.health_summary()["workflow"], "langgraph_multi_agent")
         self.assertEqual(planner.search_poi_tool.calls[0]["page_size"], 12)
         self.assertIn("initial_attractions_per_day=[1]", llm.calls[3])
+        self.assertIn("required_core_aliases=['A1']", llm.calls[3])
+        self.assertIn("Allocate every required_core_alias before selecting any optional alias", llm.calls[3])
         self.assertIn("no alias occurs twice", llm.calls[3])
 
     def test_same_provider_id_can_exist_as_attraction_hotel_and_meal(self):
