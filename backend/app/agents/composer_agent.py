@@ -55,6 +55,7 @@ class ComposerAgent:
             "version": logistics.version, "primary_hotel": reverse_h.get(logistics.primary_hotel_id or ""),
             "hotels": list(hotel_aliases), "meals": list(meal_aliases),
         }
+        required_core_aliases = [reverse_a[item] for item in experience.core_attraction_ids]
         per_day_limit = max(1, math.ceil(experience.target_attractions / max(1, request.travel_days)))
         base_count, remainder = divmod(experience.target_attractions, max(1, request.travel_days))
         initial_distribution = [base_count + (1 if index < remainder else 0)
@@ -70,8 +71,13 @@ class ComposerAgent:
             "Before returning JSON, count all non-null M aliases across every day and verify that no alias occurs twice.\n"
             "For the initial draft, follow initial_attractions_per_day exactly, keep each visit duration between 90 and 120 "
             "minutes, and group attractions from the same thematic cluster on the same day when possible. Never put more "
-            "than max_attractions_per_day on one day. A route/pacing revision may remove optional attractions, but never core ones.\n"
+            "than max_attractions_per_day on one day. A route/pacing revision may remove optional attractions, but never core ones. "
+            "Allocate every required_core_alias before selecting any optional alias; optional attractions fill only the remaining target slots. "
+            "Immediately before returning, build the set of all attraction source_id aliases across all days and verify every "
+            "required_core_alias is present exactly once. If a previous draft or feedback reports an omitted core alias, explicitly "
+            "insert that alias before changing optional attractions.\n"
             f"request={request.model_dump()}\nexperience={compact_experience}\n"
+            f"required_core_aliases={required_core_aliases} required_core_count={len(required_core_aliases)}\n"
             f"logistics={compact_logistics}\ninitial_attractions_per_day={initial_distribution}\n"
             f"max_attractions_per_day={per_day_limit}\nweather={[item.model_dump() for item in weather_info]}\n"
             f"revision={context}"
@@ -95,8 +101,10 @@ class ComposerAgent:
                     day.hotel_id = resolve_aliases([day.hotel_id], hotel_aliases, expected_prefix="H")[0]
                 if day.hotel_id != logistics.primary_hotel_id:
                     raise ValueError("composer must use primary hotel every day")
-            if not set(experience.core_attraction_ids) <= set(used_attractions):
-                raise ValueError("composer omitted core attractions")
+            missing_core = set(experience.core_attraction_ids) - set(used_attractions)
+            if missing_core:
+                missing_aliases = sorted(reverse_a[item] for item in missing_core)
+                raise ValueError(f"composer omitted required core aliases: {','.join(missing_aliases)}")
             if len(used_attractions) != len(set(used_attractions)):
                 raise ValueError("composer duplicated an attraction alias; every A alias is globally unique")
             if len(used_meals) != len(set(used_meals)):

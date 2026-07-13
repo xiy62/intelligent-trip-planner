@@ -1,20 +1,94 @@
 {
-  "benchmark": "evaluation-v2-twelve-request-combined",
-  "scope": {
-    "request_count": 12,
-    "cities": ["北京", "上海", "杭州", "广州"],
-    "note": "Internal benchmark results; not production traffic metrics."
+  "benchmark": "resume-evidence-hardening-v1",
+  "architecture": {
+    "workflow": "langgraph_multi_agent",
+    "roles": ["experience", "logistics", "composer"],
+    "canonical_identity": "request-local candidate registry plus deterministic materializer",
+    "recovery": "deterministic failure-owner routing with bounded per-agent revisions"
   },
-  "rag_chroma": {
-    "retrieval_recall_at_4": 0.9167,
-    "retrieval_hit_rate": 1.0,
-    "hard_validation_pass_rate": 1.0,
-    "attribution_coverage_rate": 1.0,
-    "initial_failure_rate": 0.25,
-    "recovery_rate": 1.0,
+  "scope": {
+    "case_count": 12,
+    "repeats_per_case": 2,
+    "workflow_count_per_run": 24,
+    "cities": ["New York", "Los Angeles", "Chicago", "San Francisco"],
+    "note": "Internal engineering benchmark; not production traffic or statistical significance."
+  },
+  "controlled_single_vs_multi": {
+    "artifact": "multi_agent_12case_ab_2x_after_fix.json",
+    "single": {
+      "validated_pass_rate": 0.75,
+      "first_pass_validation_rate": 0.375,
+      "fallback_rate": 0.25,
+      "grounding_pass_rate": 0.7917,
+      "unsupported_entity_rate": 0.044
+    },
+    "initial_multi": {
+      "validated_pass_rate": 1.0,
+      "first_pass_validation_rate": 0.9167,
+      "fallback_rate": 0.0,
+      "grounding_pass_rate": 1.0,
+      "unsupported_entity_rate": 0.0
+    }
+  },
+  "current_live_stability": {
+    "artifact": "multi_agent_12case_resume_evidence_live_record_v2.json",
+    "completed_workflows": 24,
+    "validated_pass_rate": 1.0,
     "fallback_rate": 0.0,
-    "avg_route_coherence_score": 0.9723,
-    "avg_pacing_score": 0.9681,
-    "avg_preference_match_score": 0.6972
-  }
+    "overall_jaccard": 0.5688,
+    "attraction_jaccard": 0.5694,
+    "primary_hotel_exact_match": 0.6667,
+    "candidate_pool_jaccard": 0.8875,
+    "ranked_shortlist_jaccard": 0.8015,
+    "avg_llm_calls": 4.125,
+    "avg_maps_calls": 6.0833,
+    "avg_tokens": 8354.2,
+    "avg_latency_ms": 13551.0,
+    "canonical_field_mismatch_count": 0,
+    "unsupported_entity_count": 0,
+    "materialization_failure_count": 0,
+    "per_workflow_budget_violation_count": 0
+  },
+  "fixed_evidence_replay": {
+    "artifact": "multi_agent_12case_resume_evidence_replay_v4.json",
+    "completed_workflows": 24,
+    "validated_pass_rate": 1.0,
+    "fallback_rate": 0.0,
+    "overall_jaccard": 0.7515,
+    "attraction_jaccard": 0.6889,
+    "primary_hotel_exact_match": 1.0,
+    "candidate_pool_jaccard": 1.0,
+    "ranked_shortlist_jaccard": 1.0,
+    "canonical_field_mismatch_count": 0,
+    "replay_provider_escape_count": 0,
+    "per_workflow_budget_violation_count": 0
+  },
+  "parallel_execution": {
+    "default_workers": 2,
+    "worker_1_wall_time_seconds": 341.244,
+    "worker_2_wall_time_seconds": 170.320,
+    "worker_2_wall_time_reduction": 0.5009,
+    "worker_2_throughput_gain": 2.0035
+  },
+  "fingerprints": {
+    "dataset_sha256": "8339a26cb7da0542213f302c6880ba54b49071275276fea409897da552cf5b06",
+    "snapshot_schema_version": 1,
+    "snapshot_sha256": "530db2ee7daf984568842b62f9fc8be6837ca31eb60cdb74e9a1388533c181e4",
+    "benchmark_git_commit": "b8e67c99ea05dfb2b7ac7a3c0b3ae11f8a9ee914",
+    "models": {
+      "experience": "gpt-5.4-mini",
+      "logistics": "gpt-5.4-mini",
+      "composer": "gpt-5.4-mini"
+    },
+    "temperature": 0,
+    "rag_mode": "chroma_retrieval",
+    "route_time_evaluation_enabled": false,
+    "max_workers": 2
+  },
+  "claim_boundaries": [
+    "Canonical mismatch counts come from an independent field-by-field registry audit.",
+    "Replay freezes normalized evidence and must not call Maps, RAG, or weather providers.",
+    "The live primary-hotel target of 0.75 was not reached; the observed result was 0.6667.",
+    "No production SLA, production throughput, complete U.S. coverage, or statistical significance is claimed."
+  ]
 }

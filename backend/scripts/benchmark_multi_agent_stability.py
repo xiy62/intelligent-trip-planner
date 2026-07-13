@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
+import hashlib
 import json
+import os
 import statistics
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -16,7 +20,19 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from langchain_core.callbacks import UsageMetadataCallbackHandler
+from langchain_core.tools import StructuredTool
 
+from app.agents.canonical_audit import audit_canonical_fields
+from app.agents.evidence_snapshot import (
+    AgentEvidenceSnapshot,
+    EvidenceSnapshotFile,
+    EvidenceSnapshotMismatch,
+    ExperienceEvidenceSnapshot,
+    ReplayProviderEscape,
+    WorkflowEvidenceSnapshot,
+    request_fingerprint,
+    request_snapshot,
+)
 from app.agents.multi_agent_trip_planner import MultiAgentTripPlanner
 from app.config import get_settings
 from app.models.schemas import TripRequest
@@ -25,6 +41,33 @@ from app.services.rag_service import get_rag_service
 
 REQUEST_FIELDS = ("city", "start_date", "end_date", "travel_days", "transportation",
                   "accommodation", "preferences", "free_text_input")
+
+
+class ReplayGuardMapService:
+    def _escape(self, keywords: str, city: str, citylimit: bool = True, page_size: int = 10,
+                country_code: str = ""):
+        raise ReplayProviderEscape(f"replay attempted map search: {keywords} in {city}")
+
+    def get_langchain_tools(self):
+        return [StructuredTool.from_function(
+            func=self._escape,
+            name="map_search_poi",
+            description="Replay guard that rejects live map searches.",
+        )]
+
+    def get_poi_detail(self, poi_id: str):
+        raise ReplayProviderEscape(f"replay attempted place detail: {poi_id}")
+
+    def plan_route(self, *args, **kwargs):
+        raise ReplayProviderEscape("replay attempted route provider access")
+
+
+class ReplayGuardRAGService:
+    def retrieve_chunks(self, *args, **kwargs):
+        raise ReplayProviderEscape("replay attempted RAG provider access")
+
+    def retrieve_local_chunks(self, *args, **kwargs):
+        raise ReplayProviderEscape("replay attempted local RAG access")
 
 
 class CountingRunnable:
@@ -108,8 +151,18 @@ def budget_violations(row):
     return violations
 
 
-def run_one(planner, llm, case, case_index, repeat):
+def run_one(planner, llm, case, case_index, repeat, *, evidence_mode="live", evidence_snapshot=None):
     request = TripRequest(**{key: case[key] for key in REQUEST_FIELDS})
+    if evidence_mode == "replay":
+        if evidence_snapshot is None:
+            raise EvidenceSnapshotMismatch(f"missing replay snapshot for case {case_index}")
+        if evidence_snapshot.request_fingerprint != request_fingerprint(request):
+            raise EvidenceSnapshotMismatch(f"request fingerprint mismatch for case {case_index}")
+        if evidence_snapshot.request != request_snapshot(request):
+            raise EvidenceSnapshotMismatch(f"request payload mismatch for case {case_index}")
+        planner.evidence_snapshot = evidence_snapshot.model_copy(deep=True)
+    else:
+        planner.evidence_snapshot = None
     llm.reset()
     started = time.perf_counter()
     state = planner.invoke_graph(request, thread_id=f"stability-{case_index}-{repeat}-{uuid4()}")
@@ -119,20 +172,45 @@ def run_one(planner, llm, case, case_index, repeat):
     rag_ids = [chunk.metadata.get("doc_id", "") for chunk in state.get("rag_chunks", [])]
     expected, forbidden = set(case.get("expected_rag_doc_ids", [])), set(case.get("forbidden_rag_doc_ids", []))
     budget = metrics.budget_usage if metrics else {}
-    return {"case_index": case_index, "repeat": repeat, "city": request.city,
+    canonical_audit = audit_canonical_fields(plan, state["candidate_registry"])
+    row = {"case_index": case_index, "repeat": repeat, "city": request.city,
             "status": "completed", "passed": bool(report and report.passed),
             "fallback": bool(getattr(state.get("metrics"), "fallback_count", 0)),
             "agent_error": state.get("agent_error") or None,
             "unsupported_entities": len(report.unsupported_entities if report else []),
             "materialization_failures": list(state.get("materialization_failures", [])),
-            "canonical_field_hallucination_count": 0,
+            "canonical_field_hallucination_count": canonical_audit.mismatch_count,
+            "canonical_field_mismatches": [item.model_dump(mode="json") for item in canonical_audit.mismatches],
+            "canonical_audited_entity_count": canonical_audit.audited_entity_count,
+            "skipped_generic_meal_count": canonical_audit.skipped_generic_meal_count,
             "retrieval_recall": len(expected & set(rag_ids)) / max(1, len(expected)),
             "forbidden_retrieval_ids": sorted(forbidden & set(rag_ids)),
             "latency_ms": round(elapsed, 3), "token_usage": llm.usage(),
             "budget_usage": budget, "early_stop_reasons": metrics.early_stop_reasons if metrics else {},
             "targeted_retries": metrics.targeted_retries if metrics else [],
             "layers": metrics.stability_trace if metrics else {},
-            "final_ids": ids_by_type(plan)}
+            "final_ids": ids_by_type(plan), "evidence_mode": evidence_mode,
+            "replay_provider_escape_count": (
+                int(evidence_mode == "replay" and budget.get("global_used", {}).get("maps", 0) > 0)
+                + int(evidence_mode == "replay" and budget.get("global_used", {}).get("rag", 0) > 0)
+            )}
+    if evidence_mode == "record" and repeat == 1:
+        registry = state["candidate_registry"]
+        row["_evidence_snapshot"] = WorkflowEvidenceSnapshot(
+            request_fingerprint=request_fingerprint(request),
+            request=request_snapshot(request),
+            experience=ExperienceEvidenceSnapshot(
+                entities=[item.model_copy(deep=True) for item in registry.entities.values()
+                          if item.entity_type == "attraction"],
+                rag_chunks=[item.model_copy(deep=True) for item in state.get("rag_chunks", [])],
+            ),
+            logistics=AgentEvidenceSnapshot(
+                entities=[item.model_copy(deep=True) for item in registry.entities.values()
+                          if item.entity_type in {"hotel", "meal"}],
+            ),
+            weather_info=[item.model_copy(deep=True) for item in state.get("weather_info", [])],
+        )
+    return row
 
 
 def prewarm_parallel_rag(rag_service, rag_mode, max_workers):
@@ -141,14 +219,24 @@ def prewarm_parallel_rag(rag_service, rag_mode, max_workers):
         rag_service._get_vectorstore()
 
 
-def build_worker(rag_mode, llm_backend=None, rag_service=None):
+def build_worker(rag_mode, llm_backend=None, rag_service=None, *, evidence_mode="live"):
     llm = CountingLLM(llm_backend or get_llm())
+    if evidence_mode == "replay":
+        return MultiAgentTripPlanner(llm=llm, rag_mode=rag_mode,
+                                     rag_service=ReplayGuardRAGService(),
+                                     map_service=ReplayGuardMapService()), llm
     return MultiAgentTripPlanner(llm=llm, rag_mode=rag_mode, rag_service=rag_service), llm
 
 
 def safe_run_one(planner, llm, case, case_index, repeat, *, runner=run_one):
     try:
         return runner(planner, llm, case, case_index, repeat)
+    except EvidenceSnapshotMismatch as exc:
+        return {"case_index": case_index, "repeat": repeat, "status": "runtime_error",
+                "passed": False, "error_type": "snapshot_mismatch", "error": str(exc)[:500]}
+    except ReplayProviderEscape as exc:
+        return {"case_index": case_index, "repeat": repeat, "status": "runtime_error",
+                "passed": False, "error_type": "replay_provider_escape", "error": str(exc)[:500]}
     except Exception as exc:
         return {"case_index": case_index, "repeat": repeat, "status": "runtime_error",
                 "passed": False, "error_type": type(exc).__name__, "error": str(exc)[:500]}
@@ -250,7 +338,10 @@ def summarize(rows):
             "agent_error_count": sum(bool(row["agent_error"]) for row in rows),
             "unsupported_entity_count": sum(row["unsupported_entities"] for row in rows),
             "materialization_failure_count": sum(len(row["materialization_failures"]) for row in rows),
-            "canonical_field_hallucination_count": 0,
+            "canonical_field_hallucination_count": sum(
+                row.get("canonical_field_hallucination_count", 0) for row in rows
+            ),
+            "replay_provider_escape_count": sum(row.get("replay_provider_escape_count", 0) for row in rows),
             "retrieval_recall_at_4": statistics.mean(row["retrieval_recall"] for row in rows) if rows else 0,
             "forbidden_retrieval_count": sum(len(row["forbidden_retrieval_ids"]) for row in rows),
             "avg_llm_calls": statistics.mean(llm_calls) if llm_calls else 0,
@@ -287,20 +378,71 @@ def build_parser():
     parser.add_argument("--reference-result", default="")
     parser.add_argument("--max-workers", type=int, default=2,
                         help="Parallel workflow workers; use 1 for a sequential control")
+    parser.add_argument("--evidence-mode", choices=("live", "record", "replay"), default="live")
+    parser.add_argument("--evidence-snapshot",
+                        default="benchmarks/results/multi_agent_evidence_snapshot.json")
     return parser
+
+
+def file_sha256(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def configuration_fingerprint(settings, dataset, args):
+    try:
+        git_sha = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT.parent, check=True,
+            capture_output=True, text=True,
+        ).stdout.strip()
+    except Exception:
+        git_sha = "unknown"
+    shared_model = os.getenv("LLM_MODEL_ID") or settings.openai_model
+    return {
+        "dataset_sha256": file_sha256(dataset),
+        "git_commit": git_sha,
+        "models": {
+            "experience": settings.experience_model or shared_model,
+            "logistics": settings.logistics_model or shared_model,
+            "composer": settings.composer_model or shared_model,
+        },
+        "temperature": 0,
+        "rag_mode": settings.rag_mode,
+        "route_time_evaluation_enabled": settings.route_time_evaluation_enabled,
+        "max_route_time_evaluations_per_trip": settings.max_route_time_evaluations_per_trip,
+        "max_workers": args.max_workers,
+        "repeat_count": args.repeat_count,
+        "evidence_mode": args.evidence_mode,
+    }
 
 
 def main():
     parser = build_parser()
     args = parser.parse_args()
     dataset, output = ROOT / args.dataset, ROOT / args.output
+    snapshot_path = ROOT / args.evidence_snapshot
     cases = json.loads(dataset.read_text())
     if args.max_workers < 1:
         parser.error("--max-workers must be at least 1")
-    rag_mode = get_settings().rag_mode
+    settings = get_settings()
+    rag_mode = settings.rag_mode
+    config = configuration_fingerprint(settings, dataset, args)
+    replay_cases = {}
+    snapshot_file = None
+    if args.evidence_mode == "replay":
+        if not snapshot_path.exists():
+            parser.error(f"evidence snapshot does not exist: {snapshot_path}")
+        try:
+            snapshot_file = EvidenceSnapshotFile.model_validate_json(snapshot_path.read_text())
+            snapshot_file.validate_integrity()
+        except (ValueError, EvidenceSnapshotMismatch) as exc:
+            parser.error(str(exc))
+        if snapshot_file.metadata.get("dataset_sha256") != config["dataset_sha256"]:
+            parser.error("snapshot dataset hash does not match current dataset")
+        replay_cases = snapshot_file.cases
     llm_backend = get_llm()
-    rag_service = get_rag_service()
-    prewarm_parallel_rag(rag_service, rag_mode, args.max_workers)
+    rag_service = get_rag_service() if args.evidence_mode != "replay" else None
+    if args.evidence_mode != "replay":
+        prewarm_parallel_rag(rag_service, rag_mode, args.max_workers)
     order = [(index, 1) for index in range(1, 13)]
     if args.repeat_count == 2:
         order += [(index, 2) for index in range(12, 0, -1)]
@@ -312,9 +454,13 @@ def main():
     completion_count = 0
     completion_order = []
     payload = {}
+    recorded_cases = {}
 
     def persist(rows, row):
         nonlocal completion_count, payload
+        evidence = row.pop("_evidence_snapshot", None)
+        if evidence is not None:
+            recorded_cases[evidence.request_fingerprint] = evidence
         completion_count += 1
         completion_order.append({"case_index": row["case_index"], "repeat": row["repeat"]})
         print(f"[{completion_count}/{total_runs}] case={row['case_index']} repeat={row['repeat']} "
@@ -338,15 +484,41 @@ def main():
                                      "passed": all_validated and overall_above_half}
         payload = {"benchmark": f"multi_agent_12case_stability_{args.repeat_count}x",
                    "reference_result": args.reference_result or None,
+                   "configuration": config,
+                   "evidence": {"mode": args.evidence_mode,
+                                "snapshot_path": args.evidence_snapshot if args.evidence_mode != "live" else None,
+                                "snapshot_hash": None},
                    "execution": {"mode": "parallel" if args.max_workers > 1 else "sequential",
                                  "max_workers": args.max_workers,
                                  "completion_order": list(completion_order)},
                    "summary": summary, "results": rows}
+        if args.evidence_mode == "record":
+            recorded = EvidenceSnapshotFile(
+                metadata={"dataset_sha256": config["dataset_sha256"],
+                          "recorded_at": datetime.now(timezone.utc).isoformat(),
+                          "configuration": config},
+                cases=recorded_cases,
+            ).with_hash()
+            snapshot_path.parent.mkdir(parents=True, exist_ok=True)
+            snapshot_path.write_text(recorded.model_dump_json(indent=2) + "\n")
+            payload["evidence"]["snapshot_hash"] = recorded.snapshot_hash
+        elif snapshot_file is not None:
+            payload["evidence"]["snapshot_hash"] = snapshot_file.snapshot_hash
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(payload, indent=2) + "\n")
 
+    def benchmark_runner(planner, llm, case, case_index, repeat):
+        snapshot = None
+        if args.evidence_mode == "replay":
+            request = TripRequest(**{key: case[key] for key in REQUEST_FIELDS})
+            snapshot = replay_cases.get(request_fingerprint(request))
+        return run_one(planner, llm, case, case_index, repeat,
+                       evidence_mode=args.evidence_mode, evidence_snapshot=snapshot)
+
     execute_order(cases, order, max_workers=args.max_workers,
-                  worker_factory=lambda: build_worker(rag_mode, llm_backend, rag_service), on_result=persist)
+                  worker_factory=lambda: build_worker(rag_mode, llm_backend, rag_service,
+                                                      evidence_mode=args.evidence_mode),
+                  runner=benchmark_runner, on_result=persist)
     print(json.dumps(payload["summary"], indent=2), flush=True)
 
 
