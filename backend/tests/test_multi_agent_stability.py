@@ -22,6 +22,7 @@ def benchmark_row(*, case_index=1, repeat=1, passed=True, attraction=None, hotel
         "agent_error": None,
         "unsupported_entities": 0,
         "materialization_failures": [],
+        "canonical_field_hallucination_count": 0,
         "retrieval_recall": 1.0,
         "forbidden_retrieval_ids": [],
         "budget_usage": {},

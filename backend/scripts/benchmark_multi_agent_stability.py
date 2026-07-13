@@ -17,6 +17,7 @@ if str(ROOT) not in sys.path:
 
 from langchain_core.callbacks import UsageMetadataCallbackHandler
 
+from app.agents.canonical_audit import audit_canonical_fields
 from app.agents.multi_agent_trip_planner import MultiAgentTripPlanner
 from app.config import get_settings
 from app.models.schemas import TripRequest
@@ -119,13 +120,17 @@ def run_one(planner, llm, case, case_index, repeat):
     rag_ids = [chunk.metadata.get("doc_id", "") for chunk in state.get("rag_chunks", [])]
     expected, forbidden = set(case.get("expected_rag_doc_ids", [])), set(case.get("forbidden_rag_doc_ids", []))
     budget = metrics.budget_usage if metrics else {}
+    canonical_audit = audit_canonical_fields(plan, state["candidate_registry"])
     return {"case_index": case_index, "repeat": repeat, "city": request.city,
             "status": "completed", "passed": bool(report and report.passed),
             "fallback": bool(getattr(state.get("metrics"), "fallback_count", 0)),
             "agent_error": state.get("agent_error") or None,
             "unsupported_entities": len(report.unsupported_entities if report else []),
             "materialization_failures": list(state.get("materialization_failures", [])),
-            "canonical_field_hallucination_count": 0,
+            "canonical_field_hallucination_count": canonical_audit.mismatch_count,
+            "canonical_field_mismatches": [item.model_dump(mode="json") for item in canonical_audit.mismatches],
+            "canonical_audited_entity_count": canonical_audit.audited_entity_count,
+            "skipped_generic_meal_count": canonical_audit.skipped_generic_meal_count,
             "retrieval_recall": len(expected & set(rag_ids)) / max(1, len(expected)),
             "forbidden_retrieval_ids": sorted(forbidden & set(rag_ids)),
             "latency_ms": round(elapsed, 3), "token_usage": llm.usage(),
@@ -250,7 +255,9 @@ def summarize(rows):
             "agent_error_count": sum(bool(row["agent_error"]) for row in rows),
             "unsupported_entity_count": sum(row["unsupported_entities"] for row in rows),
             "materialization_failure_count": sum(len(row["materialization_failures"]) for row in rows),
-            "canonical_field_hallucination_count": 0,
+            "canonical_field_hallucination_count": sum(
+                row.get("canonical_field_hallucination_count", 0) for row in rows
+            ),
             "retrieval_recall_at_4": statistics.mean(row["retrieval_recall"] for row in rows) if rows else 0,
             "forbidden_retrieval_count": sum(len(row["forbidden_retrieval_ids"]) for row in rows),
             "avg_llm_calls": statistics.mean(llm_calls) if llm_calls else 0,
